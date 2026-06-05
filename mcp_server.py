@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Any, Dict, List, Optional
 
 from core.config import settings
@@ -212,7 +213,12 @@ if _FASTMCP:
 
 if __name__ == "__main__":
     if _FASTMCP:
-        log.info("Starting AgentKit MCP server...")
-        mcp.run()
+        transport = os.getenv("MCP_TRANSPORT", "stdio")
+        port = int(os.getenv("MCP_PORT", "8005"))
+        log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
+        if transport == "sse":
+            mcp.run(transport="sse", host="0.0.0.0", port=port)
+        else:
+            mcp.run()
     else:
         log.error("fastmcp not installed; cannot start MCP server. pip install fastmcp")
