@@ -58,11 +58,27 @@ def main():
     if not _DSPY:
         print("dspy-ai not installed. pip install dspy-ai")
         return
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("No LLM key found.")
+    model = os.getenv("LLM_DEFAULT", "groq/llama-3.3-70b-versatile")
+    if not (os.getenv("GROQ_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY")):
+        print("No LLM key found (set GROQ_API_KEY / ANTHROPIC_API_KEY).")
         return
-    print("DSPy experiment scaffold ready. Configure dspy.settings.lm and trainset to run BootstrapFewShot.")
+    # Configure DSPy's LM via LiteLLM and actually run the planner→analyst→reporter program.
+    dspy.configure(lm=dspy.LM(model, temperature=0.3, max_tokens=1024))
+
+    raw_data = "(no live data)"
+    try:
+        import asyncio
+        from mcp_server import get_executive_summary
+        raw_data = str(asyncio.new_event_loop().run_until_complete(get_executive_summary()))[:1500]
+    except Exception as e:
+        log.warning("exec summary unavailable, running without live data: %s", e)
+
+    pred = BusinessAnalysisPipeline()(
+        question="What drove company health recently and what should leadership do?",
+        raw_data=raw_data,
+    )
+    print("=== DSPy plan ===\n", pred.plan)
+    print("\n=== DSPy report ===\n", pred.report)
 
 
 if __name__ == "__main__":
