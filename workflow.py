@@ -138,7 +138,8 @@ async def reporter_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         current = None
         buffer: List[str] = []
         for line in text.splitlines():
-            upper = line.strip().rstrip(":").upper()
+            # tolerate markdown headers: "## KEY FINDING", "**KEY FINDING**", "KEY FINDING:"
+            upper = line.strip().strip("#*").strip().rstrip(":").strip("#*").strip().upper()
             if upper in {"KEY FINDING", "EVIDENCE", "ROOT CAUSE", "RECOMMENDED ACTION", "RISK IF UNADDRESSED"}:
                 if current:
                     sections[current.lower().replace(" ", "_")] = "\n".join(buffer).strip()
