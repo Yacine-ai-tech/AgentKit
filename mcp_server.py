@@ -60,6 +60,25 @@ else:
 # TOOLS
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _records(df, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    """DataFrame → JSON-safe list of dicts (numpy scalars → native, NaN/Inf → None)."""
+    import math
+    recs = df.to_dict("records")
+    if limit is not None:
+        recs = recs[:limit]
+    out: List[Dict[str, Any]] = []
+    for r in recs:
+        clean: Dict[str, Any] = {}
+        for k, v in r.items():
+            if hasattr(v, "item"):       # numpy scalar
+                v = v.item()
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                v = None
+            clean[k] = v
+        out.append(clean)
+    return out
+
+
 async def query_kpis(
     domain: Optional[str] = None,
     period_from: Optional[str] = None,
@@ -71,15 +90,17 @@ async def query_kpis(
     if not _PG:
         return {"kpis": [], "total": 0, "stub": True}
     try:
-        kpis = get_kpi_metrics(category=domain) or []
+        df = get_kpi_metrics(categories=[domain] if domain else None)
+        if df is None or df.empty:
+            return {"kpis": [], "total": 0}
         if period_from:
-            kpis = [k for k in kpis if k.get("period", "") >= period_from]
+            df = df[df["period"] >= period_from]
         if period_to:
-            kpis = [k for k in kpis if k.get("period", "") <= period_to]
+            df = df[df["period"] <= period_to]
         if metric_filter:
-            kpis = [k for k in kpis if metric_filter.lower() in k.get("metric", "").lower()]
-        kpis = kpis[:limit]
-        return {"kpis": kpis, "total": len(kpis)}
+            df = df[df["metric"].str.contains(metric_filter, case=False, na=False)]
+        rows = _records(df, limit=limit)
+        return {"kpis": rows, "total": len(rows)}
     except Exception as e:
         log.exception("query_kpis failed: %s", e)
         return {"kpis": [], "total": 0, "error": str(e)}
@@ -90,9 +111,15 @@ async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
     if not (_PG and _INSIGHTS):
         return {"score": 0.0, "interpretation": "stub", "components": {}, "stub": True}
     try:
-        kpis = get_kpi_metrics(category=domain) or []
-        result = compute_health_index(kpis) if kpis else {"score": 0.0, "components": {}}
-        return result if isinstance(result, dict) else {"score": float(result), "components": {}}
+        df = get_kpi_metrics(categories=[domain] if domain else None)
+        if df is None or df.empty:
+            return {"score": 0.0, "interpretation": "no_data", "components": {}}
+        h = compute_health_index(df)
+        return {
+            "score": float(h.get("score", 0.0)),
+            "interpretation": h.get("label", "n/a"),
+            "components": {k: h[k] for k in ("growth", "margin", "cash_score", "efficiency") if k in h},
+        }
     except Exception as e:
         log.exception("get_company_health failed: %s", e)
         return {"score": 0.0, "interpretation": "error", "components": {}, "error": str(e)}
@@ -107,11 +134,15 @@ async def detect_kpi_anomalies(
     if not (_PG and _INSIGHTS):
         return {"anomalies": [], "total": 0, "threshold": threshold, "stub": True}
     try:
-        kpis = get_kpi_metrics(category=domain) or []
-        anomalies = detect_anomalies(kpis, method=method, threshold=threshold) if kpis else []
-        if not isinstance(anomalies, list):
-            anomalies = []
-        return {"anomalies": anomalies, "total": len(anomalies), "threshold": threshold, "method": method}
+        df = get_kpi_metrics(categories=[domain] if domain else None)
+        if df is None or df.empty:
+            return {"anomalies": [], "total": 0, "threshold": threshold, "method": method}
+        out = detect_anomalies(df, z_threshold=threshold, method=method)
+        if "is_anomaly" in out.columns:
+            out = out[out["is_anomaly"] == True]  # noqa: E712
+        cols = [c for c in ("metric", "category", "period", "value", "z_score") if c in out.columns]
+        rows = _records(out[cols]) if not out.empty else []
+        return {"anomalies": rows, "total": len(rows), "threshold": threshold, "method": method}
     except Exception as e:
         log.exception("detect_kpi_anomalies failed: %s", e)
         return {"anomalies": [], "total": 0, "threshold": threshold, "error": str(e)}
@@ -122,28 +153,50 @@ async def forecast_metric(
     periods: int = 6,
     confidence_level: float = 0.95,
 ) -> Dict[str, Any]:
-    """Forecast `periods` periods ahead for a named metric."""
+    """Forecast `periods` periods ahead for a named metric (Monte Carlo CI bands)."""
     if not (_PG and _FORECAST):
         return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "stub", "stub": True}
     try:
-        kpis = get_kpi_metrics(metric_filter=metric_name) or []
-        if not kpis:
+        df = get_kpi_metrics(metrics=[metric_name])
+        if df is None or df.empty:
+            # name-tolerant fallback: case-insensitive exact, then substring match
+            alldf = get_kpi_metrics()
+            if alldf is not None and not alldf.empty:
+                exact = alldf[alldf["metric"].str.lower() == metric_name.lower()]
+                df = exact if not exact.empty else alldf[alldf["metric"].str.contains(metric_name, case=False, na=False)]
+        if df is None or df.empty:
             return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "none", "note": "no_data"}
-        engine = ForecastEngine()
-        result = engine.time_series_forecast(kpis, periods=periods, confidence_level=confidence_level)
-        return result if isinstance(result, dict) else {"forecast": result}
+        fdf = (df[["period", "value"]].rename(columns={"period": "month_tag", "value": "actual"})
+               .groupby("month_tag", as_index=False).agg({"actual": "mean"}).sort_values("month_tag"))
+        res = ForecastEngine().time_series_forecast(fdf, periods=periods, confidence_level=confidence_level)
+        if res is None or res.empty:
+            return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "none", "note": "insufficient_history"}
+        recs = res.to_dict("records")
+        return {
+            "metric": metric_name,
+            "forecast": [{"period": r["month_tag"], "value": round(float(r["forecast"]), 2)} for r in recs],
+            "lower_ci": [round(float(r["lower_bound"]), 2) for r in recs],
+            "upper_ci": [round(float(r["upper_bound"]), 2) for r in recs],
+            "confidence_level": confidence_level,
+            "method": "linear_regression",
+        }
     except Exception as e:
         log.exception("forecast_metric failed: %s", e)
         return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "error", "error": str(e)}
 
 
 async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]:
-    """Discovery tool: list metrics, categories, and periods."""
+    """Discovery tool: list metrics, categories, and periods (metrics scoped to domain if given)."""
     if not _PG:
         return {"metrics": [], "categories": [], "periods": [], "stub": True}
     try:
+        metrics = get_available_metrics() or []
+        if domain:
+            df = get_kpi_metrics(categories=[domain])
+            if df is not None and not df.empty:
+                metrics = sorted(df["metric"].unique().tolist())
         return {
-            "metrics": get_available_metrics(category=domain) or [],
+            "metrics": metrics,
             "categories": get_available_categories() or [],
             "periods": get_available_periods() or [],
         }
@@ -153,16 +206,17 @@ async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]
 
 
 async def get_executive_summary() -> Dict[str, Any]:
-    """Synthesize health, KPIs, anomalies, growth into a one-shot summary."""
+    """Synthesize health, KPIs, and anomalies into a one-shot executive summary."""
     health = await get_company_health()
     kpis = await query_kpis(limit=10)
+    anomalies = await detect_kpi_anomalies(domain="Finance") if _PG and _INSIGHTS else {"anomalies": []}
     return {
         "summary": "Executive snapshot generated by AgentKit",
         "health_score": health.get("score", 0.0),
         "interpretation": health.get("interpretation", "n/a"),
+        "components": health.get("components", {}),
         "key_metrics": kpis.get("kpis", [])[:5],
-        "anomalies": [],
-        "top_growth": [],
+        "anomalies": anomalies.get("anomalies", [])[:5],
     }
 
 
