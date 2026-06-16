@@ -58,3 +58,9 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
 3. **DSPy compile + telemetry** exported to RAGeval (research-community integration).
 4. **Auth + rate-limit** on the SSE endpoint for a hosted demo.
 5. **Observability**: structured tool-call traces (OpenTelemetry) for the enterprise audience.
+
+## Phase 3 completion pass (2026-06-16, post-GPU)
+- **Audit (user-prompted):** code core done+validated (MCP 6/6/1, LangGraph workflow, CrewAI/
+  DSPy/Claude-SDK demos), but Week 9 **writing** was missing.
+- **Writing (Week 9):** added `drafts/` (gitignored): `blog_post_3_mcp_agents.md` ("MCP, Not
+  Another Agent Framework"), `upwork_proposal_templates.md` (3 niches), `demo_script.md` (60s).
