@@ -64,3 +64,7 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
   DSPy/Claude-SDK demos), but Week 9 **writing** was missing.
 - **Writing (Week 9):** added `drafts/` (gitignored): `blog_post_3_mcp_agents.md` ("MCP, Not
   Another Agent Framework"), `upwork_proposal_templates.md` (3 niches), `demo_script.md` (60s).
+
+## Comprehensive QA pass (2026-06-16)
+- **9 pass/1 skip**. §2.10 verified: Claude Agent SDK, CrewAI, DSPy, LangGraph.
+- All 6 projects + both packages green; 28/28 STRATEGY §.10 feature claims code-verified.
