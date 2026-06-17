@@ -73,3 +73,7 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
 - The 1 skipped test (`test_mcp_protocol.py`) was skipping because the shared conda env lacked
   `fastmcp` (it IS in requirements.txt `fastmcp>=0.4.0`). Installed fastmcp 3.4.2 → **11 passed,
   0 skipped** (MCP protocol test now runs + validates).
+
+## Remediation — LIVE behavior validation (2026-06-17)
+- Added `tests/test_live_workflow.py` (real LLM, skip-if-no-key): **3-agent workflow LIVE**: planner→analyst→reporter on real DataFrame data → substantive report (real LLM, 38s).
+- Addresses the "tests prove imports not behavior" gap with a real, measured run.
