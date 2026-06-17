@@ -77,3 +77,10 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
 ## Remediation — LIVE behavior validation (2026-06-17)
 - Added `tests/test_live_workflow.py` (real LLM, skip-if-no-key): **3-agent workflow LIVE**: planner→analyst→reporter on real DataFrame data → substantive report (real LLM, 38s).
 - Addresses the "tests prove imports not behavior" gap with a real, measured run.
+
+## FINAL scoreboard + Docker validation (2026-06-17)
+- **Docker**: container builds + runs on :8005; added **/health 200** (MCP serves /sse). **Tests 11** + SSE bearer-auth/rate-limit. LangGraph 3-agent workflow validated LIVE (real report). No worldwide agent-tool benchmark maps to custom tools (honest).
+- Deployment validated via **Docker** (docker-compose.dev.yml), the isolated per-repo design —
+  NOT the shared conda env. All 6 repos: 6/6 containers serve /health.
+- **User-gated (cannot be done by the agent):** Railway/Fly deploy, PyPI upload (wheels built),
+  Loom recording, sending Upwork proposals, publishing blog/preprint drafts.
