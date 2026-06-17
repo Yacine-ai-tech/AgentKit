@@ -68,3 +68,8 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
 ## Comprehensive QA pass (2026-06-16)
 - **9 pass/1 skip**. §2.10 verified: Claude Agent SDK, CrewAI, DSPy, LangGraph.
 - All 6 projects + both packages green; 28/28 STRATEGY §.10 feature claims code-verified.
+
+## Skip resolved + GPU torch note (2026-06-16)
+- The 1 skipped test (`test_mcp_protocol.py`) was skipping because the shared conda env lacked
+  `fastmcp` (it IS in requirements.txt `fastmcp>=0.4.0`). Installed fastmcp 3.4.2 → **11 passed,
+  0 skipped** (MCP protocol test now runs + validates).
