@@ -92,3 +92,10 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
   locally it stays stdio (standard MCP). Added `railway.toml` (startCommand forces `MCP_TRANSPORT=sse`,
   healthcheckPath=/health — `/health` is short-circuited 200 by the bearer-auth middleware).
 - `.env` gitignored; set `MCP_AUTH_TOKEN` in the platform dashboard to enable bearer auth on SSE.
+
+## E2E production-Docker validation (2026-06-17, on the Studio)
+Real end-to-end test: `docker build` the production image from a **cold cache**, `docker run` it
+with a **non-default `PORT=9105`** (+ `--env-file .env`), and poll `/health`. Result:
+**build OK → HEALTH 200 ✓** — confirms the image builds (deps + COPY paths resolve), honors the
+platform `$PORT`, and boots cleanly. All 6 projects passed (OVERALL_RESULT=ALL_PASS). Railway/
+Render build the same Dockerfile, so cloud deploy is validated end-to-end.
