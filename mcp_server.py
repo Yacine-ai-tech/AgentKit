@@ -265,13 +265,33 @@ if _FASTMCP:
         )
 
 
+def _serve_sse(port: int) -> None:
+    """Serve SSE behind bearer-auth + rate-limit (gated by MCP_AUTH_TOKEN). Falls back to the
+    plain FastMCP runner if the ASGI app can't be wrapped on this FastMCP version."""
+    token = os.getenv("MCP_AUTH_TOKEN")
+    if not token:
+        log.warning("MCP_AUTH_TOKEN not set — SSE auth DISABLED (dev mode); rate-limit still on")
+    try:
+        import uvicorn
+        from auth_middleware import BearerAuthRateLimit
+        try:
+            app = mcp.http_app(transport="sse")
+        except TypeError:
+            app = mcp.http_app()
+        log.info("Serving SSE with auth=%s + rate-limit on :%s", bool(token), port)
+        uvicorn.run(BearerAuthRateLimit(app), host="0.0.0.0", port=port)
+    except Exception as e:
+        log.warning("guarded SSE serve unavailable (%s) — falling back to mcp.run(sse)", e)
+        mcp.run(transport="sse", host="0.0.0.0", port=port)
+
+
 if __name__ == "__main__":
     if _FASTMCP:
         transport = os.getenv("MCP_TRANSPORT", "stdio")
         port = int(os.getenv("MCP_PORT", "8005"))
         log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
         if transport == "sse":
-            mcp.run(transport="sse", host="0.0.0.0", port=port)
+            _serve_sse(port)
         else:
             mcp.run()
     else:
