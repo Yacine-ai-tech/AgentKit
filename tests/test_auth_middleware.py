@@ -57,6 +57,17 @@ def test_rate_limit_429():
     assert calls["n"] == 3                  # only the first 3 reached the app
 
 
+def test_health_bypasses_auth():
+    app, calls = _dummy()
+    mw = BearerAuthRateLimit(app, token="secret")
+    scope = {"type": "http", "path": "/health", "headers": [], "client": ("1.2.3.4", 1)}
+    sent = []
+    async def recv(): return {"type": "http.request", "body": b""}
+    async def send(m): sent.append(m)
+    asyncio.run(mw(scope, recv, send))
+    assert sent[0]["status"] == 200 and calls["n"] == 0  # answered without auth, app not hit
+
+
 def test_lifespan_passthrough():
     # non-http scopes (lifespan/websocket) must pass through untouched
     app, calls = _dummy()

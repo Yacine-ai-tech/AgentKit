@@ -27,6 +27,16 @@ class BearerAuthRateLimit:
         if scope.get("type") != "http":
             return await self.app(scope, receive, send)
 
+        # Liveness probe — answer /health directly (before auth) so MCP/SSE servers are
+        # health-checkable by Docker/orchestrators even though MCP itself serves /sse.
+        if scope.get("path") == "/health":
+            body = b'{"status":"ok","service":"agentkit"}'
+            await send({"type": "http.response.start", "status": 200,
+                        "headers": [(b"content-type", b"application/json"),
+                                    (b"content-length", str(len(body)).encode())]})
+            await send({"type": "http.response.body", "body": body})
+            return
+
         headers = {k.lower(): v for k, v in (scope.get("headers") or [])}
 
         # 1) auth
