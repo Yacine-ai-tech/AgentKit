@@ -84,3 +84,11 @@ DataFrame analytics. Deploy/showcase remain (user-gated).
   NOT the shared conda env. All 6 repos: 6/6 containers serve /health.
 - **User-gated (cannot be done by the agent):** Railway/Fly deploy, PyPI upload (wheels built),
   Loom recording, sending Upwork proposals, publishing blog/preprint drafts.
+
+## Production-readiness — deploy-today pass (2026-06-17)
+- **Cloud $PORT binding + transport:** `mcp_server.py` now picks the port from `MCP_PORT || PORT || 8005`
+  and **auto-selects transport**: `MCP_TRANSPORT` if set, else `sse` when a cloud `$PORT` is present,
+  else `stdio` locally. So on Railway/Render it serves HTTP/SSE on the platform port out of the box;
+  locally it stays stdio (standard MCP). Added `railway.toml` (startCommand forces `MCP_TRANSPORT=sse`,
+  healthcheckPath=/health — `/health` is short-circuited 200 by the bearer-auth middleware).
+- `.env` gitignored; set `MCP_AUTH_TOKEN` in the platform dashboard to enable bearer auth on SSE.

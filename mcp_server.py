@@ -287,8 +287,11 @@ def _serve_sse(port: int) -> None:
 
 if __name__ == "__main__":
     if _FASTMCP:
-        transport = os.getenv("MCP_TRANSPORT", "stdio")
-        port = int(os.getenv("MCP_PORT", "8005"))
+        # When a cloud platform injects $PORT, default to HTTP/SSE so the service is reachable;
+        # locally (no $PORT) default to stdio (the standard MCP transport for local clients).
+        transport = os.getenv("MCP_TRANSPORT") or ("sse" if os.getenv("PORT") else "stdio")
+        # Honor the platform-injected $PORT (Railway/Render/Fly) over MCP_PORT; default 8005.
+        port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
         log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
         if transport == "sse":
             _serve_sse(port)
