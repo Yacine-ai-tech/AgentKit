@@ -99,3 +99,8 @@ with a **non-default `PORT=9105`** (+ `--env-file .env`), and poll `/health`. Re
 **build OK → HEALTH 200 ✓** — confirms the image builds (deps + COPY paths resolve), honors the
 platform `$PORT`, and boots cleanly. All 6 projects passed (OVERALL_RESULT=ALL_PASS). Railway/
 Render build the same Dockerfile, so cloud deploy is validated end-to-end.
+
+## Demo landing page (2026-06-17)
+- Added a browser **/demo** page served by the pure-ASGI `auth_middleware` *before* auth (like
+  `/health`) — shows liveness, the MCP tool catalog, and SSE connect instructions (a browser can't
+  speak MCP). Validated offline: `/health`→200, `/demo`→200 HTML, `/sse` (no token)→401 (auth intact).
