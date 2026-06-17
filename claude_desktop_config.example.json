@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "agentkit": {
+      "command": "python",
+      "args": ["/abs/path/to/AgentKit/mcp_server.py"],
+      "env": {
+        "POSTGRES_URL": "postgresql://USER:PASSWORD@HOST/DB?sslmode=require",
+        "ANTHROPIC_API_KEY": "sk-ant-...",
+        "GROQ_API_KEY": "gsk_..."
+      }
+    }
+  }
+}

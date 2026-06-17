@@ -23,7 +23,7 @@ log = get_logger(__name__)
 
 POSTGRES_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://omnitel:omnitel_dev_2026@localhost:5432/omniintelos"
+    "postgresql+psycopg://agentkit:change_me@localhost:5432/agentkit"
 )
 
 POSTGRES_ASYNC_URL = POSTGRES_URL.replace(
