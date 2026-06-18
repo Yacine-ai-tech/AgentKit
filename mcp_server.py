@@ -88,7 +88,7 @@ async def query_kpis(
 ) -> Dict[str, Any]:
     """Return KPI metrics for a domain and period window."""
     if not _PG:
-        return {"kpis": [], "total": 0, "stub": True}
+        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
         df = get_kpi_metrics(categories=[domain] if domain else None)
         if df is None or df.empty:
@@ -109,7 +109,7 @@ async def query_kpis(
 async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
     """Return composite company health index for a domain (or all)."""
     if not (_PG and _INSIGHTS):
-        return {"score": 0.0, "interpretation": "stub", "components": {}, "stub": True}
+        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
         df = get_kpi_metrics(categories=[domain] if domain else None)
         if df is None or df.empty:
@@ -132,7 +132,7 @@ async def detect_kpi_anomalies(
 ) -> Dict[str, Any]:
     """Find anomalies in a domain's KPI history."""
     if not (_PG and _INSIGHTS):
-        return {"anomalies": [], "total": 0, "threshold": threshold, "stub": True}
+        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
         df = get_kpi_metrics(categories=[domain] if domain else None)
         if df is None or df.empty:
@@ -155,7 +155,7 @@ async def forecast_metric(
 ) -> Dict[str, Any]:
     """Forecast `periods` periods ahead for a named metric (Monte Carlo CI bands)."""
     if not (_PG and _FORECAST):
-        return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "stub", "stub": True}
+        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
         df = get_kpi_metrics(metrics=[metric_name])
         if df is None or df.empty:
@@ -188,7 +188,7 @@ async def forecast_metric(
 async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]:
     """Discovery tool: list metrics, categories, and periods (metrics scoped to domain if given)."""
     if not _PG:
-        return {"metrics": [], "categories": [], "periods": [], "stub": True}
+        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
         metrics = get_available_metrics() or []
         if domain:
