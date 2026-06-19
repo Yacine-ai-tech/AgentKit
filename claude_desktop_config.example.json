@@ -1,13 +1,21 @@
 {
+  "//": "AgentKit MCP server — two ways to connect from Claude Desktop. Keep ONE of the entries.",
+  "//_local": "LOCAL (stdio): runs the server on your machine. Use the Python that has the deps installed (cd AgentKit && python -m venv .venv && .venv/bin/pip install -r requirements.txt). The script dir is auto-added to sys.path so the core/services imports resolve. Needs the shared DB + LLM keys for REAL tool output (without POSTGRES_URL the tools raise instead of returning data).",
+  "//_remote": "REMOTE (hosted SSE): connects to the live deployment via mcp-remote (needs Node/npx). No local Python, DB, or keys required.",
   "mcpServers": {
-    "agentkit": {
-      "command": "python",
-      "args": ["/abs/path/to/AgentKit/mcp_server.py"],
+    "agentkit-local": {
+      "command": "/ABS/PATH/TO/AgentKit/.venv/bin/python",
+      "args": ["/ABS/PATH/TO/AgentKit/mcp_server.py"],
       "env": {
+        "MCP_TRANSPORT": "stdio",
         "POSTGRES_URL": "postgresql://USER:PASSWORD@HOST/DB?sslmode=require",
         "ANTHROPIC_API_KEY": "sk-ant-...",
         "GROQ_API_KEY": "gsk_..."
       }
+    },
+    "agentkit-remote": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://agentkit.ysiddo-ai-projects.app/sse"]
     }
   }
 }
