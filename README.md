@@ -5,6 +5,8 @@
 Expose enterprise KPIs, health scores, forecasting, and anomaly detection as
 tools, resources, and prompt templates that any MCP-compatible agent (Claude
 Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
+> 🔗 **Live MCP server (SSE):** https://agentkit.ysiddo-ai-projects.app/sse — connect from Claude Desktop
+> via `mcp-remote` (see [claude_desktop_config.example.json](claude_desktop_config.example.json)). On-demand backend (first call ~30–60 s).
 
 ## What It Does
 
