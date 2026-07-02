@@ -19,9 +19,13 @@ from typing import Deque, Dict
 # auth). A browser can't speak MCP, so this shows liveness, the tool catalog, and how to connect.
 _DEMO_HTML = b"""<!DOCTYPE html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>AgentKit - MCP server</title>
-<style>:root{--bg:#0d1117;--card:#161b22;--bd:#30363d;--tx:#e6edf3;--mut:#8b949e;--ac:#10b981}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,Segoe UI,Roboto,sans-serif}
-.wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}h1{font-size:1.6rem;margin:0 0 4px}
+<style>:root{--bg:#070b16;--card:#0f1628;--bd:rgba(125,155,215,.18);--tx:#eaf1ff;--mut:#9fb0d0;--ac:#22d3ee;
+  --grad:linear-gradient(120deg,#4f46e5,#2563eb 45%,#22d3ee)}
+*{box-sizing:border-box}body{margin:0;color:var(--tx);font:15px/1.55 Inter,system-ui,Segoe UI,Roboto,sans-serif;
+  background:radial-gradient(1100px 620px at 6% -12%,rgba(79,70,229,.16),transparent 60%),radial-gradient(960px 600px at 102% 2%,rgba(34,211,238,.11),transparent 55%),var(--bg)}
+.wrap{max-width:820px;margin:0 auto;padding:36px 20px 64px}
+h1{font-size:1.7rem;margin:0 0 4px;font-family:'Space Grotesk',Inter,sans-serif;display:flex;align-items:center;gap:12px}
+.gt{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{color:var(--mut);margin:0 0 22px}.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px;margin-bottom:18px}
 .pill{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:999px;background:#1f2937;color:var(--mut);margin-left:8px}
 .pill.ok{background:#0f2e1b;color:var(--ac)}code,pre{background:#0d1117;border:1px solid var(--bd);border-radius:6px}
@@ -29,7 +33,7 @@ code{padding:1px 6px;color:var(--mut)}pre{padding:14px;overflow:auto;white-space
 .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px}
 .tool{background:#0d1117;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:.85rem}
 .tool b{color:var(--ac)}a{color:var(--ac)}</style></head><body><div class=wrap>
-<h1>AgentKit <span id=h class=pill>checking...</span></h1>
+<h1><svg width=34 height=34 viewBox="0 0 40 40" fill=none style="filter:drop-shadow(0 4px 14px rgba(34,211,238,.45))"><defs><linearGradient id=g x1=0 y1=0 x2=1 y2=1><stop offset=0 stop-color=#6366f1 /><stop offset=.5 stop-color=#2563eb /><stop offset=1 stop-color=#22d3ee /></linearGradient></defs><path d="M20 3.4 33.3 11V26L20 33.6 6.7 26V11Z" stroke=url(#g) stroke-width=2.2 stroke-linejoin=round /><path d="M20 27V13.4M14.4 19 20 13.4 25.6 19" stroke=url(#g) stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg><span class=gt>AgentKit</span> <span id=h class=pill>checking...</span></h1>
 <p class=sub>Production <b>MCP server</b> exposing your business KPIs as agent tools (bearer-auth + rate-limited SSE).</p>
 <div class=card><b>Connect an MCP client</b> (Claude Desktop, <code>mcp</code> CLI, or any agent) to the SSE endpoint:
 <pre>URL:    &lt;this-host&gt;/sse
@@ -73,7 +77,7 @@ class BearerAuthRateLimit:
             return
 
         # Browser landing/demo page — served before auth (a browser can't speak MCP).
-        if scope.get("path") in ("/demo", "/demo/"):
+        if scope.get("path") in ("/", "/demo", "/demo/"):
             await send({"type": "http.response.start", "status": 200,
                         "headers": [(b"content-type", b"text/html; charset=utf-8"),
                                     (b"content-length", str(len(_DEMO_HTML)).encode())]})
