@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library } from "lucide-react";
+import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity } from "lucide-react";
 import { AppShell } from "./kit/AppShell";
 import { WakingBackend } from "./kit/misc";
 import { Skeleton } from "./kit/primitives";
@@ -10,6 +10,7 @@ import Tools from "./pages/Tools";
 import Workflow from "./pages/Workflow";
 import Connect from "./pages/Connect";
 import Resources from "./pages/Resources";
+import Observability from "./pages/Observability";
 
 const Intelligence = lazy(() => import("./pages/Intelligence"));
 
@@ -18,6 +19,7 @@ const NAV = [
   { to: "/tools", label: "MCP Tools", icon: Wrench },
   { to: "/intelligence", label: "Business Intelligence", icon: BarChart3 },
   { to: "/workflow", label: "Workflow", icon: GitBranch },
+  { to: "/observability", label: "Observability", icon: Activity },
   { to: "/connect", label: "Connect", icon: Cable },
   { to: "/resources", label: "Resources & Prompts", icon: Library },
 ];
@@ -52,6 +54,7 @@ export default function App() {
               <Route path="/tools" element={<Tools />} />
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/workflow" element={<Workflow />} />
+              <Route path="/observability" element={<Observability />} />
               <Route path="/connect" element={<Connect />} />
               <Route path="/resources" element={<Resources />} />
               <Route path="*" element={<Overview />} />
