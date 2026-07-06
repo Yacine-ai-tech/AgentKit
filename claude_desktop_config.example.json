@@ -15,7 +15,7 @@
     },
     "agentkit-remote": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://agentkit.ysiddo-ai-projects.app/sse"]
+      "args": ["-y", "mcp-remote", "https://agentkit-0c1b.onrender.com/sse"]
     }
   }
 }

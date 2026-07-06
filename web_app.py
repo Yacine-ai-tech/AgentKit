@@ -1,0 +1,144 @@
+"""AgentKit web facade — read-only REST + SPA over the SAME functions the MCP tools use.
+
+No business logic lives here: every /api endpoint delegates to the tool functions in
+mcp_server.py (which call services/pg_store, services/insights, services/forecasting).
+Data-layer failures surface as HTTP 503 with the real message — never fabricated data.
+"""
+from __future__ import annotations
+
+import os
+from typing import Any, Dict, Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+import mcp_server as tools
+
+# Static metadata mirroring the six REAL tool signatures (mcp_server.py).
+TOOL_META = [
+    {
+        "name": "query_kpis",
+        "description": "Return KPI metrics for a domain and period window.",
+        "params": [
+            {"name": "domain", "type": "string", "required": False},
+            {"name": "period_from", "type": "string", "required": False},
+            {"name": "period_to", "type": "string", "required": False},
+            {"name": "metric_filter", "type": "string", "required": False},
+            {"name": "limit", "type": "integer", "required": False, "default": 100},
+        ],
+        "endpoint": "/api/kpis",
+    },
+    {
+        "name": "get_company_health",
+        "description": "Composite company health index for a domain (or all).",
+        "params": [{"name": "domain", "type": "string", "required": False}],
+        "endpoint": "/api/health-score",
+    },
+    {
+        "name": "detect_kpi_anomalies",
+        "description": "Find anomalies in a domain's KPI history (z-score).",
+        "params": [
+            {"name": "domain", "type": "string", "required": True},
+            {"name": "method", "type": "string", "required": False, "default": "zscore"},
+            {"name": "threshold", "type": "number", "required": False, "default": 2.5},
+        ],
+        "endpoint": "/api/anomalies",
+    },
+    {
+        "name": "forecast_metric",
+        "description": "Forecast N periods ahead for a named metric with CI bands.",
+        "params": [
+            {"name": "metric_name", "type": "string", "required": True},
+            {"name": "periods", "type": "integer", "required": False, "default": 6},
+            {"name": "confidence_level", "type": "number", "required": False, "default": 0.95},
+        ],
+        "endpoint": "/api/forecast",
+    },
+    {
+        "name": "list_available_metrics",
+        "description": "Discovery: metrics, categories and periods available in the store.",
+        "params": [{"name": "domain", "type": "string", "required": False}],
+        "endpoint": "/api/metrics",
+    },
+    {
+        "name": "get_executive_summary",
+        "description": "One-shot synthesis of health, key KPIs and anomalies.",
+        "params": [],
+        "endpoint": "/api/summary",
+    },
+]
+
+
+def _guard(result: Dict[str, Any]) -> Dict[str, Any]:
+    return result
+
+
+async def _call(fn, *args, **kwargs) -> Dict[str, Any]:
+    try:
+        return _guard(await fn(*args, **kwargs))
+    except RuntimeError as e:  # tools raise when the data layer is unavailable
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+def build_app() -> FastAPI:
+    app = FastAPI(title="AgentKit", version="0.1.0",
+                  description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
+
+    @app.get("/health", include_in_schema=False)
+    async def health() -> Dict[str, Any]:
+        return {"status": "ok", "service": "agentkit", "version": "0.1.0"}
+
+    @app.get("/api/tools")
+    async def list_tools() -> Dict[str, Any]:
+        return {"tools": TOOL_META, "resources": [f"kpi://{d}/latest" for d in
+                ("Finance", "Growth", "Operations", "People", "ESG", "IT_Ops")],
+                "prompts": ["monthly_executive_briefing"]}
+
+    @app.get("/api/kpis")
+    async def kpis(domain: Optional[str] = None, period_from: Optional[str] = None,
+                   period_to: Optional[str] = None, metric_filter: Optional[str] = None,
+                   limit: int = 100) -> Dict[str, Any]:
+        return await _call(tools.query_kpis, domain=domain, period_from=period_from,
+                           period_to=period_to, metric_filter=metric_filter, limit=limit)
+
+    @app.get("/api/health-score")
+    async def health_score(domain: Optional[str] = None) -> Dict[str, Any]:
+        return await _call(tools.get_company_health, domain=domain)
+
+    @app.get("/api/anomalies")
+    async def anomalies(domain: str, method: str = "zscore", threshold: float = 2.5) -> Dict[str, Any]:
+        return await _call(tools.detect_kpi_anomalies, domain=domain, method=method, threshold=threshold)
+
+    @app.get("/api/forecast")
+    async def forecast(metric: str, periods: int = 6, confidence_level: float = 0.95) -> Dict[str, Any]:
+        return await _call(tools.forecast_metric, metric_name=metric, periods=periods,
+                           confidence_level=confidence_level)
+
+    @app.get("/api/metrics")
+    async def metrics(domain: Optional[str] = None) -> Dict[str, Any]:
+        return await _call(tools.list_available_metrics, domain=domain)
+
+    @app.get("/api/summary")
+    async def summary() -> Dict[str, Any]:
+        return await _call(tools.get_executive_summary)
+
+    # ── SPA (frontend/dist) — registered last so API routes win ─────────────
+    dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+    if os.path.isdir(os.path.join(dist, "assets")):
+        app.mount("/assets", StaticFiles(directory=os.path.join(dist, "assets")), name="spa_assets")
+
+        @app.get("/{spa_path:path}", include_in_schema=False)
+        async def spa_fallback(spa_path: str):
+            candidate = os.path.join(dist, spa_path)
+            if spa_path and os.path.isfile(candidate):
+                return FileResponse(candidate)
+            return FileResponse(os.path.join(dist, "index.html"))
+    else:
+        @app.get("/", include_in_schema=False)
+        async def root() -> Dict[str, Any]:
+            return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
+
+    return app
