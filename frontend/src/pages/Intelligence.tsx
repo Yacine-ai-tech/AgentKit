@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { DatabaseZap, TrendingUp, TriangleAlert } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, DatabaseZap, TrendingUp, TriangleAlert } from "lucide-react";
 import { PageHeader } from "../kit/AppShell";
 import { Card, Chip, EmptyState, Skeleton } from "../kit/primitives";
 import { Label, Select } from "../kit/misc";
@@ -87,8 +87,8 @@ function KPITable({ kpis }: { kpis: KPI[] }) {
                 {typeof latest.value === "number" ? latest.value.toLocaleString() : "—"}
                 {latest.unit ? <span className="ml-1 text-[11px] font-normal text-muted">{String(latest.unit)}</span> : null}
               </span>
-              <span className={`num w-16 text-right text-[12px] ${delta == null ? "text-muted" : delta >= 0 ? "text-ok" : "text-bad"}`}>
-                {delta == null ? "—" : `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta).toFixed(1)}%`}
+              <span className={`num inline-flex w-16 items-center justify-end gap-0.5 text-[12px] ${delta == null ? "text-muted" : delta >= 0 ? "text-ok" : "text-bad"}`}>
+                {delta == null ? "—" : <>{delta >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{Math.abs(delta).toFixed(1)}%</>}
               </span>
             </div>
           );
