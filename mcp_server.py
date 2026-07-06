@@ -266,8 +266,10 @@ if _FASTMCP:
 
 
 def _serve_sse(port: int) -> None:
-    """Serve SSE behind bearer-auth + rate-limit (gated by MCP_AUTH_TOKEN). Falls back to the
-    plain FastMCP runner if the ASGI app can't be wrapped on this FastMCP version."""
+    """Serve SSE behind bearer-auth + rate-limit (gated by MCP_AUTH_TOKEN), composed with the
+    read-only web facade (REST /api + SPA). MCP paths (/sse, /messages, /demo) keep the exact
+    same middleware, auth and rate limit as before; everything else goes to the FastAPI facade.
+    Falls back to the plain FastMCP runner if the ASGI app can't be wrapped on this version."""
     token = os.getenv("MCP_AUTH_TOKEN")
     if not token:
         log.warning("MCP_AUTH_TOKEN not set — SSE auth DISABLED (dev mode); rate-limit still on")
@@ -278,8 +280,31 @@ def _serve_sse(port: int) -> None:
             app = mcp.http_app(transport="sse")
         except TypeError:
             app = mcp.http_app()
-        log.info("Serving SSE with auth=%s + rate-limit on :%s", bool(token), port)
-        uvicorn.run(BearerAuthRateLimit(app), host="0.0.0.0", port=port)
+        mcp_asgi = BearerAuthRateLimit(app)
+
+        try:
+            from web_app import build_app
+            api_asgi = build_app()
+        except Exception as e:  # facade is additive — never block the MCP server on it
+            log.warning("web facade unavailable (%s) — serving MCP only", e)
+            api_asgi = None
+
+        if api_asgi is None:
+            composite = mcp_asgi
+        else:
+            _MCP_PREFIXES = ("/sse", "/messages", "/demo")
+
+            async def composite(scope, receive, send):  # pure-ASGI dispatcher
+                if scope["type"] == "lifespan":
+                    # The FastMCP session manager owns the lifespan; the facade has no startup hooks.
+                    return await mcp_asgi(scope, receive, send)
+                path = scope.get("path", "")
+                if scope["type"] == "http" and path.startswith(_MCP_PREFIXES):
+                    return await mcp_asgi(scope, receive, send)
+                return await api_asgi(scope, receive, send)
+
+        log.info("Serving SSE (auth=%s) + web facade on :%s", bool(token), port)
+        uvicorn.run(composite, host="0.0.0.0", port=port)
     except Exception as e:
         log.warning("guarded SSE serve unavailable (%s) — falling back to mcp.run(sse)", e)
         mcp.run(transport="sse", host="0.0.0.0", port=port)
