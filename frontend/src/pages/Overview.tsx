@@ -30,7 +30,7 @@ export default function Overview() {
         {[
           { to: "/tools", icon: Wrench, title: "Explore MCP tools", desc: "Six capability cards — run each one live." },
           { to: "/intelligence", icon: BarChart3, title: "Inspect KPIs", desc: "Domains, anomalies, forecasts on real data." },
-          { to: "/workflow", icon: GitBranch, title: "Agent workflow", desc: "Planner → Analyst → Reporter pipeline." },
+          { to: "/workflow", icon: GitBranch, title: "Agent workflow", desc: "Planner, Analyst and Reporter pipeline." },
         ].map((a) => (
           <Link key={a.to} to={a.to} className="group">
             <Card hover className="h-full">
@@ -49,7 +49,7 @@ export default function Overview() {
           <EmptyState
             icon={DatabaseZap}
             title="Data layer unavailable on this instance"
-            hint={`The tools answered honestly instead of inventing numbers: "${errMsg}". Set POSTGRES_URL (seeded kpi_metrics) to light this page up.`}
+            hint={`The tools return explicit errors rather than fabricated data: "${errMsg}". Set POSTGRES_URL with the seeded kpi_metrics table to enable this page.`}
           />
         </Card>
       ) : state === "error" ? (

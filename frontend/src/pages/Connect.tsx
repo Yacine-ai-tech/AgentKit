@@ -50,7 +50,7 @@ export default function Connect() {
           icon={TerminalSquare}
           title="Claude Desktop — local (stdio)"
           tag="private"
-          note="Runs on your machine with your own DB and keys; tools raise honestly when POSTGRES_URL is missing."
+          note="Runs on your machine with your own DB and keys; tools return explicit errors when POSTGRES_URL is missing."
           code={LOCAL_CONFIG}
         />
       </div>

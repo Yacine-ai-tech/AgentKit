@@ -88,7 +88,7 @@ function ToolCard({ tool }: { tool: ToolMeta }) {
       {err && (
         <div className="mt-3 flex items-start gap-2 rounded-xl border border-line bg-surface-2 p-3 text-[12.5px] leading-5 text-dim">
           {unavailable ? <Wrench size={14} className="mt-0.5 shrink-0 text-warn" /> : <AlertTriangle size={14} className="mt-0.5 shrink-0 text-bad" />}
-          <span>{unavailable ? `Honest failure — the tool raised instead of inventing data: ${err}` : err}</span>
+          <span>{unavailable ? `Data layer unavailable — the tool returned an explicit error: ${err}` : err}</span>
         </div>
       )}
       {result && (
