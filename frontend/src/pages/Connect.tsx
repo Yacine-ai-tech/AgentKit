@@ -10,7 +10,10 @@ const REMOTE_CONFIG = `{
     "agentkit-remote": {
       "command": "npx",
       "args": ["-y", "mcp-remote",
-               "https://agentkit-0c1b.onrender.com/sse"]
+               "https://agentkit-0c1b.onrender.com/sse",
+               "--header",
+               "Authorization: Bearer \${MCP_AUTH_TOKEN}"],
+      "env": { "MCP_AUTH_TOKEN": "<your token>" }
     }
   }
 }`;
@@ -43,7 +46,7 @@ export default function Connect() {
           icon={Cable}
           title="Claude Desktop — remote (hosted SSE)"
           tag="no local setup"
-          note="Uses mcp-remote (Node). If the server sets MCP_AUTH_TOKEN, add the bearer header per mcp-remote docs."
+          note="Uses mcp-remote (Node). The hosted endpoint requires a bearer token (MCP_AUTH_TOKEN) — request one from the maintainer."
           code={REMOTE_CONFIG}
         />
         <Snippet
