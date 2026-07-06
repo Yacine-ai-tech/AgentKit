@@ -16,6 +16,13 @@ from fastapi.staticfiles import StaticFiles
 
 import mcp_server as tools
 
+# Observability: in-memory request log (v1 "observability" ask) — real facade calls.
+from collections import deque as _deque
+from datetime import datetime as _dt
+import time as _time
+
+_OBS: "_deque[Dict[str, Any]]" = _deque(maxlen=200)
+
 # Static metadata mirroring the six REAL tool signatures (mcp_server.py).
 TOOL_META = [
     {
@@ -85,7 +92,22 @@ async def _call(fn, *args, **kwargs) -> Dict[str, Any]:
 def build_app() -> FastAPI:
     app = FastAPI(title="AgentKit", version="0.1.0",
                   description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
+
+    @app.middleware("http")
+    async def _observe(request, call_next):
+        t0 = _time.time()
+        response = await call_next(request)
+        if request.url.path.startswith("/api"):
+            _OBS.appendleft({
+                "ts": _dt.utcnow().isoformat() + "Z",
+                "method": request.method,
+                "path": request.url.path,
+                "query": str(request.url.query or ""),
+                "status": response.status_code,
+                "ms": round((_time.time() - t0) * 1000, 1),
+            })
+        return response
 
     @app.get("/health", include_in_schema=False)
     async def health() -> Dict[str, Any]:
@@ -124,6 +146,31 @@ def build_app() -> FastAPI:
     @app.get("/api/summary")
     async def summary() -> Dict[str, Any]:
         return await _call(tools.get_executive_summary)
+
+    @app.get("/api/observability")
+    async def observability(limit: int = 100) -> Dict[str, Any]:
+        """Recent facade requests (method, path, status, latency) — real observability."""
+        return {"requests": list(_OBS)[:limit], "capacity": _OBS.maxlen}
+
+    @app.post("/api/workflow/run")
+    async def workflow_run(body: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute the real 3-agent LangGraph workflow (planner → analyst → reporter).
+        Runs in a thread — the graph uses asyncio.run internally. Spends LLM credits."""
+        question = (body or {}).get("question", "").strip()
+        if not question:
+            raise HTTPException(status_code=400, detail="question required")
+        import anyio
+        try:
+            from workflow import analyze as run_workflow
+        except Exception as e:
+            raise HTTPException(status_code=501, detail=f"workflow_unavailable: {e}")
+        t0 = _time.time()
+        try:
+            result = await anyio.to_thread.run_sync(run_workflow, question)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"workflow_failed: {e}")
+        result["_elapsed_ms"] = round((_time.time() - t0) * 1000, 1)
+        return result
 
     # ── SPA (frontend/dist) — registered last so API routes win ─────────────
     dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")

@@ -55,8 +55,8 @@ export class ApiError extends Error {
   }
 }
 
-async function req<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -88,9 +88,29 @@ export const api = {
   metrics: (domain?: string) =>
     req<{ metrics: string[]; categories: string[]; periods: string[]; error?: string }>(`/api/metrics${q({ domain })}`),
   summary: () => req<Summary>("/api/summary"),
+  observability: (limit = 100) => req<{ requests: ObsRequest[]; capacity: number }>(`/api/observability?limit=${limit}`),
+  runWorkflow: (question: string) =>
+    req<WorkflowResult>("/api/workflow/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    }),
   /** Generic runner for the Tools try-it page. */
   run: (endpoint: string, params: Record<string, string | number | undefined>) =>
     req<Record<string, unknown>>(`${endpoint}${q(params)}`),
+};
+
+export type ObsRequest = { ts: string; method: string; path: string; query: string; status: number; ms: number };
+export type WorkflowResult = {
+  question: string;
+  plan?: string;
+  tool_calls?: { tool?: string; args?: unknown; result?: unknown }[];
+  report?: string;
+  report_sections?: Record<string, string>;
+  raw_data?: unknown;
+  error?: string;
+  _elapsed_ms?: number;
+  [k: string]: unknown;
 };
 
 export const DOMAINS = ["Finance", "Growth", "Operations", "People", "ESG", "IT_Ops"];
