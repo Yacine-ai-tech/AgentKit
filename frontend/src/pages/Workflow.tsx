@@ -4,6 +4,7 @@ import { ArrowRight, Bot, FileText, ListChecks, Wrench, Play, Download, AlertTri
 import { PageHeader } from "../kit/AppShell";
 import { Button, Card, Chip, EmptyState } from "../kit/primitives";
 import { ExecutionStages } from "../kit/misc";
+import { AgentGraph } from "../kit/AgentGraph";
 import { JSONViewer } from "../kit/JSONViewer";
 import { api, WorkflowResult } from "../lib/api";
 
@@ -108,15 +109,8 @@ export default function Workflow() {
         ))}
       </div>
 
-      <Card title="Execution pipeline" className="mt-4">
-        <div className="flex flex-wrap items-center gap-2 py-1 text-[13px] text-dim">
-          {["Question", "Planning", "Tool selection", "Data retrieval", "Analysis", "Reporting"].map((s, i, arr) => (
-            <span key={s} className="flex items-center gap-2">
-              <span className={`rounded-lg border px-2.5 py-1 ${i > 0 && i < arr.length - 1 ? "border-line" : "border-[var(--accent)] text-body"}`}>{s}</span>
-              {i < arr.length - 1 && <ArrowRight size={13} className="text-muted" />}
-            </span>
-          ))}
-        </div>
+      <Card title="Agent Studio Visualization" className="mt-4">
+        <AgentGraph />
       </Card>
 
       {!result && !busy && (
