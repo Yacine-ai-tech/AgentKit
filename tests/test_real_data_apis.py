@@ -9,7 +9,9 @@ from fastapi.testclient import TestClient
 app = None
 try:
     web_app_module = importlib.import_module("web_app")
-    app = web_app_module.app
+    app = getattr(web_app_module, "app", None)
+    if not app and hasattr(web_app_module, "build_app"):
+        app = web_app_module.build_app()
 except ImportError:
     try:
         main_module = importlib.import_module("main")
