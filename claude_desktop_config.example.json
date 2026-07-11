@@ -15,7 +15,9 @@
     },
     "agentkit-remote": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://agentkit.ysiddo-ai-projects.app/sse"]
+      "args": ["-y", "mcp-remote", "https://agentkit-0c1b.onrender.com/sse",
+               "--header", "Authorization: Bearer ${MCP_AUTH_TOKEN}"],
+      "env": { "MCP_AUTH_TOKEN": "ask-the-maintainer-for-a-token" }
     }
   }
 }
