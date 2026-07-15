@@ -550,6 +550,7 @@ def store_conversation(cid: str, user_msg: str, ai_resp: str, language: str = "e
         )
         conn.commit()
     except Exception:
+        import logging; logging.error('Unhandled exception', exc_info=True)
         pass
     finally:
         conn.close()
@@ -568,6 +569,7 @@ def log_audit_event(actor: str, event_type: str, detail: str) -> None:
         )
         conn.commit()
     except Exception:
+        import logging; logging.error('Unhandled exception', exc_info=True)
         pass
     finally:
         conn.close()
@@ -677,6 +679,7 @@ def get_integration_refresh_token(username: str, integration_type: str) -> Optio
             if "refresh_token" in metadata:
                 return metadata
         except Exception:
+            import logging; logging.error('Unhandled exception', exc_info=True)
             pass
         return None
     finally:
@@ -983,6 +986,7 @@ def log_monitoring_event(event_type: str, module: str = "", detail: str = "{}", 
         )
         conn.commit()
     except Exception:
+        import logging; logging.error('Unhandled exception', exc_info=True)
         pass
     finally:
         conn.close()
