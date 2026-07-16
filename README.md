@@ -7,6 +7,7 @@ tools, resources, and prompt templates that any MCP-compatible agent (Claude
 Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
 > 🔗 **Live MCP server (SSE):** https://agentkit.ysiddo-ai-projects.app/sse — connect from Claude Desktop
 > via `mcp-remote` (see [claude_desktop_config.example.json](claude_desktop_config.example.json)). On-demand backend (first call ~30–60 s).
+> Self-hosting: see [SELF_HOSTING.md](SELF_HOSTING.md).
 
 ## What It Does
 
@@ -100,3 +101,10 @@ This project collects anonymous, GDPR-compliant startup pings to help the author
 
 <!-- Scarf Analytics Pixel -->
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=5f5bf922-eb01-4e07-a540-23c68e6752cc" />
+
+## Licensing
+This project is licensed under the [AGPL-3.0 License](LICENSE).
+
+**Commercial Use:** If you wish to use this software commercially without releasing your own source code, please see [COMMERCIAL.md](COMMERCIAL.md) to obtain a commercial license.
+
+**Telemetry:** See [TELEMETRY.md](TELEMETRY.md) for our privacy-first data practices.
