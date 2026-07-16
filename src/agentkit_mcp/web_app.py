@@ -204,7 +204,7 @@ async def verify_internal_token(request: Request, call_next):
             raise HTTPException(status_code=400, detail="question required")
         import anyio
         try:
-            from workflow import analyze as run_workflow
+            from agentkit_mcp.workflow import analyze as run_workflow
         except Exception as e:
             raise HTTPException(status_code=501, detail=f"workflow_unavailable: {e}")
         t0 = _time.time()

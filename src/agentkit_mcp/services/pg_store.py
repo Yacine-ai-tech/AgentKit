@@ -647,7 +647,7 @@ def store_integration_token_refresh(username: str, integration_type: str, refres
         if row:
             # In production, you'd store refresh_token separately encrypted
             # For now, we'll store metadata: { "refresh_token": "...", "expires_at": "2026-02-28T10:00:00" }
-            from core.crypto import encrypt_value
+            from agentkit_mcp.core.crypto import encrypt_value
             import json as _json
             metadata = {"refresh_token": refresh_token, "expires_at": expires_at}
             enc = encrypt_value(_json.dumps(metadata))
@@ -671,7 +671,7 @@ def get_integration_refresh_token(username: str, integration_type: str) -> Optio
         if not row:
             return None
         # Decrypt and parse metadata
-        from core.crypto import decrypt_value
+        from agentkit_mcp.core.crypto import decrypt_value
         import json as _json
         try:
             decrypted = decrypt_value(row["credentials_encrypted"])
@@ -1099,7 +1099,7 @@ def store_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from core.crypto import encrypt_value
+        from agentkit_mcp.core.crypto import encrypt_value
         
         encrypted_token = refresh_token
         if encrypt:
@@ -1143,7 +1143,7 @@ def get_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from core.crypto import decrypt_value
+        from agentkit_mcp.core.crypto import decrypt_value
         
         row = conn.execute(
             """

@@ -6,7 +6,7 @@ analyst_agent  (LLM_DEFAULT)    → invokes MCP tools, gathers raw_data
 reporter_agent (LLM_REASONING)  → synthesizes executive report
 
 Public API:
-    from workflow import analyze
+    from agentkit_mcp.workflow import analyze
     result = analyze("What drove gross margin in Q1?")
 """
 from __future__ import annotations
