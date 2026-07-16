@@ -19,8 +19,8 @@ from typing import Any, Dict, List, Optional
 import psycopg
 from psycopg.rows import dict_row
 
-from core.config import settings
-from core.logger import get_logger
+from agentkit_mcp.core.config import settings
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 

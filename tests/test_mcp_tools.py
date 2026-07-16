@@ -5,14 +5,14 @@ import pytest
 
 def test_imports():
     """All critical modules import cleanly."""
-    from core import config, logger
+    from agentkit_mcp.core import config, logger
     import mcp_server
     assert mcp_server is not None
 
 
 def test_settings_loaded():
     """Settings reads env vars with safe defaults."""
-    from core.config import settings
+    from agentkit_mcp.core.config import settings
     assert settings.LLM_DEFAULT
     assert settings.LLM_REASONING
 
@@ -68,7 +68,7 @@ async def test_executive_summary_returns_dict():
 
 def test_workflow_analyze_returns_dict():
     """workflow.analyze() always returns a dict (even in stub mode)."""
-    from workflow import analyze
+    from agentkit_mcp.workflow import analyze
     r = analyze("What's our company health?")
     assert isinstance(r, dict)
     assert "question" in r
