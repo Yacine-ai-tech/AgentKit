@@ -19,8 +19,8 @@ from typing import Any, Dict, List, Optional
 import psycopg
 from psycopg.rows import dict_row
 
-from core.config import settings
-from core.logger import get_logger
+from agentkit_mcp.core.config import settings
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 
@@ -550,6 +550,7 @@ def store_conversation(cid: str, user_msg: str, ai_resp: str, language: str = "e
         )
         conn.commit()
     except Exception:
+        import logging; logging.error('Unhandled exception', exc_info=True)
         pass
     finally:
         conn.close()
@@ -568,6 +569,7 @@ def log_audit_event(actor: str, event_type: str, detail: str) -> None:
         )
         conn.commit()
     except Exception:
+        import logging; logging.error('Unhandled exception', exc_info=True)
         pass
     finally:
         conn.close()
@@ -645,7 +647,7 @@ def store_integration_token_refresh(username: str, integration_type: str, refres
         if row:
             # In production, you'd store refresh_token separately encrypted
             # For now, we'll store metadata: { "refresh_token": "...", "expires_at": "2026-02-28T10:00:00" }
-            from core.crypto import encrypt_value
+            from agentkit_mcp.core.crypto import encrypt_value
             import json as _json
             metadata = {"refresh_token": refresh_token, "expires_at": expires_at}
             enc = encrypt_value(_json.dumps(metadata))
@@ -669,7 +671,7 @@ def get_integration_refresh_token(username: str, integration_type: str) -> Optio
         if not row:
             return None
         # Decrypt and parse metadata
-        from core.crypto import decrypt_value
+        from agentkit_mcp.core.crypto import decrypt_value
         import json as _json
         try:
             decrypted = decrypt_value(row["credentials_encrypted"])
@@ -677,6 +679,7 @@ def get_integration_refresh_token(username: str, integration_type: str) -> Optio
             if "refresh_token" in metadata:
                 return metadata
         except Exception:
+            import logging; logging.error('Unhandled exception', exc_info=True)
             pass
         return None
     finally:
@@ -983,6 +986,7 @@ def log_monitoring_event(event_type: str, module: str = "", detail: str = "{}", 
         )
         conn.commit()
     except Exception:
+        import logging; logging.error('Unhandled exception', exc_info=True)
         pass
     finally:
         conn.close()
@@ -1095,7 +1099,7 @@ def store_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from core.crypto import encrypt_value
+        from agentkit_mcp.core.crypto import encrypt_value
         
         encrypted_token = refresh_token
         if encrypt:
@@ -1139,7 +1143,7 @@ def get_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from core.crypto import decrypt_value
+        from agentkit_mcp.core.crypto import decrypt_value
         
         row = conn.execute(
             """

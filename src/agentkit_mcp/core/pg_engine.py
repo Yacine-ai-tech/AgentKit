@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import Session, sessionmaker, DeclarativeBase
 from sqlalchemy.pool import QueuePool
 
-from core.logger import get_logger
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 

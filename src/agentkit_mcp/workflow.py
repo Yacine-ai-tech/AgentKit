@@ -6,7 +6,7 @@ analyst_agent  (LLM_DEFAULT)    → invokes MCP tools, gathers raw_data
 reporter_agent (LLM_REASONING)  → synthesizes executive report
 
 Public API:
-    from workflow import analyze
+    from agentkit_mcp.workflow import analyze
     result = analyze("What drove gross margin in Q1?")
 """
 from __future__ import annotations
@@ -16,8 +16,8 @@ import json
 import os
 from typing import Any, Dict, List, Optional, TypedDict
 
-from core.config import settings
-from core.logger import get_logger
+from agentkit_mcp.core.config import settings
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 
@@ -35,7 +35,7 @@ except ImportError:
     _LITELLM = False
 
 
-from mcp_server import (  # noqa: E402
+from agentkit_mcp.mcp_server import (  # noqa: E402
     query_kpis,
     get_company_health,
     detect_kpi_anomalies,

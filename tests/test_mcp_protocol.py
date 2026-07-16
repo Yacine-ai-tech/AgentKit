@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("fastmcp")
 
-import mcp_server  # noqa: E402
+from agentkit_mcp import mcp_server  # noqa: E402
 
 EXPECTED_TOOLS = {
     "query_kpis", "get_company_health", "detect_kpi_anomalies",
