@@ -26,7 +26,7 @@ except ImportError:
 
 # Optional imports — graceful degradation if DB not available
 try:
-    from services.pg_store import (
+    from agentkit_mcp.services.pg_store import (
         get_kpi_metrics,
         get_available_metrics,
         get_available_categories,
@@ -38,13 +38,13 @@ except Exception as e:
     _PG = False
 
 try:
-    from services.insights import compute_health_index, detect_anomalies
+    from agentkit_mcp.services.insights import compute_health_index, detect_anomalies
     _INSIGHTS = True
 except Exception:
     _INSIGHTS = False
 
 try:
-    from services.forecasting import ForecastEngine
+    from agentkit_mcp.services.forecasting import ForecastEngine
     _FORECAST = True
 except Exception:
     _FORECAST = False
@@ -275,7 +275,7 @@ def _serve_sse(port: int) -> None:
         log.warning("MCP_AUTH_TOKEN not set — SSE auth DISABLED (dev mode); rate-limit still on")
     try:
         import uvicorn
-        from auth_middleware import BearerAuthRateLimit
+        from agentkit_mcp.auth_middleware import BearerAuthRateLimit
         try:
             app = mcp.http_app(transport="sse")
         except TypeError:
@@ -283,7 +283,7 @@ def _serve_sse(port: int) -> None:
         mcp_asgi = BearerAuthRateLimit(app)
 
         try:
-            from web_app import build_app
+            from agentkit_mcp.web_app import build_app
             api_asgi = build_app()
         except Exception as e:  # facade is additive — never block the MCP server on it
             log.warning("web facade unavailable (%s) — serving MCP only", e)
