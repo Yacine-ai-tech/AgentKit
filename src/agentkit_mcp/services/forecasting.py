@@ -13,8 +13,8 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
-from core.i18n import I18N
-from core.logger import get_logger
+from agentkit_mcp.core.i18n import I18N
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 

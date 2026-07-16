@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Code2, lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity } from "lucide-react";
 import { AppShell } from "./kit/AppShell";
@@ -11,6 +11,7 @@ import Workflow from "./pages/Workflow";
 import Connect from "./pages/Connect";
 import Resources from "./pages/Resources";
 import Observability from "./pages/Observability";
+import ApiDocs from "./pages/ApiDocs";
 
 const Intelligence = lazy(() => import("./pages/Intelligence"));
 
@@ -22,6 +23,7 @@ const NAV = [
   { to: "/observability", label: "Observability", icon: Activity },
   { to: "/connect", label: "Connect", icon: Cable },
   { to: "/resources", label: "Resources & Prompts", icon: Library },
+  { to: "/api-docs", label: "API Docs", icon: Code2 },
 ];
 
 export default function App() {
@@ -57,6 +59,7 @@ export default function App() {
               <Route path="/observability" element={<Observability />} />
               <Route path="/connect" element={<Connect />} />
               <Route path="/resources" element={<Resources />} />
+              <Route path="/api-docs" element={<ApiDocs />} />
               <Route path="*" element={<Overview />} />
             </Routes>
           </Suspense>
