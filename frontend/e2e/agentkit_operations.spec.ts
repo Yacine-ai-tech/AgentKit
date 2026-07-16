@@ -17,7 +17,7 @@ async function assertNoReactCrash(page: Page) {
 
 async function getAuthToken(request: any): Promise<string> {
   const resp = await request.post(`${AUTH_URL}/api/login`, {
-    data: { username: 'admin', password: '***ROTATED-SECRET***' }
+    data: { username: 'admin', password: process.env.ADMIN_PASS || '' }
   }).catch(() => null);
   if (resp && resp.ok()) {
     const body = await resp.json();
