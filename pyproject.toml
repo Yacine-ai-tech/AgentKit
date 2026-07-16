@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentkit-mcp"
+version = "0.1.2"
+description = "AgentKit MCP Server — Business Intelligence tools for Claude/Cursor agents."
+readme = "README.md"
+license = { text = "AGPL-3.0" }
+requires-python = ">=3.10"
+authors = [{ name = "Yacine" }]
+classifiers = [
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+]
+dependencies = [
+    "fastmcp",
+    "uvicorn",
+    "python-dotenv",
+]
+
+[tool.setuptools]
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["agentkit_mcp*"]
+
+[project.scripts]
+agentkit-mcp = "agentkit_mcp.mcp_server:main"
