@@ -191,18 +191,6 @@ async def verify_internal_token(request: Request, call_next):
         result["_elapsed_ms"] = round((_time.time() - t0) * 1000, 1)
         return result
 
-    # ── SPA (frontend/dist) — registered last so API routes win ─────────────
-    dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
-    if os.path.isdir(os.path.join(dist, "assets")):
-        app.mount("/assets", StaticFiles(directory=os.path.join(dist, "assets")), name="spa_assets")
-
-        @app.get("/{spa_path:path}", include_in_schema=False)
-        async def spa_fallback(spa_path: str):
-            candidate = os.path.join(dist, spa_path)
-            if spa_path and os.path.isfile(candidate):
-                return FileResponse(candidate)
-            return FileResponse(os.path.join(dist, "index.html"))
-    else:
         @app.get("/", include_in_schema=False)
         async def root() -> Dict[str, Any]:
             return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
