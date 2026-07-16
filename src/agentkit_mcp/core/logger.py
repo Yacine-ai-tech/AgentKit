@@ -3,7 +3,7 @@ Structured logging for the entire platform.
 
 Usage::
 
-    from core.logger import get_logger
+    from agentkit_mcp.core.logger import get_logger
     log = get_logger(__name__)
     log.info("Server started on port %d", port)
 """
@@ -13,7 +13,7 @@ import logging
 import sys
 from pathlib import Path
 
-from core.config import settings
+from agentkit_mcp.core.config import settings
 
 _LOG_DIR = Path(settings.LOGS_DIR)
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
