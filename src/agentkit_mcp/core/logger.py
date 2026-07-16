@@ -13,7 +13,7 @@ import logging
 import sys
 from pathlib import Path
 
-from core.config import settings
+from agentkit_mcp.core.config import settings
 
 _LOG_DIR = Path(settings.LOGS_DIR)
 _LOG_DIR.mkdir(parents=True, exist_ok=True)

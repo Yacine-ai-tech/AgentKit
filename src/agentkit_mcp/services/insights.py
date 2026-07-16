@@ -8,8 +8,8 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
-from core.i18n import I18N, t
-from core.logger import get_logger
+from agentkit_mcp.core.i18n import I18N, t
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 

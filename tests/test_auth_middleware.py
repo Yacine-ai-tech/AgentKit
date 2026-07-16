@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from auth_middleware import BearerAuthRateLimit  # noqa: E402
+from agentkit_mcp.auth_middleware import BearerAuthRateLimit  # noqa: E402
 
 
 def _run(mw, headers=None, ip="1.1.1.1"):
