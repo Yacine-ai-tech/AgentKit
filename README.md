@@ -43,12 +43,27 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
       "args": ["/abs/path/to/agentkit/mcp_server.py"],
       "env": {
         "POSTGRES_URL": "postgresql://...",
-        "ANTHROPIC_API_KEY": "sk-ant-..."
+        "ANTHROPIC_API_KEY": "sk-ant-...",
+        "GROQ_API_KEY": "gsk_...",
+        "OPENAI_API_KEY": "sk-...",
+        "LLM_DEFAULT": "groq/llama-3.3-70b-versatile",
+        "LLM_REASONING": "anthropic/claude-sonnet-4-6",
+        "LLM_JUDGE": "anthropic/claude-haiku-4-5",
+        "LLM_LOCAL": "ollama/llama3.3",
+        "LOG_LEVEL": "DEBUG",
+        "TELEMETRY_OPT_OUT": "true"
       }
     }
   }
 }
 ```
+
+### Leveraging Full Platform Capabilities
+AgentKit is highly configurable. Make sure you are not underestimating its capabilities by omitting key environment variables:
+- **LLM Routing/Overrides**: Use `LLM_DEFAULT`, `LLM_REASONING`, `LLM_JUDGE`, and `LLM_LOCAL` to precisely route distinct tasks to the most suitable models, ensuring you get the best balance of speed and cost.
+- **Provider Support**: In addition to Anthropic and Groq, OpenAI (`OPENAI_API_KEY`) and Ollama are natively supported.
+- **Diagnostics**: You can adjust `LOG_LEVEL` to `DEBUG` to gain deeper insights into the orchestration engine.
+- **Telemetry**: The platform automatically sends anonymous telemetry, but you have the flexibility to disable it via `TELEMETRY_OPT_OUT=true`.
 
 Restart Claude Desktop, then ask:
 - "What's our company health right now?"
