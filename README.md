@@ -1,5 +1,8 @@
 # AgentKit — MCP Server for Business Intelligence Agents
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
+
 [![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
 Expose enterprise KPIs, health scores, forecasting, and anomaly detection as
