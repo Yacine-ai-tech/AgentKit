@@ -32,7 +32,7 @@ except ImportError:
     _SDK = False
     log.warning("claude_agent_sdk not installed — demo unavailable")
 
-from mcp_server import get_company_health, query_kpis  # noqa: E402
+from mcp_server import get_company_health, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics, get_executive_summary  # noqa: E402
 
 
 if _SDK:
@@ -47,6 +47,26 @@ if _SDK:
         res = await query_kpis(domain=args.get("domain") or "Finance", limit=int(args.get("limit", 20)))
         return {"content": [{"type": "text", "text": str(res)}]}
 
+    @tool("detect_kpi_anomalies", "Find anomalies in a domain's KPI history.", {"domain": str, "method": str, "threshold": float})
+    async def _anomalies(args):
+        res = await detect_kpi_anomalies(domain=args.get("domain") or "Finance", method=args.get("method", "zscore"), threshold=float(args.get("threshold", 2.5)))
+        return {"content": [{"type": "text", "text": str(res)}]}
+
+    @tool("forecast_metric", "Forecast periods ahead for a named metric.", {"metric_name": str, "periods": int})
+    async def _forecast(args):
+        res = await forecast_metric(metric_name=args.get("metric_name") or "Revenue", periods=int(args.get("periods", 6)))
+        return {"content": [{"type": "text", "text": str(res)}]}
+
+    @tool("list_available_metrics", "List metrics, categories, and periods.", {"domain": str})
+    async def _list_metrics(args):
+        res = await list_available_metrics(domain=args.get("domain") or None)
+        return {"content": [{"type": "text", "text": str(res)}]}
+
+    @tool("get_executive_summary", "Synthesize health, KPIs, and anomalies into a one-shot executive summary.", {})
+    async def _exec_summary(args):
+        res = await get_executive_summary()
+        return {"content": [{"type": "text", "text": str(res)}]}
+
 
 async def main() -> None:
     if not _SDK:
@@ -54,10 +74,17 @@ async def main() -> None:
               "(and `npm i -g @anthropic-ai/claude-code`).")
         return
 
-    server = create_sdk_mcp_server(name="agentkit", version="1.0.0", tools=[_health, _kpis])
+    server = create_sdk_mcp_server(name="agentkit", version="1.0.0", tools=[_health, _kpis, _anomalies, _forecast, _list_metrics, _exec_summary])
     options = ClaudeAgentOptions(
         mcp_servers={"agentkit": server},
-        allowed_tools=["mcp__agentkit__get_company_health", "mcp__agentkit__query_kpis"],
+        allowed_tools=[
+            "mcp__agentkit__get_company_health", 
+            "mcp__agentkit__query_kpis",
+            "mcp__agentkit__detect_kpi_anomalies",
+            "mcp__agentkit__forecast_metric",
+            "mcp__agentkit__list_available_metrics",
+            "mcp__agentkit__get_executive_summary"
+        ],
         model=os.getenv("LLM_VISION_PREMIUM", "claude-sonnet-4-6"),
     )
     async for message in query(

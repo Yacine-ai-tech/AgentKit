@@ -10,7 +10,14 @@
         "MCP_TRANSPORT": "stdio",
         "POSTGRES_URL": "postgresql://USER:PASSWORD@HOST/DB?sslmode=require",
         "ANTHROPIC_API_KEY": "sk-ant-...",
-        "GROQ_API_KEY": "gsk_..."
+        "GROQ_API_KEY": "gsk_...",
+        "OPENAI_API_KEY": "sk-...",
+        "LLM_DEFAULT": "groq/llama-3.3-70b-versatile",
+        "LLM_REASONING": "anthropic/claude-sonnet-4-6",
+        "LLM_JUDGE": "anthropic/claude-haiku-4-5",
+        "LLM_LOCAL": "ollama/llama3.3",
+        "LOG_LEVEL": "DEBUG",
+        "TELEMETRY_OPT_OUT": "true"
       }
     },
     "agentkit-remote": {
