@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
+import * as Recharts from "recharts";
+const { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, } = Recharts;
 import { ArrowDownRight, ArrowUpRight, DatabaseZap, TrendingUp, TriangleAlert } from "lucide-react";
 import { PageHeader } from "../kit/AppShell";
 import { Card, Chip, EmptyState, Skeleton } from "../kit/primitives";
