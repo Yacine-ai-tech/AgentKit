@@ -137,6 +137,15 @@ async def verify_internal_token(request: Request, call_next):
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 
+    try:
+        import os
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        assets_dir = os.path.join(root_dir, "frontend", "dist", "assets")
+        if os.path.exists(assets_dir):
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    except Exception as e:
+        import logging
+        logging.warning("assets mount failed: %s", e)
     @app.middleware("http")
     async def _observe(request, call_next):
         t0 = _time.time()
@@ -216,7 +225,13 @@ async def verify_internal_token(request: Request, call_next):
         return result
 
         @app.get("/", include_in_schema=False)
-        async def root() -> Dict[str, Any]:
+        async def root():
+            import os
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            spa = os.path.join(root_dir, "frontend", "dist", "index.html")
+            if os.path.exists(spa):
+                from fastapi.responses import FileResponse
+                return FileResponse(spa)
             return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
 
     return app
