@@ -240,14 +240,14 @@ async def verify_internal_token(request: Request, call_next):
         result["_elapsed_ms"] = round((_time.time() - t0) * 1000, 1)
         return result
 
-        @app.get("/", include_in_schema=False)
-        async def root():
-            import os
-            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            spa = os.path.join(root_dir, "frontend", "dist", "index.html")
-            if os.path.exists(spa):
-                from fastapi.responses import FileResponse
-                return FileResponse(spa)
-            return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
+    @app.get("/", include_in_schema=False)
+    async def root():
+        import os
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        spa = os.path.join(root_dir, "frontend", "dist", "index.html")
+        if os.path.exists(spa):
+            from fastapi.responses import FileResponse
+            return FileResponse(spa)
+        return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
 
     return app
