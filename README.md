@@ -100,7 +100,7 @@ print(result["report"])
 
 ## License
 
-MIT
+AGPL-3.0
 
 ## ⚖️ License & Enterprise Use (Dual-License)
 
