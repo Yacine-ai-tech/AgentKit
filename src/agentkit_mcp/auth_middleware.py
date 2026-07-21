@@ -76,13 +76,7 @@ class BearerAuthRateLimit:
             await send({"type": "http.response.body", "body": body})
             return
 
-        # Browser landing/demo page — served before auth (a browser can't speak MCP).
-        if scope.get("path") in ("/", "/demo", "/demo/"):
-            await send({"type": "http.response.start", "status": 200,
-                        "headers": [(b"content-type", b"text/html; charset=utf-8"),
-                                    (b"content-length", str(len(_DEMO_HTML)).encode())]})
-            await send({"type": "http.response.body", "body": _DEMO_HTML})
-            return
+
 
         headers = {k.lower(): v for k, v in (scope.get("headers") or [])}
 
