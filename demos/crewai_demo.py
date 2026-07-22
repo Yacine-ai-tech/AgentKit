@@ -25,7 +25,7 @@ except ImportError:
     log.warning("crewai not installed — demo unavailable")
 
 
-from mcp_server import get_company_health, get_executive_summary, query_kpis  # noqa: E402
+from mcp_server import get_company_health, get_executive_summary, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics  # noqa: E402
 
 
 def _sync(coro):
@@ -53,6 +53,21 @@ if _CREW:
         """Return a one-shot executive summary: health, key metrics, and anomalies."""
         return str(_sync(get_executive_summary()))
 
+    @tool("detect_kpi_anomalies")
+    def t_detect_anomalies(domain: str, method: str = "zscore", threshold: float = 2.5) -> str:
+        """Find anomalies in a domain's KPI history."""
+        return str(_sync(detect_kpi_anomalies(domain=domain, method=method, threshold=threshold)))
+
+    @tool("forecast_metric")
+    def t_forecast(metric_name: str, periods: int = 6) -> str:
+        """Forecast periods ahead for a named metric."""
+        return str(_sync(forecast_metric(metric_name=metric_name, periods=periods)))
+
+    @tool("list_available_metrics")
+    def t_list_metrics(domain: str = "") -> str:
+        """List metrics, categories, and periods."""
+        return str(_sync(list_available_metrics(domain=domain or None)))
+
 
 def _llm():
     """CrewAI LLM via LiteLLM. Defaults to Claude Haiku: CrewAI injects prompt-cache
@@ -68,11 +83,11 @@ def build_crew(question: str):
     researcher = Agent(
         role="Researcher", goal="Collect KPI data relevant to the business question",
         backstory="Senior data analyst with deep KPI knowledge",
-        tools=[t_query_kpis, t_health, t_summary], llm=llm, verbose=False,
+        tools=[t_query_kpis, t_health, t_summary, t_detect_anomalies, t_forecast, t_list_metrics], llm=llm, verbose=False,
     )
     analyst = Agent(
         role="Analyst", goal="Identify patterns, anomalies and risks from KPI data",
-        backstory="Strategic business analyst with a finance background", llm=llm, verbose=False,
+        backstory="Strategic business analyst with a finance background", tools=[t_detect_anomalies, t_forecast], llm=llm, verbose=False,
     )
     reporter = Agent(
         role="Reporter", goal="Produce a concise executive briefing",
