@@ -22,6 +22,6 @@ services:
       - key: MCP_AUTH_TOKEN        # bearer token gating the SSE endpoint (recommended)
         sync: false
       - key: OMNIINTEL_INTERNAL_TOKEN  # REQUIRED: must match gateway
-        value: ***ROTATED-SECRET***
+        value: REDACTED_SECRET
       - key: REQUIRE_INTERNAL_TOKEN
         value: "true"

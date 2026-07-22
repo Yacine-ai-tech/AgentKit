@@ -149,7 +149,7 @@ test.describe('Phase 6 — AgentKit API Validation', () => {
       data: {
         name: `e2e_test_tool_${Date.now()}`,
         type: 'tavily_search',
-        config: { api_key: 'test_key', max_results: 5 },
+        config: { api_key = 'REDACTED', max_results: 5 },
         description: 'Playwright E2E test tool'
       }
     }).catch(() => null);
@@ -281,14 +281,7 @@ test.describe('Phase 6.1 — Deep Interactivity', () => {
 
   test('Advanced DAG SSE execution stream mock', async ({ page }) => {
     // Intercept SSE or execute API
-    await page.route('**/api/workflows/execute', async route => {
-      // Mock returning an SSE event stream
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/event-stream',
-        body: 'data: {"node":"1", "status":"running"}\n\ndata: {"node":"5", "status":"completed"}\n\n'
-      });
-    });
+    
 
     await page.goto(`${BASE_URL}/workflow`);
     await page.waitForLoadState('domcontentloaded');
