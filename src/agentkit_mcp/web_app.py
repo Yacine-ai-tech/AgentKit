@@ -93,50 +93,75 @@ def build_app() -> FastAPI:
     app = FastAPI(title="AgentKit", version="0.1.0",
                   description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
 
-# --- ETHICAL TELEMETRY ---
-import threading
-import requests
-import os
-import logging
+    # --- ETHICAL TELEMETRY ---
+    import threading
+    import requests
+    import os
+    import time
+    import uuid
 
-def _send_telemetry():
-    if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
-        return
-    try:
-        logging.info("📡 Anonymous usage telemetry is ENABLED. This helps us understand project usage.")
-        logging.info("📡 To disable this, set the environment variable TELEMETRY_OPT_OUT=true.")
-        requests.post(
-            "https://gateway.ysiddo-ai-projects.app/telemetry", 
-            json={"service": "AgentKit", "event": "startup"},
-            timeout=2
-        )
-    except Exception:
-        pass
+    def _send_telemetry():
+        if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
+            return
+        
+        lock_file = "/tmp/.ysiddo_telemetry.lock"
+        try:
+            if os.path.exists(lock_file):
+                if time.time() - os.path.getmtime(lock_file) < 21600:
+                    return
+            with open(lock_file, "w") as f:
+                f.write(str(time.time()))
+        except Exception:
+            pass
 
-threading.Thread(target=_send_telemetry, daemon=True).start()
-# -------------------------
+        try:
+            if "log" in globals():
+                globals()["log"].info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
+            else:
+                import logging
+                logging.info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
+                
+            requests.post(
+                "https://gateway.ysiddo-ai-projects.app/telemetry", 
+                json={"service": "AgentKit", "event": "startup", "instance_id": str(uuid.getnode())[:8]},
+                timeout=2
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_send_telemetry, daemon=True).start()
+    # -------------------------
 
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
-import os as _os
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+    import os as _os
 
-@app.middleware("http")
-async def verify_internal_token(request: Request, call_next):
-    # Allow health checks and public auth routes
-    if request.url.path in ["/health", "/docs", "/openapi.json", "/api/redoc"] or request.url.path.startswith("/api/v1/auth/"):
+    @app.middleware("http")
+    async def verify_internal_token(request: Request, call_next):
+        # Allow health checks and public auth routes
+        if request.url.path in ["/health", "/docs", "/openapi.json", "/api/redoc"] or request.url.path.startswith("/api/v1/auth/"):
+            return await call_next(request)
+            
+        token = request.headers.get("X-OmniIntel-Internal-Token")
+        expected_token = _os.environ.get("OMNIINTEL_INTERNAL_TOKEN", "default-dev-token")
+        
+        if token != expected_token and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "true").lower() == "true":
+            return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
+            
         return await call_next(request)
-        
-    token = request.headers.get("X-OmniIntel-Internal-Token")
-    expected_token = _os.environ.get("OMNIINTEL_INTERNAL_TOKEN", "default-dev-token")
-    
-    if token != expected_token and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "true").lower() == "true":
-        return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
-        
-    return await call_next(request)
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 
+    try:
+        import os
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        assets_dir = os.path.join(root_dir, "frontend", "dist", "assets")
+        if os.path.exists(assets_dir):
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    except Exception as e:
+        import logging
+        logging.warning("assets mount failed: %s", e)
     @app.middleware("http")
     async def _observe(request, call_next):
         t0 = _time.time()
@@ -215,8 +240,14 @@ async def verify_internal_token(request: Request, call_next):
         result["_elapsed_ms"] = round((_time.time() - t0) * 1000, 1)
         return result
 
-        @app.get("/", include_in_schema=False)
-        async def root() -> Dict[str, Any]:
-            return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
+    @app.get("/", include_in_schema=False)
+    async def root():
+        import os
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        spa = os.path.join(root_dir, "frontend", "dist", "index.html")
+        if os.path.exists(spa):
+            from fastapi.responses import FileResponse
+            return FileResponse(spa)
+        return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
 
     return app

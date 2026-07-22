@@ -10,7 +10,7 @@ const REMOTE_CONFIG = `{
     "agentkit-remote": {
       "command": "npx",
       "args": ["-y", "mcp-remote",
-               "https://agentkit-0c1b.onrender.com/sse",
+               "${import.meta.env.VITE_API_BASE_URL}/sse",
                "--header",
                "Authorization: Bearer \${MCP_AUTH_TOKEN}"],
       "env": { "MCP_AUTH_TOKEN": "<your token>" }
