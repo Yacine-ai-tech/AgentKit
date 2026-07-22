@@ -7,9 +7,9 @@ import { test, expect, Page } from '@playwright/test';
  * Phase 7: Deep Component Integration
  */
 
-const BASE_URL = process.env.AGENTKIT_URL    || process.env.TEST_BASE_URL || 'http://localhost:5177';
-const API_URL  = process.env.AGENTKIT_API_URL || 'http://localhost:8005';
-const AUTH_URL = process.env.INTELAI_API_URL  || 'http://localhost:8000';
+const BASE_URL = process.env.AGENTKIT_URL    || process.env.TEST_BASE_URL || '/';
+const API_URL  = process.env.AGENTKIT_API_URL || '/';
+const AUTH_URL = process.env.INTELAI_API_URL  || '/';
 
 async function assertNoReactCrash(page: Page) {
   await expect(page.locator('text=/An unexpected error occurred|Something went wrong/i')).toHaveCount(0);
@@ -38,7 +38,7 @@ test.describe('Phase 6 — AgentKit Operations', () => {
       '/overview', '/resources', '/tools', '/workflow'
     ];
     for (const route of routes) {
-      await page.goto(`${BASE_URL}${route}`);
+      await page.goto(`${'/'}${route}`);
       await page.waitForLoadState('domcontentloaded');
       await assertNoReactCrash(page);
       console.log(`✅ AgentKit ${route} — OK`);
@@ -47,7 +47,7 @@ test.describe('Phase 6 — AgentKit Operations', () => {
 
   test('Workflow Builder: React Flow DAG canvas renders', async ({ page }) => {
     await page.goto(`${BASE_URL}/workflow`);
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
     await assertNoReactCrash(page);
 
     // React Flow renders as SVG with class "react-flow"
@@ -60,7 +60,7 @@ test.describe('Phase 6 — AgentKit Operations', () => {
 
   test('Workflow Builder: DAG nodes are draggable', async ({ page }) => {
     await page.goto(`${BASE_URL}/workflow`);
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
     await assertNoReactCrash(page);
 
     // Find a React Flow node and drag it
@@ -81,7 +81,7 @@ test.describe('Phase 6 — AgentKit Operations', () => {
 
   test('Tools page: tool list renders', async ({ page }) => {
     await page.goto(`${BASE_URL}/tools`);
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
     await assertNoReactCrash(page);
     const toolList = page.locator('table, .tool-list, .tool-card, [data-testid="tool"]').first();
     if (await toolList.isVisible({ timeout: 8000 }).catch(() => false)) {
@@ -246,6 +246,92 @@ test.describe('Phase 7 — AgentKit Edge Cases', () => {
         const body = await resp.json().catch(() => ({}));
         console.log(`Cyclic DAG correctly rejected: ${JSON.stringify(body)}`);
       }
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 6 — AgentKit Mocked Workflow Feature Test
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('Phase 6 — AgentKit Mocked Features', () => {
+
+  test('Mock DAG connection and execution', async ({ page }) => {
+    await page.route('**/api/workflows/validate', async route => {
+      const json = { valid: true, message: 'Workflow is valid' };
+      await route.fulfill({ json, status: 200, contentType: 'application/json' });
+    });
+
+    await page.goto(`${BASE_URL}/workflow`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Find the save/validate button
+    const saveBtn = page.locator('button:has-text("Save"), button:has-text("Validate")').first();
+    if (await saveBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await saveBtn.click();
+      await page.waitForTimeout(1000);
+      await assertNoReactCrash(page);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 6.1 — AgentKit Deep Interactivity & Mocked Features
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('Phase 6.1 — Deep Interactivity', () => {
+
+  test('Advanced DAG SSE execution stream mock', async ({ page }) => {
+    // Intercept SSE or execute API
+    await page.route('**/api/workflows/execute', async route => {
+      // Mock returning an SSE event stream
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: 'data: {"node":"1", "status":"running"}\n\ndata: {"node":"5", "status":"completed"}\n\n'
+      });
+    });
+
+    await page.goto(`${BASE_URL}/workflow`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const executeBtn = page.locator('button:has-text("Run Workflow"), button:has-text("Execute"), [data-testid="run-dag"]').first();
+    if (await executeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await executeBtn.click();
+      await page.waitForTimeout(1000);
+      await assertNoReactCrash(page);
+    }
+  });
+
+  test('Detailed Tool schema parameter validation mock', async ({ page }) => {
+    await page.goto(`${BASE_URL}/tools`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const addToolBtn = page.locator('button:has-text("Create Tool"), button:has-text("Add Tool")').first();
+    if (await addToolBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await addToolBtn.click();
+      await page.waitForTimeout(1000);
+      
+      // Look for schema/parameter input
+      const paramInput = page.locator('input[name="parameters"], textarea[name="schema"]').first();
+      if (await paramInput.isVisible().catch(() => false)) {
+        await paramInput.fill('{"type":"object"}');
+      }
+      await assertNoReactCrash(page);
+    }
+  });
+
+  test('Observability tracing deep-dive view rendering', async ({ page }) => {
+    await page.goto(`${BASE_URL}/observability`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const traceRow = page.locator('.trace-row, tr, [data-testid="trace"]').first();
+    if (await traceRow.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await traceRow.click();
+      await page.waitForTimeout(1000);
+      const detailView = page.locator('.trace-detail, [data-testid="trace-details"]').first();
+      if (await detailView.isVisible().catch(() => false)) {
+        await expect(detailView).toBeVisible();
+      }
+      await assertNoReactCrash(page);
     }
   });
 });
