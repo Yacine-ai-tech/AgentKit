@@ -159,7 +159,7 @@ function ForecastCard({ metrics }: { metrics: string[] }) {
         <Skeleton className="h-48" />
       ) : err ? (
         <div className="text-[13px] text-bad">{err}</div>
-      ) : !fc || data.length === 0 ? (
+      ) : !fc || !Array.isArray(data) || data.length === 0 ? (
         <EmptyState icon={TrendingUp} title="No forecast" hint={fc?.note === "insufficient_history" ? "Not enough history for this metric." : "Pick a metric with history."} />
       ) : (
         <div className="h-[220px]">
