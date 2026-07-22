@@ -118,7 +118,7 @@ This project collects anonymous, GDPR-compliant startup pings to help the author
 
 
 <!-- Project Analytics -->
-<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=5f5bf922-eb01-4e07-a540-23c68e6752cc" />
+<img src="https://gateway.ysiddo-ai-projects.app/pixel/AgentKit" width="1" height="1" style="display:none;" alt="">
 
 ## Licensing
 This project is licensed under the [AGPL-3.0 License](LICENSE).
