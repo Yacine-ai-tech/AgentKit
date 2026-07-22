@@ -93,63 +93,63 @@ def build_app() -> FastAPI:
     app = FastAPI(title="AgentKit", version="0.1.0",
                   description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
 
-# --- ETHICAL TELEMETRY ---
-import threading
-import requests
-import os
-import time
-import uuid
+    # --- ETHICAL TELEMETRY ---
+    import threading
+    import requests
+    import os
+    import time
+    import uuid
 
-def _send_telemetry():
-    if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
-        return
-    
-    lock_file = "/tmp/.ysiddo_telemetry.lock"
-    try:
-        if os.path.exists(lock_file):
-            if time.time() - os.path.getmtime(lock_file) < 21600:
-                return
-        with open(lock_file, "w") as f:
-            f.write(str(time.time()))
-    except Exception:
-        pass
+    def _send_telemetry():
+        if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
+            return
+        
+        lock_file = "/tmp/.ysiddo_telemetry.lock"
+        try:
+            if os.path.exists(lock_file):
+                if time.time() - os.path.getmtime(lock_file) < 21600:
+                    return
+            with open(lock_file, "w") as f:
+                f.write(str(time.time()))
+        except Exception:
+            pass
 
-    try:
-        if "log" in globals():
-            globals()["log"].info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
-        else:
-            import logging
-            logging.info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
+        try:
+            if "log" in globals():
+                globals()["log"].info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
+            else:
+                import logging
+                logging.info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
+                
+            requests.post(
+                "https://gateway.ysiddo-ai-projects.app/telemetry", 
+                json={"service": "AgentKit", "event": "startup", "instance_id": str(uuid.getnode())[:8]},
+                timeout=2
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_send_telemetry, daemon=True).start()
+    # -------------------------
+
+
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+    import os as _os
+
+    @app.middleware("http")
+    async def verify_internal_token(request: Request, call_next):
+        # Allow health checks and public auth routes
+        if request.url.path in ["/health", "/docs", "/openapi.json", "/api/redoc"] or request.url.path.startswith("/api/v1/auth/"):
+            return await call_next(request)
             
-        requests.post(
-            "https://gateway.ysiddo-ai-projects.app/telemetry", 
-            json={"service": "AgentKit", "event": "startup", "instance_id": str(uuid.getnode())[:8]},
-            timeout=2
-        )
-    except Exception:
-        pass
-
-threading.Thread(target=_send_telemetry, daemon=True).start()
-# -------------------------
-
-
-from fastapi import Request
-from fastapi.responses import JSONResponse
-import os as _os
-
-@app.middleware("http")
-async def verify_internal_token(request: Request, call_next):
-    # Allow health checks and public auth routes
-    if request.url.path in ["/health", "/docs", "/openapi.json", "/api/redoc"] or request.url.path.startswith("/api/v1/auth/"):
+        token = request.headers.get("X-OmniIntel-Internal-Token")
+        expected_token = _os.environ.get("OMNIINTEL_INTERNAL_TOKEN", "default-dev-token")
+        
+        if token != expected_token and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "true").lower() == "true":
+            return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
+            
         return await call_next(request)
-        
-    token = request.headers.get("X-OmniIntel-Internal-Token")
-    expected_token = _os.environ.get("OMNIINTEL_INTERNAL_TOKEN", "default-dev-token")
-    
-    if token != expected_token and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "true").lower() == "true":
-        return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
-        
-    return await call_next(request)
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 

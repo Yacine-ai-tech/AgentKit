@@ -63,12 +63,11 @@ export default function App() {
               <Route path="/observability" element={<Observability />} />
               <Route path="/connect" element={<Connect />} />
               <Route path="/resources" element={<Resources />} />
-              <Route path="/api-docs" element={<ApiDocs />} />
+              <Route path="/api-docs" element={<ApiDocsPage />} />
+              <Route path="/benchmark" element={<BenchmarkPage />} />
+              <Route path="/user-guide" element={<UserGuidePage />} />
               <Route path="*" element={<Overview />} />
-                  <Route path="/benchmark" element={<BenchmarkPage />} />
-      <Route path="/api-docs" element={<ApiDocsPage />} />
-      <Route path="/user-guide" element={<UserGuidePage />} />
-</Routes>
+            </Routes>
           </Suspense>
         )}
       </AppShell>

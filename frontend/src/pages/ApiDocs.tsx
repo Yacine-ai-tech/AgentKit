@@ -32,15 +32,15 @@ const ENDPOINTS = [
 ];
 
 const SNIPPETS: Record<string, (ep: (typeof ENDPOINTS)[0]) => string> = {
-  curl: (ep) =>
+  curl: (ep: any) =>
     ep.body
       ? `curl -X ${ep.method} "${BASE_URL}${ep.path}" \\\n  -H "Content-Type: application/json" \\\n  -d '${ep.body}'`
       : `curl "${BASE_URL}${ep.path}"`,
-  python: (ep) =>
+  python: (ep: any) =>
     ep.body
       ? `import requests\n\nresp = requests.${ep.method.toLowerCase()}(\n  "${BASE_URL}${ep.path}",\n  json=${ep.body.replace(/"/g, "'")}\n)\nprint(resp.json())`
       : `import requests\n\nresp = requests.get("${BASE_URL}${ep.path}")\nprint(resp.json())`,
-  node: (ep) =>
+  node: (ep: any) =>
     ep.body
       ? `const res = await fetch("${BASE_URL}${ep.path}", {\n  method: "${ep.method}",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify(${ep.body})\n});\nconst data = await res.json();\nconsole.log(data);`
       : `const res = await fetch("${BASE_URL}${ep.path}");\nconst data = await res.json();\nconsole.log(data);`,
@@ -131,7 +131,7 @@ export default function ApiDocs() {
                 <button key={l} onClick={() => setLang(l)} style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid", borderColor: lang === l ? "#7c3aed" : "rgba(255,255,255,0.1)", background: lang === l ? "rgba(124,58,237,0.2)" : "transparent", color: lang === l ? "#c4b5fd" : "#94a3b8", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}>{l}</button>
               ))}
             </div>
-            <CodeBlock code={SNIPPETS[lang](ep)} />
+            <CodeBlock code={(SNIPPETS as any)[lang](ep)} />
           </div>
 
           <div>

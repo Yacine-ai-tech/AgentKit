@@ -1,11 +1,12 @@
 import pytest
 import httpx
 from fastapi.testclient import TestClient
-from agentkit_mcp.mcp_server import app
+from agentkit_mcp.web_app import build_app
 import os
 
+app = build_app()
 client = TestClient(app)
-HEADERS = {"X-OmniIntel-Internal-Token": os.getenv("OMNIINTEL_INTERNAL_TOKEN", "REDACTED_SECRET")}
+HEADERS = {"X-OmniIntel-Internal-Token": os.getenv("OMNIINTEL_INTERNAL_TOKEN", "default-dev-token")}
 
 @pytest.mark.asyncio
 async def test_e2e_agentkit_mcp_tools_list():
