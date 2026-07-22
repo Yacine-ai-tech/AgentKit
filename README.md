@@ -17,10 +17,18 @@ Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
 - **6 MCP Tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary`
 - **6 MCP Resources**: `kpi://Finance/latest` and similar for Growth, Operations, People, ESG, IT_Ops
 - **1 Reusable Prompt**: `monthly_executive_briefing`
-- **LangGraph 3-agent workflow** in `workflow.py`
+- **LangGraph 3-agent workflow** in `workflow.py` (Planner → Analyst → Reporter)
 - **Claude Agent SDK demo** in `demos/claude_agent_sdk_demo.py`
 - **CrewAI demo** in `demos/crewai_demo.py`
 - **DSPy research scaffold** in `research/dspy_experiment.py`
+- **34 tests** across smoke, API, integration, and LangGraph workflow
+
+## PyPI Package
+
+```bash
+pip install agentkit-mcp   # v0.1.4
+agentkit-mcp               # CLI entrypoint
+```
 
 ## Quick Start
 
