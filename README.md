@@ -17,10 +17,18 @@ Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
 - **6 MCP Tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary`
 - **6 MCP Resources**: `kpi://Finance/latest` and similar for Growth, Operations, People, ESG, IT_Ops
 - **1 Reusable Prompt**: `monthly_executive_briefing`
-- **LangGraph 3-agent workflow** in `workflow.py`
+- **LangGraph 3-agent workflow** in `workflow.py` (Planner → Analyst → Reporter)
 - **Claude Agent SDK demo** in `demos/claude_agent_sdk_demo.py`
 - **CrewAI demo** in `demos/crewai_demo.py`
 - **DSPy research scaffold** in `research/dspy_experiment.py`
+- **34 tests** across smoke, API, integration, and LangGraph workflow
+
+## PyPI Package
+
+```bash
+pip install agentkit-mcp   # v0.1.4
+agentkit-mcp               # CLI entrypoint
+```
 
 ## Quick Start
 
@@ -100,7 +108,7 @@ print(result["report"])
 
 ## License
 
-MIT
+AGPL-3.0
 
 ## ⚖️ License & Enterprise Use (Dual-License)
 
@@ -113,12 +121,12 @@ This project is open-source under the **AGPL-3.0 License**. It is completely fre
 
 ## 📡 Anonymous Telemetry
 This project collects anonymous, GDPR-compliant startup pings to help the author understand usage volume and prioritize development. 
-* **What is collected:** Only the project name and a "startup" event timestamp. No PII, no API keys, no user data.
-* **How to disable:** We respect your privacy. To opt-out, simply set `TELEMETRY_OPT_OUT=true` in your `.env` file.
+* **What is collected:** A startup event timestamp and anonymized deployment origin. No API keys, no user prompts, and no sensitive application data is ever collected.
+* **How to disable:** We respect your privacy and development environment. To opt-out, simply set `TELEMETRY_OPT_OUT=true` in your `.env` file.
 
 
-<!-- Scarf Analytics Pixel -->
-<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=5f5bf922-eb01-4e07-a540-23c68e6752cc" />
+<!-- Project Analytics -->
+<img src="https://gateway.ysiddo-ai-projects.app/pixel/AgentKit" width="1" height="1" style="display:none;" alt="">
 
 ## Licensing
 This project is licensed under the [AGPL-3.0 License](LICENSE).

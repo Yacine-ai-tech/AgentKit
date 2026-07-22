@@ -35,14 +35,14 @@ def _dummy():
 
 def test_denies_without_token():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token = 'REDACTED')
     sent = _run(mw, headers=[])
     assert sent[0]["status"] == 401 and calls["n"] == 0
 
 
 def test_allows_with_correct_token():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token = 'REDACTED')
     sent = _run(mw, headers=[(b"authorization", b"Bearer secret")])
     assert sent[0]["status"] == 200 and calls["n"] == 1
 
@@ -59,7 +59,7 @@ def test_rate_limit_429():
 
 def test_health_bypasses_auth():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token = 'REDACTED')
     scope = {"type": "http", "path": "/health", "headers": [], "client": ("1.2.3.4", 1)}
     sent = []
     async def recv(): return {"type": "http.request", "body": b""}
@@ -71,7 +71,7 @@ def test_health_bypasses_auth():
 def test_lifespan_passthrough():
     # non-http scopes (lifespan/websocket) must pass through untouched
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token = 'REDACTED')
     scope = {"type": "lifespan"}
     sent = []
     async def recv(): return {"type": "lifespan.startup"}
