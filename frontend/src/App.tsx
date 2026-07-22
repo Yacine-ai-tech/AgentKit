@@ -1,3 +1,5 @@
+import BenchmarkPage from './pages/BenchmarkPage';
+import ApiDocsPage from './pages/ApiDocsPage';
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity , Code2 } from "lucide-react";
@@ -61,7 +63,9 @@ export default function App() {
               <Route path="/resources" element={<Resources />} />
               <Route path="/api-docs" element={<ApiDocs />} />
               <Route path="*" element={<Overview />} />
-            </Routes>
+                  <Route path="/benchmark" element={<BenchmarkPage />} />
+      <Route path="/api-docs" element={<ApiDocsPage />} />
+</Routes>
           </Suspense>
         )}
       </AppShell>

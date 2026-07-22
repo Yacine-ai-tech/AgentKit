@@ -38,7 +38,7 @@ test.describe('Phase 6 — AgentKit Operations', () => {
       '/overview', '/resources', '/tools', '/workflow'
     ];
     for (const route of routes) {
-      await page.goto(`${'/'}${route}`);
+      await page.goto(`${BASE_URL}${route}`);
       await page.waitForLoadState('domcontentloaded');
       await assertNoReactCrash(page);
       console.log(`✅ AgentKit ${route} — OK`);
@@ -149,7 +149,7 @@ test.describe('Phase 6 — AgentKit API Validation', () => {
       data: {
         name: `e2e_test_tool_${Date.now()}`,
         type: 'tavily_search',
-        config: { api_key = 'REDACTED', max_results: 5 },
+        config: { api_key: 'REDACTED', max_results: 5 },
         description: 'Playwright E2E test tool'
       }
     }).catch(() => null);
