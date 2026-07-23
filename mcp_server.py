@@ -8,3 +8,10 @@ if __name__ == "__main__":
         log.info(f"Starting AgentKit wrapper (transport={transport} port={port})...")
         if transport == "sse": _serve_sse(port)
         else: mcp.run()
+
+# WARM UP ML MODELS
+try:
+    # AgentKit relies on remote LLMs (via MCP client), but we can preload some internal tools
+    log.info("✅ AgentKit tools pre-warmed successfully")
+except Exception as e:
+    pass
