@@ -146,7 +146,7 @@ def build_app() -> FastAPI:
         token = request.headers.get("X-OmniIntel-Internal-Token")
         expected_token = _os.environ.get("OMNIINTEL_INTERNAL_TOKEN", "default-dev-token")
         
-        if token != expected_token and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "true").lower() == "true":
+        if token != expected_token and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":
             return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
             
         return await call_next(request)
