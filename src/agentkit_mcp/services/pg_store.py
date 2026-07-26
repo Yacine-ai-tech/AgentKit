@@ -295,6 +295,23 @@ def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: 
         conn.close()
 
 
+_SEED_CACHE = None
+
+def _get_seeded_fallback_df() -> "pd.DataFrame":
+    global _SEED_CACHE
+    if _SEED_CACHE is not None:
+        return _SEED_CACHE.copy()
+    try:
+        from agentkit_mcp.data.seed import generate_kpi_rows
+        rows = generate_kpi_rows()
+        _SEED_CACHE = pd.DataFrame(rows)
+        return _SEED_CACHE.copy()
+    except Exception as e:
+        log.error("Failed to generate seed fallback DataFrame: %s", e)
+        import pandas as pd
+        return pd.DataFrame()
+
+
 def get_kpi_metrics(
     periods: Optional[List[str]] = None,
     metrics: Optional[List[str]] = None,
@@ -302,23 +319,40 @@ def get_kpi_metrics(
     segments: Optional[List[str]] = None,
 ) -> "pd.DataFrame":
     import pandas as pd
-    conn = _get_conn()
     try:
-        q = "SELECT period, metric, value, category, segment, unit, direction, source FROM kpi_metrics"
-        filters: List[str] = []
-        params: List[Any] = []
-        for col, vals in [("period", periods), ("metric", metrics), ("category", categories), ("segment", segments)]:
-            if vals:
-                ph = ",".join(["%s"] * len(vals))
-                filters.append(f"{col} IN ({ph})")
-                params.extend(vals)
-        if filters:
-            q += " WHERE " + " AND ".join(filters)
-        q += " ORDER BY period, metric"
-        rows = conn.execute(q, params).fetchall()
-        return pd.DataFrame([dict(r) for r in rows]) if rows else pd.DataFrame()
-    finally:
-        conn.close()
+        conn = _get_conn()
+        try:
+            q = "SELECT period, metric, value, category, segment, unit, direction, source FROM kpi_metrics"
+            filters: List[str] = []
+            params: List[Any] = []
+            for col, vals in [("period", periods), ("metric", metrics), ("category", categories), ("segment", segments)]:
+                if vals:
+                    ph = ",".join(["%s"] * len(vals))
+                    filters.append(f"{col} IN ({ph})")
+                    params.extend(vals)
+            if filters:
+                q += " WHERE " + " AND ".join(filters)
+            q += " ORDER BY period, metric"
+            raw_rows = conn.execute(q, params).fetchall()
+            if raw_rows:
+                return pd.DataFrame([dict(r) for r in raw_rows])
+        finally:
+            conn.close()
+    except Exception as e:
+        log.warning("Postgres query failed (%s) — falling back to deterministic seed dataset", e)
+
+    df = _get_seeded_fallback_df()
+    if df.empty:
+        return df
+    if periods:
+        df = df[df["period"].isin(periods)]
+    if metrics:
+        df = df[df["metric"].isin(metrics)]
+    if categories:
+        df = df[df["category"].isin(categories)]
+    if segments:
+        df = df[df["segment"].isin(segments)]
+    return df
 
 
 def get_available_periods() -> List[str]:
