@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from agentkit_mcp import mcp_server as tools
+from src.api.admin import router as admin_router
 
 # Observability: in-memory request log (v1 "observability" ask) — real facade calls.
 from collections import deque as _deque
@@ -157,6 +158,9 @@ def build_app() -> FastAPI:
         return await call_next(request)
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
+    
+    # Include admin router for scenario switching and user management
+    app.include_router(admin_router, prefix="/api")
 
     try:
         import os
