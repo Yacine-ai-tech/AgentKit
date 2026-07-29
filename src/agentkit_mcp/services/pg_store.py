@@ -13,23 +13,100 @@ Handles all persistence:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import psycopg
 from psycopg.rows import dict_row
+import pandas as pd
 
-from agentkit_mcp.core.config import settings
-from agentkit_mcp.core.logger import get_logger
+try:
+    from src.core.config import settings
+    from src.core.logger import get_logger
+except ImportError:
+    from agentkit_mcp.core.config import settings
+    from agentkit_mcp.core.logger import get_logger
+
 
 log = get_logger(__name__)
 
 _pool = None
+_pool_lock = None
+
+
+def _init_pool():
+    """Initialize a persistent connection pool for Neon PostgreSQL.
+    
+    This is the #2 fix for IntelAI latency. Previously every DB call created a
+    fresh TCP+TLS connection to Neon (2-4s each). With pool=3 min connections,
+    subsequent calls reuse existing connections (<50ms overhead).
+    """
+    global _pool, _pool_lock
+    if _pool is not None:
+        return _pool
+    import threading
+    if _pool_lock is None:
+        _pool_lock = threading.Lock()
+    with _pool_lock:
+        if _pool is not None:
+            return _pool
+        try:
+            from psycopg_pool import ConnectionPool
+            _pool = ConnectionPool(
+                settings.POSTGRES_URL,
+                min_size=2,
+                max_size=8,
+                kwargs={"row_factory": dict_row},
+                open=False,
+                reconnect_timeout=30,
+                reconnect_failed=None,
+            )
+            # Open the pool in the background so it doesn't block startup
+            import threading
+            threading.Thread(target=_pool.open, daemon=True).start()
+            log.info("✅ Neon connection pool initialized (min=2, max=8, lazy open)")
+        except ImportError:
+            log.warning("⚠️ psycopg_pool not installed — falling back to per-call connections (slower)")
+            _pool = False  # Mark as unavailable, fall through to direct connect
+        except Exception as e:
+            log.warning("⚠️ Connection pool init failed: %s — using per-call connections", e)
+            _pool = False
+    return _pool
 
 
 def _get_conn():
-    """Get a PostgreSQL connection with dict row factory."""
-    return psycopg.connect(settings.POSTGRES_URL, row_factory=dict_row)
+    """Get a PostgreSQL connection. Uses pool if available, else direct connect.
+    
+    Pool reuse eliminates the 2-4s Neon cold-start per call. Falls back
+    gracefully to direct psycopg.connect() if psycopg_pool is not installed.
+    """
+    pool = _init_pool()
+    if pool and pool is not False:
+        class ConnWrapper:
+            def __init__(self, p):
+                self._p = p
+                self._c = p.getconn(timeout=10)
+            def __getattr__(self, item):
+                return getattr(self._c, item)
+            def close(self):
+                self._p.putconn(self._c)
+            def __enter__(self):
+                return self._c.__enter__()
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                res = self._c.__exit__(exc_type, exc_val, exc_tb)
+                self.close()
+                return res
+        return ConnWrapper(pool)
+    # Fallback: direct connection (original behavior)
+    import time
+    for attempt in range(3):
+        try:
+            return psycopg.connect(settings.POSTGRES_URL, row_factory=dict_row, connect_timeout=15)
+        except Exception as e:
+            if attempt == 2:
+                log.error("Failed to connect to PostgreSQL after 3 attempts: %s", e)
+                raise
+            log.warning("PostgreSQL connection failed (attempt %d/3). Retrying in 2s... (%s)", attempt + 1, e)
+            time.sleep(2)
 
 
 def init_pg_tables():
@@ -89,6 +166,16 @@ def init_pg_tables():
             )
         """)
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS kpi_entities (
+                id            SERIAL PRIMARY KEY,
+                record_ref    TEXT NOT NULL,
+                entity_type   TEXT NOT NULL,
+                entity_value  TEXT NOT NULL,
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_entities_ref ON kpi_entities(record_ref)")
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS kpi_targets (
                 metric          TEXT PRIMARY KEY,
                 target          DOUBLE PRECISION,
@@ -117,45 +204,13 @@ def init_pg_tables():
                 created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS monitoring_logs (
-                id          SERIAL PRIMARY KEY,
-                event_type  TEXT NOT NULL,
-                module      TEXT,
-                detail      JSONB DEFAULT '{}'::jsonb,
-                actor       TEXT,
-                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
         # Indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_period ON kpi_metrics(period)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_category ON kpi_metrics(category)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_metric ON kpi_metrics(metric)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_trail(event_type)")
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS integration_credentials (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL,
-                integration_type TEXT NOT NULL,
-                credentials_encrypted TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_integration_user ON integration_credentials(username)")
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS oauth_states (
-                state TEXT PRIMARY KEY,
-                username TEXT NOT NULL,
-                integration_type TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                expires_at TIMESTAMPTZ
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_oauth_state_username ON oauth_states(username)")
 
         # File management (uploaded artifacts and extracted content)
         conn.execute(
@@ -253,6 +308,42 @@ def init_pg_tables():
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_data_spreadsheet_user ON data_spreadsheet(username)")
 
+        
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS monitoring_logs (
+                id          SERIAL PRIMARY KEY,
+                event_type  TEXT NOT NULL,
+                module      TEXT,
+                detail      JSONB DEFAULT '{}'::jsonb,
+                actor       TEXT,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)")
+        
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS integration_credentials (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                integration_type TEXT NOT NULL,
+                credentials_encrypted TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_integration_user ON integration_credentials(username)")
+        
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS oauth_states (
+                state TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                integration_type TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                expires_at TIMESTAMPTZ
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_oauth_state_username ON oauth_states(username)")
+
         conn.commit()
         log.info("✅ PostgreSQL tables initialized")
     except Exception as e:
@@ -267,49 +358,50 @@ def init_pg_tables():
 # KPI OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
-def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: bool = True) -> None:
-    import pandas as pd
+def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: bool = True, replace_prefix: Optional[str] = None) -> None:
     if df.empty:
         return
-    conn = _get_conn()
-    try:
-        if replace:
-            conn.execute("DELETE FROM kpi_metrics WHERE source = %s", [source_name])
-        for _, row in df.iterrows():
-            conn.execute(
-                """INSERT INTO kpi_metrics (period, metric, value, category, segment, unit, direction, source)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                [
-                    str(row.get("period", "")),
-                    str(row.get("metric", "")),
-                    float(row.get("value", 0)),
-                    str(row.get("category", "")),
-                    str(row.get("segment", "")),
-                    str(row.get("unit", "")),
-                    str(row.get("direction", "higher_is_better")),
-                    source_name,
-                ],
-            )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-_SEED_CACHE = None
-
-def _get_seeded_fallback_df() -> "pd.DataFrame":
-    global _SEED_CACHE
-    if _SEED_CACHE is not None:
-        return _SEED_CACHE.copy()
-    try:
-        from agentkit_mcp.data.seed import generate_kpi_rows
-        rows = generate_kpi_rows()
-        _SEED_CACHE = pd.DataFrame(rows)
-        return _SEED_CACHE.copy()
-    except Exception as e:
-        log.error("Failed to generate seed fallback DataFrame: %s", e)
-        import pandas as pd
-        return pd.DataFrame()
+    params = [
+        (
+            str(row.get("period", "")),
+            str(row.get("metric", "")),
+            float(row.get("value", 0)),
+            str(row.get("category", "")),
+            str(row.get("segment", "")),
+            str(row.get("unit", "")),
+            str(row.get("direction", "higher_is_better")),
+            source_name,
+        )
+        for _, row in df.iterrows()
+    ]
+    insert_sql = (
+        "INSERT INTO kpi_metrics (period, metric, value, category, segment, unit, direction, source) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    )
+    last_err: Optional[Exception] = None
+    for _ in range(3):
+        conn = _get_conn()
+        try:
+            with conn.cursor() as cur:
+                if replace:
+                    if replace_prefix:
+                        cur.execute("DELETE FROM kpi_metrics WHERE source LIKE %s", [f"{replace_prefix}%"])
+                    else:
+                        cur.execute("DELETE FROM kpi_metrics WHERE source = %s", [source_name])
+                cur.executemany(insert_sql, params)
+            conn.commit()
+            return
+        except Exception as e:
+            last_err = e
+            try:
+                conn.rollback()
+            except Exception:
+                import logging; logging.error('Unhandled exception', exc_info=True)
+                pass
+        finally:
+            conn.close()
+    if last_err:
+        raise last_err
 
 
 def get_kpi_metrics(
@@ -317,42 +409,69 @@ def get_kpi_metrics(
     metrics: Optional[List[str]] = None,
     categories: Optional[List[str]] = None,
     segments: Optional[List[str]] = None,
+    limit: Optional[int] = 2000,
 ) -> "pd.DataFrame":
     import pandas as pd
+    conn = _get_conn()
     try:
-        conn = _get_conn()
-        try:
-            q = "SELECT period, metric, value, category, segment, unit, direction, source FROM kpi_metrics"
-            filters: List[str] = []
-            params: List[Any] = []
-            for col, vals in [("period", periods), ("metric", metrics), ("category", categories), ("segment", segments)]:
-                if vals:
-                    ph = ",".join(["%s"] * len(vals))
-                    filters.append(f"{col} IN ({ph})")
-                    params.extend(vals)
-            if filters:
-                q += " WHERE " + " AND ".join(filters)
-            q += " ORDER BY period, metric"
-            raw_rows = conn.execute(q, params).fetchall()
-            if raw_rows:
-                return pd.DataFrame([dict(r) for r in raw_rows])
-        finally:
-            conn.close()
-    except Exception as e:
-        log.warning("Postgres query failed (%s) — falling back to deterministic seed dataset", e)
+        q = "SELECT period, metric, value, category, segment, unit, direction, source FROM kpi_metrics"
+        filters: List[str] = []
+        params: List[Any] = []
+        for col, vals in [("period", periods), ("metric", metrics), ("category", categories), ("segment", segments)]:
+            if vals:
+                ph = ",".join(["%s"] * len(vals))
+                filters.append(f"{col} IN ({ph})")
+                params.extend(vals)
+        if filters:
+            q += " WHERE " + " AND ".join(filters)
+        q += " ORDER BY period, metric"
+        if limit:
+            q += " LIMIT %s"
+            params.append(limit)
+        rows = conn.execute(q, params).fetchall()
+        return pd.DataFrame([dict(r) for r in rows]) if rows else pd.DataFrame()
+    finally:
+        conn.close()
 
-    df = _get_seeded_fallback_df()
-    if df.empty:
-        return df
-    if periods:
-        df = df[df["period"].isin(periods)]
-    if metrics:
-        df = df[df["metric"].isin(metrics)]
-    if categories:
-        df = df[df["category"].isin(categories)]
-    if segments:
-        df = df[df["segment"].isin(segments)]
-    return df
+
+def store_kpi_entities(rows: List[Dict[str, str]], replace: bool = True) -> int:
+    """Persist GraphRAG-lite entities (the kpi_entities sidecar table).
+
+    ``rows`` = ``[{record_ref, entity_type, entity_value}, ...]`` extracted at ingestion.
+    Returns the number of rows written.
+    """
+    if not rows:
+        return 0
+    conn = _get_conn()
+    try:
+        if replace:
+            conn.execute("DELETE FROM kpi_entities")
+        params = [
+            (str(r.get("record_ref", "")), str(r.get("entity_type", "")), str(r.get("entity_value", "")))
+            for r in rows
+        ]
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO kpi_entities (record_ref, entity_type, entity_value) VALUES (%s, %s, %s)",
+                params,
+            )
+        conn.commit()
+        return len(rows)
+    finally:
+        conn.close()
+
+
+def get_kpi_entities() -> "pd.DataFrame":
+    """Return the persisted GraphRAG-lite entities (record_ref, entity_type, entity_value)."""
+    import pandas as pd
+    conn = _get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT record_ref, entity_type, entity_value FROM kpi_entities"
+        ).fetchall()
+        return pd.DataFrame([dict(r) for r in rows]) if rows else pd.DataFrame()
+    finally:
+        conn.close()
 
 
 def get_available_periods() -> List[str]:
@@ -393,7 +512,17 @@ def get_available_segments() -> List[str]:
 
 def get_latest_period() -> Optional[str]:
     periods = get_available_periods()
-    return periods[0] if periods else None
+    if not periods:
+        return None
+    # Prefer the latest real monthly period (YYYY-MM) — these carry the full metric
+    # set (incl. Finance line items). For YYYY-MM, lexical sort == chronological order.
+    # This avoids placeholder/future tags (e.g. "2099Q1") or sparse quarterly aggregates
+    # ("2026-Q2") being picked as "latest" and yielding empty statements/dashboards.
+    import re
+    monthly = sorted(p for p in periods if re.match(r"^\d{4}-\d{2}$", p))
+    if monthly:
+        return monthly[-1]
+    return periods[0]
 
 
 def delete_period(period: str) -> None:
@@ -406,7 +535,6 @@ def delete_period(period: str) -> None:
 
 
 def upsert_kpi_targets(targets_df: "pd.DataFrame") -> None:
-    import pandas as pd
     if targets_df.empty:
         return
     conn = _get_conn()
@@ -452,6 +580,20 @@ def get_user_files(username: str, limit: int = 50, offset: int = 0) -> List[Dict
     finally:
         conn.close()
 
+
+
+def delete_file(file_id: str, username: str) -> bool:
+    """Delete a file from the database for the given user."""
+    conn = _get_conn()
+    try:
+        res = conn.execute(
+            "DELETE FROM uploaded_files WHERE id = %s AND username = %s",
+            [file_id, username]
+        )
+        return res.rowcount > 0
+    except Exception as e:
+        log.warning("Failed to delete file: %s", e)
+        return False
 
 def get_file_content(file_id: str, username: str) -> Optional[str]:
     """Return extracted content for a file owned by a user."""
@@ -504,43 +646,87 @@ def get_kpi_targets(metrics: Optional[List[str]] = None) -> "pd.DataFrame":
 # KNOWLEDGE BASE OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
-def store_knowledge_docs(docs_df: "pd.DataFrame") -> None:
-    import pandas as pd
+def store_knowledge_docs(docs_df: "pd.DataFrame", replace_prefix: Optional[str] = None) -> None:
+    """Upsert knowledge-base docs. ON CONFLICT updates ALL fields (title/content/source/
+    embedding) — not just content — so a reused doc_id can never end up with a stale title
+    paired to new content. ``replace_prefix`` first deletes docs whose doc_id starts with it
+    (e.g. ``"seed-"``) so a re-seed with a different doc set leaves no orphaned rows."""
     if docs_df.empty:
         return
+    params = [
+        (
+            str(row.get("doc_id", "")),
+            str(row.get("title", "")),
+            str(row.get("content", "")),
+            str(row.get("source", "manual")),
+            str(row.get("embedding", "")),
+            str(row.get("language", "en")),
+        )
+        for _, row in docs_df.iterrows()
+    ]
     conn = _get_conn()
     try:
-        for _, row in docs_df.iterrows():
-            conn.execute(
+        with conn.cursor() as cur:
+            if replace_prefix:
+                cur.execute("DELETE FROM knowledge_base WHERE doc_id LIKE %s", [f"{replace_prefix}%"])
+            cur.executemany(
                 """INSERT INTO knowledge_base (doc_id, title, content, source, embedding, language)
                    VALUES (%s, %s, %s, %s, %s, %s)
                    ON CONFLICT (doc_id) DO UPDATE
-                   SET content = EXCLUDED.content, embedding = EXCLUDED.embedding""",
-                [
-                    str(row.get("doc_id", "")),
-                    str(row.get("title", "")),
-                    str(row.get("content", "")),
-                    str(row.get("source", "manual")),
-                    str(row.get("embedding", "")),
-                    str(row.get("language", "en")),
-                ],
+                   SET title = EXCLUDED.title, content = EXCLUDED.content,
+                       source = EXCLUDED.source, embedding = EXCLUDED.embedding,
+                       language = EXCLUDED.language""",
+                params,
             )
         conn.commit()
     finally:
         conn.close()
 
 
+_DOCS_SEED_CACHE = None
+
+def _get_seeded_fallback_docs() -> "pd.DataFrame":
+    import pandas as pd
+    global _DOCS_SEED_CACHE
+    if _DOCS_SEED_CACHE is not None:
+        return _DOCS_SEED_CACHE.copy()
+    try:
+        from src.data.seed import generate_kpi_rows, generate_knowledge_docs
+        rows = generate_kpi_rows()
+        docs = generate_knowledge_docs(rows)
+        try:
+            from src.data.glossary import as_knowledge_docs
+            docs += as_knowledge_docs()
+        except Exception:
+            pass
+        _DOCS_SEED_CACHE = pd.DataFrame([
+            {"doc_id": f"seed-{i}", "title": d["title"], "content": d["content"],
+             "source": d["source"], "embedding": "", "language": "en", "created_at": "2026-01-01T00:00:00Z"}
+            for i, d in enumerate(docs)
+        ])
+        return _DOCS_SEED_CACHE.copy()
+    except Exception as e:
+        log.error("Failed to generate seed fallback docs DataFrame: %s", e)
+        return pd.DataFrame()
+
+
 def get_knowledge_docs() -> "pd.DataFrame":
     import pandas as pd
-    conn = _get_conn()
     try:
-        rows = conn.execute(
-            "SELECT doc_id, title, content, source, embedding, language, created_at "
-            "FROM knowledge_base ORDER BY created_at DESC"
-        ).fetchall()
-        return pd.DataFrame([dict(r) for r in rows]) if rows else pd.DataFrame()
-    finally:
-        conn.close()
+        conn = _get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT doc_id, title, content, source, embedding, language, created_at "
+                "FROM knowledge_base ORDER BY created_at DESC"
+            ).fetchall()
+            if rows:
+                return pd.DataFrame([dict(r) for r in rows])
+        finally:
+            conn.close()
+    except Exception as e:
+        log.warning("Postgres query for knowledge_base failed (%s) — falling back to seed docs", e)
+
+    return _get_seeded_fallback_docs()
 
 
 def get_conversation_history(session_id: str) -> "pd.DataFrame":
@@ -623,101 +809,7 @@ def get_audit_trail(limit: int = 100) -> "pd.DataFrame":
 
 
 # ── Integration credentials (encrypted) ─────────────────────────────────────
-def store_integration_credentials(username: str, integration_type: str, credentials_encrypted: str) -> None:
-    conn = _get_conn()
-    try:
-        # Upsert: if user+integration exists, update, else insert
-        row = conn.execute(
-            "SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s",
-            [username, integration_type],
-        ).fetchone()
-        if row:
-            conn.execute(
-                "UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s",
-                [credentials_encrypted, row["id"]],
-            )
-        else:
-            conn.execute(
-                "INSERT INTO integration_credentials (username, integration_type, credentials_encrypted) VALUES (%s, %s, %s)",
-                [username, integration_type, credentials_encrypted],
-            )
-        conn.commit()
-    finally:
-        conn.close()
 
-
-def remove_integration_credentials(username: str, integration_type: str) -> None:
-    conn = _get_conn()
-    try:
-        conn.execute("DELETE FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type])
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def get_integration_credentials(username: str, integration_type: str) -> Optional[Dict[str, Any]]:
-    conn = _get_conn()
-    try:
-        row = conn.execute(
-            "SELECT id, credentials_encrypted, created_at, updated_at FROM integration_credentials WHERE username = %s AND integration_type = %s",
-            [username, integration_type],
-        ).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def store_integration_token_refresh(username: str, integration_type: str, refresh_token: str, expires_in: int = 3600) -> None:
-    """Store refresh token metadata for token rotation. Stores expiry time."""
-    from datetime import timedelta
-    expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
-    conn = _get_conn()
-    try:
-        # Update credential record with refresh_token metadata and expiry
-        row = conn.execute(
-            "SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s",
-            [username, integration_type],
-        ).fetchone()
-        if row:
-            # In production, you'd store refresh_token separately encrypted
-            # For now, we'll store metadata: { "refresh_token": "...", "expires_at": "2026-02-28T10:00:00" }
-            from agentkit_mcp.core.crypto import encrypt_value
-            import json as _json
-            metadata = {"refresh_token": refresh_token, "expires_at": expires_at}
-            enc = encrypt_value(_json.dumps(metadata))
-            conn.execute(
-                "UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s",
-                [enc, row["id"]],
-            )
-            conn.commit()
-    finally:
-        conn.close()
-
-
-def get_integration_refresh_token(username: str, integration_type: str) -> Optional[Dict[str, Any]]:
-    """Retrieve refresh token metadata if available."""
-    conn = _get_conn()
-    try:
-        row = conn.execute(
-            "SELECT credentials_encrypted FROM integration_credentials WHERE username = %s AND integration_type = %s",
-            [username, integration_type],
-        ).fetchone()
-        if not row:
-            return None
-        # Decrypt and parse metadata
-        from agentkit_mcp.core.crypto import decrypt_value
-        import json as _json
-        try:
-            decrypted = decrypt_value(row["credentials_encrypted"])
-            metadata = _json.loads(decrypted)
-            if "refresh_token" in metadata:
-                return metadata
-        except Exception:
-            import logging; logging.error('Unhandled exception', exc_info=True)
-            pass
-        return None
-    finally:
-        conn.close()
 
     # ── Chat session helpers ───────────────────────────────────────────────────
 def store_chat_session(session_id: str, user_id: str, title: str = "New Chat", persona: str = "general", is_pinned: bool = False) -> None:
@@ -748,57 +840,7 @@ def store_chat_session(session_id: str, user_id: str, title: str = "New Chat", p
         conn.close()
 
 
-
 # ── OAuth state persistence (to avoid in-memory loss on restart)
-def store_oauth_state(state: str, username: str, integration_type: str, expires_at: Optional[str] = None) -> None:
-    """Store OAuth state for callback validation. Expires in 15 minutes by default."""
-    conn = _get_conn()
-    try:
-        from datetime import timedelta
-        if not expires_at:
-            expires_at = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
-        conn.execute(
-            "INSERT INTO oauth_states (state, username, integration_type, expires_at) VALUES (%s, %s, %s, %s)"
-            " ON CONFLICT (state) DO UPDATE SET username = EXCLUDED.username, integration_type = EXCLUDED.integration_type, expires_at = EXCLUDED.expires_at",
-            [state, username, integration_type, expires_at],
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def pop_oauth_state(state: str) -> Optional[Dict[str, str]]:
-    """Atomically fetch and delete an oauth state. Returns dict with username and integration_type or None."""
-    conn = _get_conn()
-    try:
-        row = conn.execute("SELECT username, integration_type, expires_at FROM oauth_states WHERE state = %s", [state]).fetchone()
-        if not row:
-            return None
-        # Check if expired
-        if row.get("expires_at"):
-            from datetime import datetime as dt
-            expires_at = dt.fromisoformat(str(row["expires_at"]))
-            if dt.utcnow() > expires_at:
-                conn.execute("DELETE FROM oauth_states WHERE state = %s", [state])
-                conn.commit()
-                return None
-        conn.execute("DELETE FROM oauth_states WHERE state = %s", [state])
-        conn.commit()
-        return {"username": row["username"], "integration_type": row["integration_type"]}
-    finally:
-        conn.close()
-
-
-def cleanup_expired_oauth_states() -> int:
-    """Delete expired OAuth states. Returns count of deleted rows."""
-    conn = _get_conn()
-    try:
-        result = conn.execute("DELETE FROM oauth_states WHERE expires_at < NOW()").rowcount
-        conn.commit()
-        log.info("Cleaned up %d expired OAuth states", result)
-        return result
-    finally:
-        conn.close()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -973,6 +1015,16 @@ def store_message(
             [session_id, role, content, mode, sources, tokens_used, latency_ms],
         )
         conn.execute("UPDATE chat_sessions SET updated_at = NOW() WHERE id = %s", [session_id])
+        # Auto-title the session from the FIRST user message (only while it's still the default),
+        # so the history list shows real titles instead of every entry reading "New Chat".
+        if role == "user" and content and content.strip():
+            snippet = " ".join(content.strip().split())
+            snippet = (snippet[:60] + "…") if len(snippet) > 60 else snippet
+            conn.execute(
+                "UPDATE chat_sessions SET title = %s "
+                "WHERE id = %s AND (title = 'New Chat' OR title IS NULL OR title = '')",
+                [snippet, session_id],
+            )
         conn.commit()
     finally:
         conn.close()
@@ -1011,39 +1063,23 @@ def get_recent_context(user_id: str, limit: int = 10) -> List[Dict[str, str]]:
 # MONITORING
 # ═══════════════════════════════════════════════════════════
 
-def log_monitoring_event(event_type: str, module: str = "", detail: str = "{}", actor: str = ""):
+
+def clear_user_data() -> Dict[str, int]:
+    """Delete safe-to-wipe data (chat history + audit trail). Preserves everything the app
+    needs to work: KPI metrics, knowledge base, targets, entities, and users."""
+    out: Dict[str, int] = {}
     conn = _get_conn()
     try:
-        conn.execute(
-            "INSERT INTO monitoring_logs (event_type, module, detail, actor) VALUES (%s, %s, %s::jsonb, %s)",
-            [event_type, module, detail, actor],
-        )
+        for tbl in ("chat_messages", "chat_sessions", "audit_trail"):
+            try:
+                cur = conn.execute(f"DELETE FROM {tbl}")
+                out[tbl] = getattr(cur, "rowcount", 0) or 0
+            except Exception:
+                out[tbl] = -1
         conn.commit()
-    except Exception:
-        import logging; logging.error('Unhandled exception', exc_info=True)
-        pass
     finally:
         conn.close()
-
-
-def get_monitoring_stats() -> Dict[str, Any]:
-    conn = _get_conn()
-    try:
-        total_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
-        total_sessions = conn.execute("SELECT COUNT(*) AS c FROM chat_sessions").fetchone()["c"]
-        total_messages = conn.execute("SELECT COUNT(*) AS c FROM chat_messages").fetchone()["c"]
-        today = datetime.utcnow().date().isoformat()
-        today_messages = conn.execute(
-            "SELECT COUNT(*) AS c FROM chat_messages WHERE created_at::date = %s", [today]
-        ).fetchone()["c"]
-        return {
-            "total_users": total_users,
-            "total_sessions": total_sessions,
-            "total_messages": total_messages,
-            "today_messages": today_messages,
-        }
-    finally:
-        conn.close()
+    return out
 
 
 def ensure_session_exists(session_id: str, user_id: str) -> str:
@@ -1068,41 +1104,13 @@ def ensure_session_exists(session_id: str, user_id: str) -> str:
 
 def seed_all_domains() -> int:
     """
-    Seed multi-domain KPI data into PostgreSQL if the table is empty.
-    Returns the number of rows inserted.
+    Seed multi-domain KPI data (+ knowledge-base docs) if the table is empty.
+    Delegates to the robust, deterministic seed in ``src.data.seed``.
+    Returns the number of KPI rows inserted.
     """
-    import random
-    from datetime import datetime as _dt, timedelta
-
-    domains = {
-        "Finance":    ["Revenue", "EBITDA", "Net Profit", "Operating Costs", "Gross Margin"],
-        "Growth":     ["MRR", "ARR", "Customer Count", "Churn Rate", "CAC", "LTV"],
-        "Operations": ["Uptime %", "Support Tickets", "NPS", "Delivery SLA %"],
-        "People":     ["Headcount", "Turnover Rate", "Engagement Score", "Hires"],
-        "ESG":        ["Carbon Emissions (tCO2)", "Renewable Energy %", "Diversity Score", "Waste Recycled %"],
-    }
-
-    rows = []
-    base_date = _dt.utcnow().replace(day=1) - timedelta(days=365)
-    for month_offset in range(13):
-        period = (base_date + timedelta(days=30 * month_offset)).strftime("%Y-%m")
-        for category, metrics in domains.items():
-            for metric in metrics:
-                base = random.uniform(50, 5000)
-                rows.append({
-                    "period": period,
-                    "metric": metric,
-                    "value": round(base * (1 + random.uniform(-0.05, 0.12)), 2),
-                    "category": category,
-                    "segment": "Global",
-                    "unit": "",
-                    "direction": "up",
-                })
-
-    import pandas as pd
-    df = pd.DataFrame(rows)
-    store_kpi_metrics(df, source_name="seed", replace=True)
-    return len(rows)
+    from src.data.seed import seed_database  # lazy import avoids circular dependency
+    counts = seed_database(replace=True)
+    return counts.get("kpi_rows", 0)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1133,7 +1141,7 @@ def store_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from agentkit_mcp.core.crypto import encrypt_value
+        from src.core.crypto import encrypt_value
         
         encrypted_token = refresh_token
         if encrypt:
@@ -1177,7 +1185,7 @@ def get_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from agentkit_mcp.core.crypto import decrypt_value
+        from src.core.crypto import decrypt_value
         
         row = conn.execute(
             """
@@ -1278,51 +1286,6 @@ def update_token_refresh_status(
         return True
     except Exception as e:
         log.error("Failed to update refresh status: %s", e)
-        return False
-    finally:
-        conn.close()
-
-
-def record_oauth_token_event(
-    username: str,
-    integration_type: str,
-    event_type: str,
-    old_expires_at: Optional[str] = None,
-    new_expires_at: Optional[str] = None,
-    error_message: Optional[str] = None,
-    user_agent: Optional[str] = None,
-    ip_address: Optional[str] = None,
-) -> bool:
-    """
-    Record OAuth token event for audit trail.
-    
-    event_type: 'token_issued', 'token_refreshed', 'token_expired', 'refresh_failed', 'revoked'
-    """
-    conn = _get_conn()
-    try:
-        conn.execute(
-            """
-            INSERT INTO oauth_token_events (
-                username, integration_type, event_type,
-                old_expires_at, new_expires_at, error_message,
-                user_agent, ip_address, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            """,
-            [
-                username,
-                integration_type,
-                event_type,
-                old_expires_at,
-                new_expires_at,
-                error_message[:500] if error_message else None,
-                user_agent,
-                ip_address,
-            ],
-        )
-        conn.commit()
-        return True
-    except Exception as e:
-        log.error("Failed to record token event: %s", e)
         return False
     finally:
         conn.close()
@@ -1703,5 +1666,85 @@ def export_spreadsheet(
     except Exception as e:
         log.error("Failed to export spreadsheet: %s", e)
         return None
+    finally:
+        conn.close()
+
+
+from datetime import datetime
+
+def store_integration_credentials(username: str, integration_type: str, credentials_encrypted: str) -> None:
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        if row:
+            conn.execute("UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s", [credentials_encrypted, row["id"]])
+        else:
+            conn.execute("INSERT INTO integration_credentials (username, integration_type, credentials_encrypted) VALUES (%s, %s, %s)", [username, integration_type, credentials_encrypted])
+        conn.commit()
+    finally:
+        conn.close()
+
+def remove_integration_credentials(username: str, integration_type: str) -> None:
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type])
+        conn.commit()
+    finally:
+        conn.close()
+
+def get_integration_credentials(username: str, integration_type: str):
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT id, credentials_encrypted, created_at, updated_at FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def store_integration_token_refresh(username: str, integration_type: str, refresh_token: str, expires_in: int = 3600) -> None:
+    from datetime import timedelta
+    expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        if row:
+            from agentkit_mcp.core.crypto import encrypt_value
+            import json as _json
+            metadata = {"refresh_token": refresh_token, "expires_at": expires_at}
+            enc = encrypt_value(_json.dumps(metadata))
+            conn.execute("UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s", [enc, row["id"]])
+            conn.commit()
+    finally:
+        conn.close()
+
+def get_integration_refresh_token(username: str, integration_type: str):
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT credentials_encrypted FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        if not row: return None
+        from agentkit_mcp.core.crypto import decrypt_value
+        import json as _json
+        try:
+            decrypted = decrypt_value(row["credentials_encrypted"])
+            metadata = _json.loads(decrypted)
+            if "refresh_token" in metadata: return metadata
+        except: pass
+        return None
+    finally:
+        conn.close()
+
+def log_monitoring_event(event_type: str, module: str, detail: str, actor: str) -> None:
+    conn = _get_conn()
+    try:
+        conn.execute("INSERT INTO monitoring_logs (event_type, module, detail, actor) VALUES (%s, %s, %s::jsonb, %s)", [event_type, module, detail, actor])
+        conn.commit()
+    finally:
+        conn.close()
+
+def get_monitoring_stats():
+    conn = _get_conn()
+    try:
+        total_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+        total_sessions = conn.execute("SELECT COUNT(*) AS c FROM chat_sessions").fetchone()["c"]
+        return {"users": total_users, "sessions": total_sessions}
     finally:
         conn.close()
