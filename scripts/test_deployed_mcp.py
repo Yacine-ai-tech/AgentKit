@@ -8,7 +8,7 @@ import json
 import asyncio
 
 # Deployed service URL
-AGENTKIT_URL = "https://agentkit.ysiddo-ai-projects.app"
+AGENTKIT_URL = "http://localhost:8000"
 
 def test_health():
     """Test health endpoint"""

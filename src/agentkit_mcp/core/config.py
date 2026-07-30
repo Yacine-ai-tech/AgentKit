@@ -23,7 +23,7 @@ class Settings:
 
     POSTGRES_URL = os.getenv(
         "POSTGRES_URL",
-        "postgresql://agentkit:change_me@localhost:5432/agentkit",
+        "postgresql://user:password@localhost/agentkit",
     )
 
     LLM_DEFAULT = os.getenv("LLM_DEFAULT", "groq/llama-3.3-70b-versatile")
