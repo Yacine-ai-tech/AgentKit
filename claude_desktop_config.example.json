@@ -1,30 +1,15 @@
 {
-  "//": "AgentKit MCP server — two ways to connect from Claude Desktop. Keep ONE of the entries.",
-  "//_local": "LOCAL (stdio): runs the server on your machine. Use the Python that has the deps installed (cd AgentKit && python -m venv .venv && .venv/bin/pip install -r requirements.txt). The script dir is auto-added to sys.path so the core/services imports resolve. Needs the shared DB + LLM keys for REAL tool output (without POSTGRES_URL the tools raise instead of returning data).",
-  "//_remote": "REMOTE (hosted SSE): connects to the live deployment via mcp-remote (needs Node/npx). No local Python, DB, or keys required.",
   "mcpServers": {
-    "agentkit-local": {
-      "command": "/ABS/PATH/TO/AgentKit/.venv/bin/python",
-      "args": ["/ABS/PATH/TO/AgentKit/mcp_server.py"],
+    "agentkit": {
+      "command": "python",
+      "args": [
+        "-m",
+        "agentkit_mcp.mcp_server"
+      ],
       "env": {
-        "MCP_TRANSPORT": "stdio",
-        "POSTGRES_URL": "postgresql://USER:PASSWORD@HOST/DB?sslmode=require",
-        "ANTHROPIC_API_KEY": "sk-ant-...",
-        "GROQ_API_KEY": "gsk_...",
-        "OPENAI_API_KEY": "sk-...",
-        "LLM_DEFAULT": "groq/llama-3.3-70b-versatile",
-        "LLM_REASONING": "anthropic/claude-sonnet-4-6",
-        "LLM_JUDGE": "anthropic/claude-haiku-4-5",
-        "LLM_LOCAL": "ollama/llama3.3",
-        "LOG_LEVEL": "DEBUG",
-        "TELEMETRY_OPT_OUT": "true"
+        "PYTHONPATH": "/path/to/AgentKit/src",
+        "POSTGRES_URL": "postgresql://user:pass@ep-cool-service.aws.neon.tech/neondb?sslmode=require"
       }
-    },
-    "agentkit-remote": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://agentkit-0c1b.onrender.com/sse",
-               "--header", "Authorization: Bearer ${MCP_AUTH_TOKEN}"],
-      "env": { "MCP_AUTH_TOKEN": "ask-the-maintainer-for-a-token" }
     }
   }
 }
