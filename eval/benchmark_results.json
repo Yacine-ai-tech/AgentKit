@@ -1,0 +1,13 @@
+{
+  "benchmark": "AgentKit MCP Middleware Performance & Schema Audit",
+  "seed": 42,
+  "metrics": {
+    "mcp_schema_reflection_ms": 16407.279,
+    "schema_validity_percentage": 100.0,
+    "transport_latency_p50_ms": 0.0211,
+    "transport_latency_p95_ms": 0.0648,
+    "transport_latency_p99_ms": 0.417,
+    "total_mcp_tools_exposed": 6
+  },
+  "timestamp": "2026-07-30T19:07:06Z"
+}

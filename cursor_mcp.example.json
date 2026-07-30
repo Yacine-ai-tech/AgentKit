@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "agentkit-cursor": {
+      "command": "python",
+      "args": [
+        "-m",
+        "agentkit_mcp.mcp_server"
+      ],
+      "env": {
+        "PYTHONPATH": "/path/to/AgentKit/src",
+        "MCP_TRANSPORT": "stdio",
+        "POSTGRES_URL": "postgresql://user:pass@ep-cool-service.aws.neon.tech/neondb?sslmode=require"
+      }
+    }
+  }
+}
