@@ -4,7 +4,7 @@ import os
 
 TOKEN = os.getenv('OMNIINTEL_INTERNAL_TOKEN', 'REDACTED_SECRET')
 HEADERS = {'X-OmniIntel-Internal-Token': TOKEN}
-BASE_URL = os.getenv('TEST_BASE_URL', 'https://gateway.ysiddo-ai-projects.app/agentkit')
+BASE_URL = os.getenv('TEST_BASE_URL', 'http://localhost:8000/agentkit')
 
 @pytest.mark.asyncio
 async def test_e2e_api_get__health_0():
