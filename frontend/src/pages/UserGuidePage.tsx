@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen, Monitor, Terminal, FileCode, CheckCircle, ShieldAlert, Database, 
-         Brains, Settings, Globe, Zap, Server, Users, ChartBar, AlertTriangle, Lightbulb } from 'lucide-react';
+         Brain, Settings, Globe, Zap, Server, Users, ChartBar, AlertTriangle, Lightbulb } from 'lucide-react';
 
 export default function UserGuidePage() {
   return (
@@ -23,7 +23,7 @@ export default function UserGuidePage() {
         {/* What is AgentKit */}
         <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Brains className="w-6 h-6 text-purple-400" /> What is AgentKit?
+            <Brain className="w-6 h-6 text-purple-400" /> What is AgentKit?
           </h2>
           <div className="space-y-4">
             <p className="text-gray-300">
