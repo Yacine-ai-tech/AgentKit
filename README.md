@@ -1,16 +1,16 @@
 # AgentKit — MCP Server for Business Intelligence Agents
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-
-
-[![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
 Expose enterprise KPIs, health scores, forecasting, and anomaly detection as
 tools, resources, and prompt templates that any MCP-compatible agent (Claude
 Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
-> 🔗 **Live MCP server (dashboard):** [YOUR_DEPLOYMENT_URL] — connect from Claude Desktop
+
+> 🔗 **Live MCP server (dashboard):** https://agentkit.ysiddo-ai-projects.app — connect from Claude Desktop
 > via `mcp-remote` (see [claude_desktop_config.example.json](claude_desktop_config.example.json)). On-demand backend (first call ~30–60 s).
 > Self-hosting: see [SELF_HOSTING.md](SELF_HOSTING.md).
+
 
 ## What It Does
 

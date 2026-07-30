@@ -396,7 +396,7 @@ def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: 
             try:
                 conn.rollback()
             except Exception:
-                import logging; logging.error('Unhandled exception', exc_info=True)
+                log.exception("Unexpected error")
                 pass
         finally:
             conn.close()
@@ -770,7 +770,7 @@ def store_conversation(cid: str, user_msg: str, ai_resp: str, language: str = "e
         )
         conn.commit()
     except Exception:
-        import logging; logging.error('Unhandled exception', exc_info=True)
+        log.exception("Unexpected error")
         pass
     finally:
         conn.close()
@@ -789,7 +789,7 @@ def log_audit_event(actor: str, event_type: str, detail: str) -> None:
         )
         conn.commit()
     except Exception:
-        import logging; logging.error('Unhandled exception', exc_info=True)
+        log.exception("Unexpected error")
         pass
     finally:
         conn.close()
