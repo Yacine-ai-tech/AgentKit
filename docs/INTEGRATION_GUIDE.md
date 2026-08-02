@@ -25,7 +25,7 @@ Add AgentKit to your `claude_desktop_config.json`:
       ],
       "env": {
         "PYTHONPATH": "/path/to/AgentKit/src",
-        "POSTGRES_URL": "postgresql://neondb_owner:password@ep-cool-service.aws.neon.tech/neondb?sslmode=require"
+        "POSTGRES_URL": "postgresql://user:password@localhost/neondb?sslmode=require"
       }
     }
   }

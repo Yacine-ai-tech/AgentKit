@@ -9,7 +9,7 @@
       "env": {
         "PYTHONPATH": "/path/to/AgentKit/src",
         "MCP_TRANSPORT": "stdio",
-        "POSTGRES_URL": "postgresql://user:pass@ep-cool-service.aws.neon.tech/neondb?sslmode=require"
+        "POSTGRES_URL": "postgresql://user:password@localhost/neondb?sslmode=require"
       }
     }
   }
