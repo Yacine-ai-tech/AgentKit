@@ -36,12 +36,12 @@ test.describe('Phase 6 — AgentKit Operations', () => {
       const req = route.request();
       const url = req.url();
       if ((req.resourceType() === 'fetch' || req.resourceType() === 'xhr') && url.includes('vercel.app')) {
-        let backendUrl = 'https://intelai-bwhp.onrender.com';
-        if (url.includes('docintel-ui')) backendUrl = 'https://docintel-mm79.onrender.com';
-        else if (url.includes('agentkit-ui')) backendUrl = 'https://agentkit-sbz5.onrender.com';
-        else if (url.includes('rageval-ui')) backendUrl = 'https://rageval-4xh5.onrender.com';
-        else if (url.includes('voiceflow-ui')) backendUrl = 'https://voiceflow-riao.onrender.com';
-        else if (url.includes('streampulse-ui')) backendUrl = 'https://streampulse-gv4o.onrender.com';
+        let backendUrl = process.env.STAGING_INTELAI_URL || 'https://intelai-bwhp.onrender.com';
+        if (url.includes('docintel-ui')) backendUrl = process.env.STAGING_DOCINTEL_URL || 'https://docintel-mm79.onrender.com';
+        else if (url.includes('agentkit-ui')) backendUrl = process.env.STAGING_AGENTKIT_URL || 'https://agentkit-sbz5.onrender.com';
+        else if (url.includes('rageval-ui')) backendUrl = process.env.STAGING_RAGEVAL_URL || 'https://rageval-4xh5.onrender.com';
+        else if (url.includes('voiceflow-ui')) backendUrl = process.env.STAGING_VOICEFLOW_URL || 'https://voiceflow-riao.onrender.com';
+        else if (url.includes('streampulse-ui')) backendUrl = process.env.STAGING_STREAMPULSE_URL || 'https://streampulse-gv4o.onrender.com';
         
         const pathPart = new URL(url).pathname;
         const newUrl = backendUrl.replace(/\/$/, '') + pathPart;
@@ -171,7 +171,7 @@ test.describe('Phase 6 — AgentKit API Validation', () => {
       data: {
         name: `e2e_test_tool_${Date.now()}`,
         type: 'tavily_search',
-        config: { api_key: 'REDACTED', max_results: 5 },
+        config: { api_key: process.env.TAVILY_API_KEY || 'YOUR_API_KEY', max_results: 5 },
         description: 'Playwright E2E test tool'
       }
     }).catch(() => null);

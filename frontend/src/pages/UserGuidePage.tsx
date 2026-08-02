@@ -81,7 +81,7 @@ export default function UserGuidePage() {
       "command": "python",
       "args": ["-m", "agentkit_mcp.mcp_server"],
       "env": {
-        "POSTGRES_URL": "postgresql://user:pass@host/db",
+        "POSTGRES_URL": "postgresql://user:password@localhost/db",
         "GROQ_API_KEY": "your_groq_key",
         "ANTHROPIC_API_KEY": "your_anthropic_key"
       }
