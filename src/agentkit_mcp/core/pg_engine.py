@@ -21,12 +21,12 @@ log = get_logger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-POSTGRES_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://agentkit:change_me@localhost:5432/agentkit"
-)
+POSTGRES_URL = os.getenv("POSTGRES_URL", "")
 
-POSTGRES_ASYNC_URL = POSTGRES_URL.replace(
-    "postgresql+psycopg://", "postgresql+asyncpg://"
-).replace(
-    "postgresql://user:password@localhost/verified")
+if POSTGRES_URL.startswith("postgresql://"):
+    POSTGRES_ASYNC_URL = POSTGRES_URL.replace("postgresql://", "postgresql+asyncpg://")
+elif POSTGRES_URL.startswith("postgresql+psycopg://"):
+    POSTGRES_ASYNC_URL = POSTGRES_URL.replace("postgresql+psycopg://", "postgresql+asyncpg://")
+else:
+    POSTGRES_ASYNC_URL = POSTGRES_URL
+

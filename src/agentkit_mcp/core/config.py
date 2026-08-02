@@ -21,10 +21,7 @@ class Settings:
     LOG_FORMAT = os.getenv("LOG_FORMAT", "%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     LOGS_DIR = str(LOGS_DIR)
 
-    POSTGRES_URL = os.getenv(
-        "POSTGRES_URL",
-        "postgresql://user:password@localhost/agentkit",
-    )
+    POSTGRES_URL = os.getenv("POSTGRES_URL", "")
 
     LLM_DEFAULT = os.getenv("LLM_DEFAULT", "groq/llama-3.3-70b-versatile")
     LLM_REASONING = os.getenv("LLM_REASONING", "anthropic/claude-sonnet-4-6")
