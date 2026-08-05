@@ -11,6 +11,8 @@ services:
     plan: free
     autoDeploy: false
     envVars:
+      - key: ENVIRONMENT
+        value: production
       - key: MCP_TRANSPORT
         value: sse
       - key: POSTGRES_URL          # Neon (separate database) — the tools serve REAL KPI data from here
