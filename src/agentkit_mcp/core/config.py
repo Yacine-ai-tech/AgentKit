@@ -28,6 +28,10 @@ class Settings:
     LLM_JUDGE = os.getenv("LLM_JUDGE", "anthropic/claude-haiku-4-5")
     LLM_LOCAL = os.getenv("LLM_LOCAL", "ollama/llama3.3")
 
+    INFERENCE_MODE = os.getenv("INFERENCE_MODE", "remote")
+    LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "")
+    LLM_TOKEN = os.getenv("LLM_TOKEN", "")
+
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
