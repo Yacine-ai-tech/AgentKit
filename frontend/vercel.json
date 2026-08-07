@@ -37,6 +37,18 @@
   ],
   "rewrites": [
     {
+      "source": "/docs",
+      "destination": "https://gateway.ysiddo-ai-projects.app/agentkit/docs"
+    },
+    {
+      "source": "/docs/(.*)",
+      "destination": "https://gateway.ysiddo-ai-projects.app/agentkit/docs/$1"
+    },
+    {
+      "source": "/openapi.json",
+      "destination": "https://gateway.ysiddo-ai-projects.app/agentkit/openapi.json"
+    },
+    {
       "source": "/((?!.*\\.(?:js|css|png|jpg|jpeg|gif|svg|ico|json|woff2?|webmanifest)).*)",
       "destination": "/index.html"
     }
