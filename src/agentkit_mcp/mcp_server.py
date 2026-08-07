@@ -24,18 +24,13 @@ except ImportError:
     _FASTMCP = False
     log.warning("fastmcp not installed — MCP server not available")
 
-# Optional imports — graceful degradation if DB not available
-try:
-    from agentkit_mcp.services.pg_store import (
-        get_kpi_metrics,
-        get_available_metrics,
-        get_available_categories,
-        get_available_periods,
-    )
-    _PG = True
-except Exception as e:
-    log.warning("pg_store import failed (%s) — running in stub mode", e)
-    _PG = False
+from agentkit_mcp.services.pg_store import (
+    get_kpi_metrics,
+    get_available_metrics,
+    get_available_categories,
+    get_available_periods,
+)
+_PG = True
 
 try:
     from agentkit_mcp.services.insights import compute_health_index, detect_anomalies
@@ -272,7 +267,7 @@ def _serve_sse(port: int) -> None:
     Falls back to the plain FastMCP runner if the ASGI app can't be wrapped on this version."""
     token = os.getenv("MCP_AUTH_TOKEN")
     if not token:
-        log.warning("MCP_AUTH_TOKEN not set — SSE auth DISABLED (dev mode); rate-limit still on")
+        raise RuntimeError("MCP_AUTH_TOKEN is strictly required for bearer token auth.")
     try:
         import uvicorn
         from agentkit_mcp.auth_middleware import BearerAuthRateLimit
@@ -312,15 +307,9 @@ def _serve_sse(port: int) -> None:
 
 if __name__ == "__main__":
     if _FASTMCP:
-        # When a cloud platform injects $PORT, default to HTTP/SSE so the service is reachable;
-        # locally (no $PORT) default to stdio (the standard MCP transport for local clients).
-        transport = os.getenv("MCP_TRANSPORT") or ("sse" if os.getenv("PORT") else "stdio")
-        # Honor the platform-injected $PORT (Railway/Render/Fly) over MCP_PORT; default 8005.
+        transport = "sse"
         port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
         log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
-        if transport == "sse":
-            _serve_sse(port)
-        else:
-            mcp.run()
+        _serve_sse(port)
     else:
         log.error("fastmcp not installed; cannot start MCP server. pip install fastmcp")
