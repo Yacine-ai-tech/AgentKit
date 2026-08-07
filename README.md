@@ -117,9 +117,16 @@ For full theoretical formulation, math bounds, and citation details, see [RESEAR
 
 ## Benchmark Replication Suite
 
-Run the reproducible benchmark evaluation with a fixed random seed:
+Run the reproducible benchmark evaluation suites:
 ```bash
+# Test MCP framework overhead
 python3 eval/run_benchmarks.py --seed 42
+
+# Test Agent Tool Selection & Quality
+python3 eval/run_agent_eval.py
+
+# Test Comprehensive MCP Tool Execution Metrics
+python3 eval/run_mcp_tools_benchmark.py
 ```
 
 ## Integration Guides (Claude Desktop, Cursor, Devin)
