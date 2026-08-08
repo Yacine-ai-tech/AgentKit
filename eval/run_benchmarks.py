@@ -44,26 +44,9 @@ def run_agentkit_benchmarks(seed: int = 42):
     schema_valid_count = sum(1 for t in tools if hasattr(t, "__annotations__") and len(t.__annotations__) > 0)
     schema_validity_pct = (schema_valid_count / len(tools)) * 100.0
 
-    # Metric 3: Synthetic MCP Transport Latency (p50, p95, p99)
-    latencies = []
-    for _ in range(100):
-        t0 = time.perf_counter()
-        # Simulated payload transformation & validation
-        dummy_payload = {"domain": "Finance", "limit": random.randint(10, 100)}
-        _ = json.dumps(dummy_payload)
-        latencies.append((time.perf_counter() - t0) * 1000.0)
-
-    latencies.sort()
-    p50 = latencies[int(len(latencies) * 0.50)]
-    p95 = latencies[int(len(latencies) * 0.95)]
-    p99 = latencies[int(len(latencies) * 0.99)]
-
     results["metrics"] = {
         "mcp_schema_reflection_ms": round(schema_latency_ms, 3),
         "schema_validity_percentage": round(schema_validity_pct, 2),
-        "transport_latency_p50_ms": round(p50, 4),
-        "transport_latency_p95_ms": round(p95, 4),
-        "transport_latency_p99_ms": round(p99, 4),
         "total_mcp_tools_exposed": len(tools),
     }
 

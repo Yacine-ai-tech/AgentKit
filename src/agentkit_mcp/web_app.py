@@ -145,11 +145,7 @@ def build_app() -> FastAPI:
             return await call_next(request)
             
         token = request.headers.get("X-OmniIntel-Internal-Token")
-        valid_tokens = {
-            _os.environ.get("OMNIINTEL_INTERNAL_TOKEN"),
-            "***ROTATED-SECRET***",
-            "default-dev-token",
-        }
+        valid_tokens = {_os.environ.get("OMNIINTEL_INTERNAL_TOKEN")}
         valid_tokens.discard(None)
         
         if token not in valid_tokens and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":

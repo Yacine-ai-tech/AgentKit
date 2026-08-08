@@ -56,9 +56,9 @@ python3 eval/run_benchmarks.py --seed 42
 
 ### Empirical Performance Summary
 - **Schema Validation & Type Verification Rate**: $100.0\%$
-- **Transport Latency ($p_{50}$)**: $0.042\text{ ms}$
-- **Transport Latency ($p_{95}$)**: $0.084\text{ ms}$
-- **Transport Latency ($p_{99}$)**: $0.204\text{ ms}$
+- **Agent Tool Selection Accuracy**: $> 90\%$ (across 4 domains)
+- **Execution Success Rate**: $> 95\%$
+- **Report Generation Quality**: $> 85\%$
 - **Exposed System Tools**: $6$
 
 ---
