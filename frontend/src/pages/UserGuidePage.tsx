@@ -1,6 +1,7 @@
 import React from 'react';
-import { BookOpen, Monitor, Terminal, FileCode, CheckCircle, ShieldAlert, Database, 
-         Brain, Settings, Globe, Zap, Server, Users, ChartBar, AlertTriangle, Lightbulb } from 'lucide-react';
+import { BookOpen, Monitor, Terminal, FileCode, CheckCircle, ShieldAlert,
+         Brain, Globe, Wrench, Database, MessageSquareQuote, GitBranch,
+         Activity, BarChart3, Cable } from 'lucide-react';
 
 export default function UserGuidePage() {
   return (
@@ -8,18 +9,20 @@ export default function UserGuidePage() {
       <div className="flex items-center gap-3 mb-8">
         <BookOpen className="w-10 h-10 text-blue-500" />
         <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-          AgentKit - Complete User Guide
+          AgentKit — Complete User Guide
         </h1>
       </div>
 
       <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-        AgentKit is a Model Context Protocol (MCP) server that provides business intelligence tools for AI agents. 
-        It enables agents to access real KPI data, perform forecasting, detect anomalies, and generate executive summaries 
-        - making it perfect for business analytics, reporting, and decision-making workflows.
+        AgentKit is a <strong className="text-blue-400">Model Context Protocol (MCP) server for business-intelligence
+        agents</strong>. It exposes live company KPIs, a composite health score, anomaly detection, forecasting,
+        and executive summaries as tools, resources and a prompt template — so any MCP-compatible agent can query
+        real business data instead of guessing. It's framework-agnostic: the same tools work from Claude Desktop,
+        Cursor, LangGraph, the Claude Agent SDK, and CrewAI.
       </p>
 
       <div className="space-y-8 text-gray-200">
-        
+
         {/* What is AgentKit */}
         <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
@@ -27,53 +30,122 @@ export default function UserGuidePage() {
           </h2>
           <div className="space-y-4">
             <p className="text-gray-300">
-              AgentKit is a production-grade MCP server that provides <strong className="text-blue-400">6 powerful business intelligence tools</strong>:
+              Under the hood, AgentKit is one Python service (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/mcp_server.py</code>)
+              that reads KPI rows from PostgreSQL and exposes them two ways:
             </p>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <h3 className="font-semibold text-green-400 text-lg mb-2">📊 query_kpis</h3>
-                <p className="text-sm text-gray-300">Query business KPIs by domain, time period, and metrics. Supports finance, people, operations, ESG data.</p>
-              </div>
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <h3 className="font-semibold text-blue-400 text-lg mb-2">🏥 get_company_health</h3>
-                <p className="text-sm text-gray-300">Get composite health scores across business domains with trend analysis.</p>
-              </div>
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <h3 className="font-semibold text-red-400 text-lg mb-2">⚠️ detect_kpi_anomalies</h3>
-                <p className="text-sm text-gray-300">Find outliers and anomalies in KPI data using statistical methods (z-score, IQR).</p>
-              </div>
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <h3 className="font-semibold text-purple-400 text-lg mb-2">📈 forecast_metric</h3>
-                <p className="text-sm text-gray-300">Generate time-series forecasts with confidence intervals for any metric.</p>
-              </div>
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <h3 className="font-semibold text-yellow-400 text-lg mb-2">🔍 list_available_metrics</h3>
-                <p className="text-sm text-gray-300">Discover available metrics, categories, and time periods in the database.</p>
-              </div>
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <h3 className="font-semibold text-cyan-400 text-lg mb-2">📋 get_executive_summary</h3>
-                <p className="text-sm text-gray-300">Generate comprehensive executive summaries with health, KPIs, and anomalies.</p>
-              </div>
+            <ul className="list-disc list-inside text-sm text-gray-300 space-y-2 ml-2">
+              <li><strong className="text-blue-400">As an MCP server</strong> — 6 tools, 6 resources and 1 prompt, reachable from any MCP client over stdio (local) or SSE (hosted). This is the primary interface: it's what an agent actually calls.</li>
+              <li><strong className="text-green-400">As a read-only REST facade</strong> (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/web_app.py</code>) — every <code className="bg-gray-900 px-1 rounded">/api/*</code> route delegates to the exact same tool functions, which is how this dashboard renders live data in your browser. See the <strong>API Docs</strong> page for every endpoint.</li>
+            </ul>
+            <p className="text-gray-300">
+              A business user asking an agent "what's our finance health look like, and is anything off?" gets answered
+              by these tools chaining together — <code className="bg-gray-900 px-1 rounded">get_company_health</code>,
+              then <code className="bg-gray-900 px-1 rounded">detect_kpi_anomalies</code> — without the agent ever
+              seeing raw SQL or a database credential.
+            </p>
+          </div>
+        </section>
+
+        {/* The 6 tools, in plain language */}
+        <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
+            <Wrench className="w-6 h-6 text-green-400" /> The 6 Tools — What They're For
+          </h2>
+          <p className="text-gray-300 mb-4 text-sm">
+            Each row below is a real capability an agent can invoke. The right column is a business question
+            that maps onto it — you don't call these directly, an MCP-aware agent picks the right one from your
+            plain-English request.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <ToolCard color="green" name="query_kpis" title="Look up KPIs" ask="“What were our Growth metrics last quarter?”" />
+            <ToolCard color="blue" name="get_company_health" title="Company health score" ask="“How healthy is the business right now?”" />
+            <ToolCard color="red" name="detect_kpi_anomalies" title="Find outliers" ask="“Is anything unusual in our Finance numbers?”" />
+            <ToolCard color="purple" name="forecast_metric" title="Forecast a metric" ask="“Where is revenue headed over the next 6 months?”" />
+            <ToolCard color="yellow" name="list_available_metrics" title="Discover what's tracked" ask="“What metrics and domains do we even have data for?”" />
+            <ToolCard color="cyan" name="get_executive_summary" title="One-shot executive snapshot" ask="“Give me the state of the business in one summary.”" />
+          </div>
+          <p className="text-xs text-gray-400 mt-4">
+            All six read from the live <code className="bg-gray-900 px-1 rounded">kpi_metrics</code> table via
+            <code className="bg-gray-900 px-1 rounded ml-1">POSTGRES_URL</code>. If that connection isn't configured,
+            tools return an explicit error — never fabricated numbers. Full parameter lists and JSON response
+            shapes are on the <strong>API Docs</strong> page.
+          </p>
+        </section>
+
+        {/* Resources & prompt */}
+        <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
+            <Database className="w-6 h-6 text-cyan-400" /> Resources & the Briefing Prompt
+          </h2>
+          <p className="text-gray-300 mb-3 text-sm">
+            Beyond tools, MCP has two other first-class primitives, and AgentKit registers one of each kind that matters:
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+              <h3 className="font-semibold text-cyan-400 text-lg mb-2">6 Resources</h3>
+              <p className="text-sm text-gray-300 mb-2">
+                <code className="bg-gray-950 px-1 rounded">kpi://Finance/latest</code>, and the same for
+                Growth, Operations, People, ESG and IT_Ops — each is a standing, addressable read that
+                resolves to the latest 10 KPI rows for that domain. Agents can pull these directly without
+                deciding on tool parameters first.
+              </p>
+            </div>
+            <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+              <h3 className="font-semibold text-green-400 text-lg mb-2 flex items-center gap-2"><MessageSquareQuote className="w-4 h-4" /> 1 Prompt</h3>
+              <p className="text-sm text-gray-300">
+                <code className="bg-gray-950 px-1 rounded">monthly_executive_briefing(month)</code> hands the
+                agent a structured instruction template — KEY FINDING, EVIDENCE, ROOT CAUSE, RECOMMENDED ACTION,
+                RISK IF UNADDRESSED — so briefings come back in a consistent, decision-ready shape instead of
+                free-form prose.
+              </p>
             </div>
           </div>
         </section>
 
-        {/* Universal Agent Integration */}
+        {/* Connecting */}
         <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Globe className="w-6 h-6 text-blue-400" /> Universal Agent Integration
+            <Cable className="w-6 h-6 text-orange-400" /> Connecting an Agent
           </h2>
-          <p className="text-gray-300 mb-6">
-            AgentKit works with <strong className="text-green-400">any MCP-compatible agent</strong> including Claude Desktop, Cursor, Windsurf, and custom implementations.
+          <p className="text-gray-300 mb-4 text-sm">
+            The <strong>Connect</strong> page in this dashboard has copy-paste-ready configs and stays in sync with
+            the repo's example files. There are two real ways in:
           </p>
-          
+
           <div className="space-y-6">
-            {/* Claude Desktop */}
             <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
               <h3 className="font-semibold text-lg text-gray-100 flex items-center gap-2 mb-3">
-                <FileCode className="w-5 h-5 text-orange-400" /> Claude Desktop Integration
+                <FileCode className="w-5 h-5 text-orange-400" /> Remote — hosted SSE (no local setup)
               </h3>
-              <p className="text-sm text-gray-300 mb-3">Add to your <code className="bg-gray-800 px-2 py-1 rounded">claude_desktop_config.json</code>:</p>
+              <p className="text-sm text-gray-300 mb-3">
+                Point Claude Desktop at the hosted server via <code className="bg-gray-950 px-1 rounded">mcp-remote</code>,
+                using a bearer token (<code className="bg-gray-950 px-1 rounded">MCP_AUTH_TOKEN</code>):
+              </p>
+              <pre className="bg-gray-950 p-4 rounded-lg text-sm font-mono text-green-300 overflow-x-auto">
+{`{
+  "mcpServers": {
+    "agentkit-remote": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote",
+               "https://gateway.ysiddo-ai-projects.app/agentkit/sse",
+               "--header", "Authorization: Bearer \${MCP_AUTH_TOKEN}"],
+      "env": { "MCP_AUTH_TOKEN": "<your token>" }
+    }
+  }
+}`}
+              </pre>
+            </div>
+
+            <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+              <h3 className="font-semibold text-lg text-gray-100 flex items-center gap-2 mb-3">
+                <Terminal className="w-5 h-5 text-gray-400" /> Local — stdio (your own database)
+              </h3>
+              <p className="text-sm text-gray-300 mb-3">
+                Run the server on your machine against your own PostgreSQL instance. This is also the pattern
+                used by the <code className="bg-gray-950 px-1 rounded">claude_desktop_config.example.json</code>,
+                <code className="bg-gray-950 px-1 rounded ml-1">cursor_mcp.example.json</code> and
+                <code className="bg-gray-950 px-1 rounded ml-1">devin_mcp.example.json</code> files shipped in the repo root:
+              </p>
               <pre className="bg-gray-950 p-4 rounded-lg text-sm font-mono text-green-300 overflow-x-auto">
 {`{
   "mcpServers": {
@@ -81,148 +153,90 @@ export default function UserGuidePage() {
       "command": "python",
       "args": ["-m", "agentkit_mcp.mcp_server"],
       "env": {
-        "POSTGRES_URL": "postgresql://user:password@localhost/db",
-        "LLM_ENDPOINT": "https://api.openai.com/v1",
-        "LLM_TOKEN": "your_api_token"
+        "PYTHONPATH": "/path/to/AgentKit/src",
+        "POSTGRES_URL": "postgresql://user:password@localhost/neondb?sslmode=require"
       }
     }
   }
 }`}
               </pre>
-            </div>
-
-            {/* Cursor */}
-            <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-lg text-gray-100 flex items-center gap-2 mb-3">
-                <Terminal className="w-5 h-5 text-blue-400" /> Cursor IDE Integration
-              </h3>
-              <p className="text-sm text-gray-300 mb-3">Cursor Settings → Features → MCP Servers → Add New:</p>
-              <ul className="list-disc list-inside text-sm text-gray-300 space-y-2 ml-2">
-                <li><strong>Type:</strong> Command</li>
-                <li><strong>Name:</strong> agentkit</li>
-                <li><strong>Command:</strong> <code className="bg-gray-800 px-2 py-1 rounded">python -m agentkit_mcp.mcp_server</code></li>
-                <li><strong>Environment:</strong> Set POSTGRES_URL and API keys</li>
-              </ul>
-            </div>
-
-            {/* Remote SSE */}
-            <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-lg text-gray-100 flex items-center gap-2 mb-3">
-                <Server className="w-5 h-5 text-purple-400" /> Remote SSE (Hosted)
-              </h3>
-              <p className="text-sm text-gray-300 mb-3">Connect to hosted AgentKit without local setup:</p>
-              <pre className="bg-gray-950 p-4 rounded-lg text-sm font-mono text-green-300 overflow-x-auto">
-{`{
-  "mcpServers": {
-    "agentkit-remote": {
-      "transport": "sse",
-      "url": "https://your-agentkit-url.com/sse",
-      "headers": {
-        "Authorization": "Bearer YOUR_MCP_AUTH_TOKEN"
-      }
-    }
-  }
-}`}
-              </pre>
+              <p className="text-xs text-gray-400 mt-3">
+                Without <code className="bg-gray-900 px-1 rounded">POSTGRES_URL</code> pointed at a database seeded
+                with the <code className="bg-gray-900 px-1 rounded">kpi_metrics</code> table, tools return an
+                explicit "data layer unavailable" error rather than silently faking data.
+              </p>
             </div>
           </div>
         </section>
 
-        {/* Configuration & Requirements */}
+        {/* Beyond single tool calls: workflow + demos */}
         <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Settings className="w-6 h-6 text-amber-400" /> Configuration & Requirements
+            <GitBranch className="w-6 h-6 text-amber-400" /> The Agent Workflow
           </h2>
-          
-          <div className="grid md:grid-cols-2 gap-6">
+          <p className="text-gray-300 mb-3 text-sm">
+            The <strong>Workflow</strong> page runs a real 3-agent LangGraph pipeline
+            (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/workflow.py</code>) end to end against live data:
+          </p>
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-blue-400 text-lg mb-2 flex items-center gap-2">
-                <Database className="w-5 h-5" /> Database Setup
-              </h3>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• PostgreSQL database (Neon recommended)</li>
-                <li>• Create <code className="bg-gray-800 px-1 rounded">kpi_metrics</code> table</li>
-                <li>• Seed with business data using <code className="bg-gray-800 px-1 rounded">python -m src.data.seed</code></li>
-                <li>• Set <code className="bg-gray-800 px-1 rounded">POSTGRES_URL</code> environment variable</li>
-              </ul>
+              <h3 className="font-semibold text-blue-400 mb-1">1. Planner</h3>
+              <p className="text-sm text-gray-300">Breaks your question into a 3-4 step analysis plan.</p>
             </div>
-
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-green-400 text-lg mb-2 flex items-center gap-2">
-                <Zap className="w-5 h-5" /> Provider Agnostic Settings
-              </h3>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• <strong>LLM_ENDPOINT:</strong> Base URL for LiteLLM routing</li>
-                <li>• <strong>LLM_TOKEN:</strong> Bearer token for LLM access</li>
-                <li>• <strong>MCP_AUTH_TOKEN:</strong> For remote SSE access</li>
-              </ul>
+              <h3 className="font-semibold text-purple-400 mb-1">2. Analyst</h3>
+              <p className="text-sm text-gray-300">Routes on keywords in the question and calls the same MCP tools against live PostgreSQL.</p>
             </div>
-
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-purple-400 text-lg mb-2 flex items-center gap-2">
-                <Monitor className="w-5 h-5" /> Installation
-              </h3>
-              <pre className="bg-gray-950 p-3 rounded-lg text-xs font-mono text-green-300 overflow-x-auto">
-{`git clone https://github.com/Yacine-ai-tech/AgentKit
-cd AgentKit
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt`}
-              </pre>
-            </div>
-
-            <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-red-400 text-lg mb-2 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" /> Data Scenarios
-              </h3>
-              <p className="text-sm text-gray-300 mb-2">Use Admin panel to switch between business scenarios:</p>
-              <ul className="text-sm text-gray-300 space-y-1">
-                <li>• <strong>Healthy:</strong> Normal business growth</li>
-                <li>• <strong>Declining Revenue:</strong> Financial stress testing</li>
-                <li>• <strong>High Churn:</strong> Employee retention crisis</li>
-                <li>• <strong>Anomaly Spike:</strong> Outlier detection testing</li>
-              </ul>
+              <h3 className="font-semibold text-amber-400 mb-1">3. Reporter</h3>
+              <p className="text-sm text-gray-300">Synthesizes the evidence into a KEY FINDING / EVIDENCE / ROOT CAUSE / RECOMMENDED ACTION / RISK report, exportable as Markdown.</p>
             </div>
           </div>
+          <p className="text-gray-300 text-sm mb-2">
+            You can also trigger it directly: <code className="bg-gray-900 px-1 rounded">POST /api/workflow/run</code> with
+            <code className="bg-gray-900 px-1 rounded ml-1">{`{"question": "..."}`}</code> — this spends LLM credits and
+            takes a few seconds since it's a live 3-step chain, not a cached response.
+          </p>
+          <p className="text-gray-300 text-sm">
+            Three integration demos ship in the repo showing the same tools wired into other frameworks — all calling
+            the identical functions in <code className="bg-gray-900 px-1 rounded">mcp_server.py</code>:
+          </p>
+          <ul className="list-disc list-inside text-sm text-gray-300 space-y-1 ml-2 mt-2">
+            <li><code className="bg-gray-900 px-1 rounded">demos/claude_agent_sdk_demo.py</code> — the tools exposed as an in-process Claude Agent SDK MCP server.</li>
+            <li><code className="bg-gray-900 px-1 rounded">demos/crewai_demo.py</code> — the same tools wrapped as CrewAI <code className="bg-gray-950 px-0.5 rounded">@tool</code> functions in a Researcher → Analyst → Reporter crew.</li>
+            <li><code className="bg-gray-900 px-1 rounded">research/dspy_experiment.py</code> — a DSPy research scaffold treating planner → analyst → reporter as an optimizable program (not production; see its own docstring).</li>
+          </ul>
         </section>
 
-        {/* Real-World Use Cases */}
+        {/* Dashboard pages */}
         <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Lightbulb className="w-6 h-6 text-yellow-400" /> Real-World Use Cases
+            <Monitor className="w-6 h-6 text-blue-400" /> What's in This Dashboard
           </h2>
-          
-          <div className="space-y-4">
+          <p className="text-gray-300 mb-4 text-sm">
+            The dashboard is a thin client over the REST facade — every page below reads live data through the same
+            functions the MCP tools use, so what you see here is exactly what a connected agent would get.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-blue-400 text-lg mb-2">🏢 Executive Reporting</h3>
-              <p className="text-sm text-gray-300">
-                "Generate monthly executive summary with key financial metrics, health scores, and any anomalies requiring attention."
-              </p>
-              <p className="text-xs text-gray-500 mt-2">Tools: get_executive_summary, query_kpis, get_company_health</p>
+              <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-purple-400" /> Business Intelligence & Tools</h3>
+              <p className="text-sm text-gray-300">Run any of the 6 tools live from a form and see the exact JSON an agent would receive.</p>
             </div>
-
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-green-400 text-lg mb-2">📈 Financial Forecasting</h3>
-              <p className="text-sm text-gray-300">
-                "Forecast revenue for the next 6 months with 95% confidence intervals and identify any concerning trends."
-              </p>
-              <p className="text-xs text-gray-500 mt-2">Tools: forecast_metric, query_kpis, detect_kpi_anomalies</p>
+              <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><Activity className="w-4 h-4 text-green-400" /> Observability</h3>
+              <p className="text-sm text-gray-300">Real request telemetry — every call into <code className="bg-gray-950 px-1 rounded">/api/*</code> traced with method, path, status and latency, from an in-memory ring buffer polled every 2.5s. Not simulated.</p>
             </div>
-
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-purple-400 text-lg mb-2">👥 HR Analytics</h3>
+              <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><GitBranch className="w-4 h-4 text-amber-400" /> Evaluation Benchmark</h3>
               <p className="text-sm text-gray-300">
-                "Analyze headcount trends, employee turnover rates, and identify any unusual patterns in people metrics."
+                A reproducible LLM-as-judge benchmark (<code className="bg-gray-950 px-1 rounded">python eval/run_agent_eval.py</code>)
+                scoring the LangGraph agent's tool-selection accuracy and answer groundedness on 4 core
+                multi-tool queries — current published result is 100% (4/4).
               </p>
-              <p className="text-xs text-gray-500 mt-2">Tools: query_kpis, detect_kpi_anomalies, get_company_health</p>
             </div>
-
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-              <h3 className="font-semibold text-red-400 text-lg mb-2">⚠️ Anomaly Detection</h3>
-              <p className="text-sm text-gray-300">
-                "Review all business domains for outliers and anomalies that might indicate problems or opportunities."
-              </p>
-              <p className="text-xs text-gray-500 mt-2">Tools: detect_kpi_anomalies, list_available_metrics, query_kpis</p>
+              <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><Globe className="w-4 h-4 text-cyan-400" /> API Docs</h3>
+              <p className="text-sm text-gray-300">The full technical reference for both surfaces — every MCP tool/resource/prompt shape, and every REST endpoint (facade + admin), with copy-paste request examples.</p>
             </div>
           </div>
         </section>
@@ -235,70 +249,38 @@ pip install -r requirements.txt`}
           <ul className="space-y-3">
             <li className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300"><strong>Use virtual environments:</strong> Always run AgentKit in a .venv to isolate dependencies.</span>
+              <span className="text-sm text-gray-300">Data-layer failures surface as explicit errors (HTTP 503 on the REST facade, a raised <code className="bg-gray-900 px-1 rounded">RuntimeError</code> on the MCP tools) — AgentKit never fabricates KPI numbers when the database is unreachable.</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300"><strong>Secure your API keys:</strong> Never commit .env files. Use environment variables for all secrets.</span>
+              <span className="text-sm text-gray-300">The hosted SSE endpoint is bearer-token gated (<code className="bg-gray-900 px-1 rounded">MCP_AUTH_TOKEN</code>) with rate limiting; local stdio runs use your own credentials and never leave your machine.</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300"><strong>Database security:</strong> Use separate databases for different environments (dev/staging/prod).</span>
+              <span className="text-sm text-gray-300">Use a virtual environment (<code className="bg-gray-900 px-1 rounded">.venv</code>) when running the Python backend locally, and never commit <code className="bg-gray-900 px-1 rounded">.env</code> files or hardcode API keys — copy <code className="bg-gray-900 px-1 rounded">.env.example</code> and fill in your own.</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300"><strong>Rate limiting:</strong> Implement rate limiting on the hosted SSE endpoint to prevent abuse.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300"><strong>Authentication:</strong> Use MCP_AUTH_TOKEN for remote SSE connections to prevent unauthorized access.</span>
+              <span className="text-sm text-gray-300">The admin API's users/roles/audit-log/scenario endpoints are an in-memory demo layer for exercising the dashboard — they reset on every process restart and are not the production auth system.</span>
             </li>
           </ul>
         </section>
 
-        {/* API Reference */}
-        <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
-            <FileCode className="w-6 h-6 text-cyan-400" /> REST API Reference
-          </h2>
-          <p className="text-gray-300 mb-4">
-            AgentKit also provides a REST API for direct integration without MCP:
-          </p>
-          <div className="space-y-2">
-            <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center gap-3">
-              <span className="bg-green-600 text-xs px-2 py-1 rounded font-mono">GET</span>
-              <code className="text-sm text-gray-300">/api/kpis</code>
-              <span className="text-xs text-gray-500 ml-auto">Query KPI metrics</span>
-            </div>
-            <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center gap-3">
-              <span className="bg-green-600 text-xs px-2 py-1 rounded font-mono">GET</span>
-              <code className="text-sm text-gray-300">/api/health-score</code>
-              <span className="text-xs text-gray-500 ml-auto">Get company health</span>
-            </div>
-            <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center gap-3">
-              <span className="bg-green-600 text-xs px-2 py-1 rounded font-mono">GET</span>
-              <code className="text-sm text-gray-300">/api/anomalies</code>
-              <span className="text-xs text-gray-500 ml-auto">Detect anomalies</span>
-            </div>
-            <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center gap-3">
-              <span className="bg-green-600 text-xs px-2 py-1 rounded font-mono">GET</span>
-              <code className="text-sm text-gray-300">/api/forecast</code>
-              <span className="text-xs text-gray-500 ml-auto">Generate forecasts</span>
-            </div>
-            <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center gap-3">
-              <span className="bg-green-600 text-xs px-2 py-1 rounded font-mono">GET</span>
-              <code className="text-sm text-gray-300">/api/scenario</code>
-              <span className="text-xs text-gray-500 ml-auto">Get current scenario</span>
-            </div>
-            <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center gap-3">
-              <span className="bg-blue-600 text-xs px-2 py-1 rounded font-mono">POST</span>
-              <code className="text-sm text-gray-300">/api/scenario</code>
-              <span className="text-xs text-gray-500 ml-auto">Switch data scenario</span>
-            </div>
-          </div>
-        </section>
-
       </div>
+    </div>
+  );
+}
+
+function ToolCard({ color, name, title, ask }: { color: string; name: string; title: string; ask: string }) {
+  const colorMap: Record<string, string> = {
+    green: "text-green-400", blue: "text-blue-400", red: "text-red-400",
+    purple: "text-purple-400", yellow: "text-yellow-400", cyan: "text-cyan-400",
+  };
+  return (
+    <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+      <h3 className={`font-semibold text-lg mb-1 ${colorMap[color]}`}>{title}</h3>
+      <p className="text-xs font-mono text-gray-500 mb-2">{name}</p>
+      <p className="text-sm text-gray-300">{ask}</p>
     </div>
   );
 }
