@@ -1,33 +1,150 @@
 import { useState } from "react";
-import { Terminal, Copy, Check, Code2, BookOpen, Zap, Shield, Globe } from "lucide-react";
+import { Terminal, Copy, Check, Code2, BookOpen, Zap, Shield, Globe, Wrench, Database, MessageSquareQuote, GitBranch, Boxes } from "lucide-react";
 
-const BASE_URL = "http://localhost:8000/agentkit";
+/* The real gateway path for the deployed backend (see frontend/.env.production / vercel.json). */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://gateway.ysiddo-ai-projects.app/agentkit";
 
+/* ────────────────────────────────────────────────────────────────────────────
+   REST facade — web_app.py (core, mounted on the app root) + src/api/admin.py
+   (mounted with prefix /api). Every /api/* handler here delegates to the SAME
+   functions the MCP tools call (agentkit_mcp.mcp_server) — no separate logic.
+   ──────────────────────────────────────────────────────────────────────────── */
 const ENDPOINTS = [
   {
-    method: "GET", path: "/health", desc: "Health check — verify the service is alive.",
+    group: "Core facade", method: "GET", path: "/health",
+    desc: "Liveness probe — confirms the facade process is up. Excluded from OpenAPI schema.",
+    body: null,
     response: `{"status":"ok","service":"agentkit","version":"0.1.0"}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/api/tools",
+    desc: "Static metadata for the 6 tools (name, description, params, endpoint), the 6 kpi:// resource URIs, and the 1 prompt name. This is what the Tools/Resources pages render.",
     body: null,
+    response: `{
+  "tools": [
+    {"name":"query_kpis","description":"Return KPI metrics for a domain and period window.",
+     "params":[{"name":"domain","type":"string","required":false},
+               {"name":"period_from","type":"string","required":false},
+               {"name":"period_to","type":"string","required":false},
+               {"name":"metric_filter","type":"string","required":false},
+               {"name":"limit","type":"integer","required":false,"default":100}],
+     "endpoint":"/api/kpis"}
+    /* + get_company_health, detect_kpi_anomalies, forecast_metric,
+         list_available_metrics, get_executive_summary */
+  ],
+  "resources": ["kpi://Finance/latest","kpi://Growth/latest","kpi://Operations/latest",
+                "kpi://People/latest","kpi://ESG/latest","kpi://IT_Ops/latest"],
+  "prompts": ["monthly_executive_briefing"]
+}`,
   },
   {
-    method: "POST", path: "/agents/run", desc: "Execute an autonomous agent task with tool-use.",
-    body: JSON.stringify({ task: "Summarize Q3 sales data and identify top 3 anomalies", tools: ["calculator", "web_search"], model: "gemini-2.0-flash" }, null, 2),
-    response: `{"task_id":"agt_xyz","status":"completed","result":"...","steps":[...],"tokens_used":1240}`,
-  },
-  {
-    method: "GET", path: "/agents/{task_id}", desc: "Poll a running agent task by ID.",
+    group: "Core facade", method: "GET", path: "/api/kpis?domain=Finance&limit=20",
+    desc: "query_kpis — KPI rows for an optional domain and period window, with an optional case-insensitive metric-name substring filter.",
     body: null,
-    response: `{"task_id":"agt_xyz","status":"running","progress":0.6}`,
+    response: `{"kpis":[{"metric":"gross_margin","category":"Finance","period":"2025-06","value":42.3}],"total":1}`,
   },
   {
-    method: "POST", path: "/mcp/invoke", desc: "Invoke an MCP (Model Context Protocol) tool directly.",
-    body: JSON.stringify({ tool: "calculator", input: { expression: "42 * 1.15" } }, null, 2),
-    response: `{"result":48.3,"tool":"calculator","latency_ms":12}`,
-  },
-  {
-    method: "GET", path: "/sse", desc: "Server-Sent Events stream — real-time agent step updates.",
+    group: "Core facade", method: "GET", path: "/api/health-score?domain=Finance",
+    desc: "get_company_health — composite health score (0–100) plus a component breakdown (growth, margin, cash_score, efficiency). Omit domain for the all-domain score.",
     body: null,
-    response: `data: {"step":1,"type":"tool_call","tool":"web_search"}\ndata: {"step":2,"type":"result","output":"..."}`,
+    response: `{"score":71.4,"interpretation":"healthy","components":{"growth":0.62,"margin":0.58,"cash_score":0.7,"efficiency":0.55}}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/api/anomalies?domain=Finance&method=zscore&threshold=2.5",
+    desc: "detect_kpi_anomalies — z-score/IQR outliers in a domain's KPI history. domain is required (422 if omitted).",
+    body: null,
+    response: `{"anomalies":[{"metric":"opex","category":"Finance","period":"2025-05","value":980000,"z_score":3.1}],"total":1,"threshold":2.5,"method":"zscore"}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/api/forecast?metric=revenue&periods=6&confidence_level=0.95",
+    desc: "forecast_metric — Monte-Carlo confidence bands N periods ahead for a named metric (linear-regression base). metric is required; the query param is named metric, forwarded internally as forecast_metric(metric_name=...).",
+    body: null,
+    response: `{"metric":"revenue","forecast":[{"period":"2025-07","value":128400.5}],"lower_ci":[121000.2],"upper_ci":[135800.9],"confidence_level":0.95,"method":"linear_regression"}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/api/metrics?domain=Finance",
+    desc: "list_available_metrics — discovery: metric names (scoped to domain if given), all categories, and all periods present in the store.",
+    body: null,
+    response: `{"metrics":["revenue","gross_margin","opex"],"categories":["Finance","Growth","Operations","People","ESG","IT_Ops"],"periods":["2025-01","2025-02","2025-03"]}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/api/summary",
+    desc: "get_executive_summary — one-shot synthesis: health score + top 5 key KPIs + top 5 Finance anomalies.",
+    body: null,
+    response: `{"summary":"Executive snapshot generated by AgentKit","health_score":71.4,"interpretation":"healthy","components":{"growth":0.62,"margin":0.58,"cash_score":0.7,"efficiency":0.55},"key_metrics":[{"metric":"revenue","category":"Finance","period":"2025-06","value":128000}],"anomalies":[]}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/api/observability?limit=100",
+    desc: "Real request telemetry: the last N calls into /api/* from an in-memory ring buffer (method, path, query, status, latency ms). Capacity is 200 — this is what the Observability page polls every 2.5s.",
+    body: null,
+    response: `{"requests":[{"ts":"2026-08-08T12:00:00Z","method":"GET","path":"/api/kpis","query":"domain=Finance","status":200,"ms":42.1}],"capacity":200}`,
+  },
+  {
+    group: "Core facade", method: "POST", path: "/api/workflow/run",
+    desc: "Runs the real 3-node LangGraph workflow (planner → analyst → reporter, workflow.py) end to end against live data. Executes in a worker thread. Spends LLM credits. 400 if question is empty, 501 if LangGraph isn't installed, 500 on execution failure.",
+    body: JSON.stringify({ question: "Why did revenue move last quarter, and what should we watch?" }, null, 2),
+    response: `{
+  "question": "Why did revenue move last quarter, and what should we watch?",
+  "plan": "1. Pull Finance KPIs ...",
+  "raw_data": {"finance_kpis": {"kpis": [/* ... */], "total": 12}, "company_health": {"score": 71.4}, "executive_summary": {/* ... */}},
+  "report": "KEY FINDING: ...\\nEVIDENCE: ...",
+  "report_sections": {"key_finding":"...","evidence":"...","root_cause":"...","recommended_action":"...","risk_if_unaddressed":"..."},
+  "_elapsed_ms": 842.6
+}`,
+  },
+  {
+    group: "Core facade", method: "GET", path: "/",
+    desc: "Serves the built SPA (frontend/dist/index.html) when present — this is how the deployed frontend is actually served. Falls back to a small JSON pointer when no build exists.",
+    body: null,
+    response: `{"service":"agentkit","docs":"/docs","mcp_sse":"/sse"}`,
+  },
+  {
+    group: "Admin API", method: "GET", path: "/api/scenario",
+    desc: "Currently active in-memory demo data scenario.",
+    body: null,
+    response: `{"current_scenario":"healthy"}`,
+  },
+  {
+    group: "Admin API", method: "POST", path: "/api/scenario",
+    desc: "Switch the active demo scenario — one of: healthy, declining_revenue, high_churn, forecast_uncertainty, anomaly_spike, seasonal_variance, recovery_mode. 400 on an unknown id. Appends an audit-log entry.",
+    body: JSON.stringify({ scenario: "declining_revenue" }, null, 2),
+    response: `{"status":"success","current_scenario":"declining_revenue"}`,
+  },
+  {
+    group: "Admin API", method: "GET", path: "/api/database/info",
+    desc: "Connection status plus coverage stats for the KPI store (record/category/metric counts, date range, per-domain data-availability flags).",
+    body: null,
+    response: `{"connected":true,"total_records":1240,"categories":6,"metric_types":38,"date_range":"2024-01 to 2025-06","finance_available":true,"people_available":true,"forecast_available":false,"anomaly_available":false}`,
+  },
+  {
+    group: "Admin API", method: "GET", path: "/api/users",
+    desc: "List demo users held in the in-memory store. Empty until /api/register is called; the list resets whenever the process restarts.",
+    body: null,
+    response: `{"users":[]}`,
+  },
+  {
+    group: "Admin API", method: "POST", path: "/api/register",
+    desc: "Register a demo user in the in-memory store (not the production auth system). role is one of admin/executive/manager/analyst/viewer, defaults to viewer. 400 if username/password missing or the username is already taken.",
+    body: JSON.stringify({ username: "amina", password: "<choose-a-password>", role: "analyst", full_name: "Amina K." }, null, 2),
+    response: `{"status":"success","user":{"id":1,"username":"amina","role":"analyst"}}`,
+  },
+  {
+    group: "Admin API", method: "PATCH", path: "/api/users/{user_id}",
+    desc: "Partially update an in-memory demo user's fields. 404 if the id doesn't exist. Logged to the audit trail.",
+    body: JSON.stringify({ role: "manager", is_active: false }, null, 2),
+    response: `{"status":"success","user":{"id":1,"username":"amina","role":"manager","is_active":false}}`,
+  },
+  {
+    group: "Admin API", method: "GET", path: "/api/audit-log?limit=150",
+    desc: "Recent admin actions (scenario switches, user creates/updates) recorded in-memory.",
+    body: null,
+    response: `{"logs":[{"timestamp":"2026-08-08T12:00:00","action":"scenario_switch","details":"Switched to scenario: declining_revenue","username":"admin"}]}`,
+  },
+  {
+    group: "Admin API", method: "GET", path: "/api/roles",
+    desc: "The 5 static role definitions and their permission sets used by the demo user system.",
+    body: null,
+    response: `{"roles":{"admin":{"description":"Full system access including user management","permissions":["read","write","delete","admin"]},"executive":{"description":"High-level business intelligence access","permissions":["read","write"]},"manager":{"description":"Team-level analytics and reporting","permissions":["read","write"]},"analyst":{"description":"Data analysis and reporting tools","permissions":["read","write"]},"viewer":{"description":"Read-only access to dashboards","permissions":["read"]}}}`,
   },
 ];
 
@@ -35,15 +152,73 @@ const SNIPPETS: Record<string, (ep: (typeof ENDPOINTS)[0]) => string> = {
   curl: (ep: any) =>
     ep.body
       ? `curl -X ${ep.method} "${BASE_URL}${ep.path}" \\\n  -H "Content-Type: application/json" \\\n  -d '${ep.body}'`
-      : `curl "${BASE_URL}${ep.path}"`,
+      : `curl -X ${ep.method} "${BASE_URL}${ep.path}"`,
   python: (ep: any) =>
     ep.body
       ? `import requests\n\nresp = requests.${ep.method.toLowerCase()}(\n  "${BASE_URL}${ep.path}",\n  json=${ep.body.replace(/"/g, "'")}\n)\nprint(resp.json())`
-      : `import requests\n\nresp = requests.get("${BASE_URL}${ep.path}")\nprint(resp.json())`,
+      : `import requests\n\nresp = requests.${ep.method.toLowerCase()}("${BASE_URL}${ep.path}")\nprint(resp.json())`,
   node: (ep: any) =>
     ep.body
       ? `const res = await fetch("${BASE_URL}${ep.path}", {\n  method: "${ep.method}",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify(${ep.body})\n});\nconst data = await res.json();\nconsole.log(data);`
-      : `const res = await fetch("${BASE_URL}${ep.path}");\nconst data = await res.json();\nconsole.log(data);`,
+      : `const res = await fetch("${BASE_URL}${ep.path}", { method: "${ep.method}" });\nconst data = await res.json();\nconsole.log(data);`,
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+   MCP surface — agentkit_mcp/mcp_server.py. Invoked by an MCP client (Claude
+   Desktop, Cursor, a LangGraph/CrewAI/Claude-Agent-SDK integration) over
+   stdio or SSE — never raw HTTP. Registered on `mcp` via FastMCP.
+   ──────────────────────────────────────────────────────────────────────────── */
+const MCP_TOOLS = [
+  {
+    name: "query_kpis",
+    desc: "Return KPI metrics for a domain and period window, with an optional metric-name substring filter.",
+    sig: "query_kpis(domain?: str, period_from?: str, period_to?: str, metric_filter?: str, limit: int = 100)",
+    args: { domain: "Finance", period_from: "2025-01", limit: 20 },
+    response: `{"kpis":[{"metric":"gross_margin","category":"Finance","period":"2025-06","value":42.3}],"total":1}`,
+  },
+  {
+    name: "get_company_health",
+    desc: "Composite company health index (0–100) for a domain, or across all domains if omitted.",
+    sig: "get_company_health(domain?: str)",
+    args: { domain: "Finance" },
+    response: `{"score":71.4,"interpretation":"healthy","components":{"growth":0.62,"margin":0.58,"cash_score":0.7,"efficiency":0.55}}`,
+  },
+  {
+    name: "detect_kpi_anomalies",
+    desc: "Find outliers in a domain's KPI history using z-score or IQR.",
+    sig: "detect_kpi_anomalies(domain: str, method: str = 'zscore', threshold: float = 2.5)",
+    args: { domain: "Finance", method: "zscore", threshold: 2.5 },
+    response: `{"anomalies":[{"metric":"opex","category":"Finance","period":"2025-05","value":980000,"z_score":3.1}],"total":1,"threshold":2.5,"method":"zscore"}`,
+  },
+  {
+    name: "forecast_metric",
+    desc: "Forecast N periods ahead for a named metric with Monte-Carlo confidence bands. Falls back to case-insensitive / substring metric-name matching if there's no exact hit.",
+    sig: "forecast_metric(metric_name: str, periods: int = 6, confidence_level: float = 0.95)",
+    args: { metric_name: "revenue", periods: 6, confidence_level: 0.95 },
+    response: `{"metric":"revenue","forecast":[{"period":"2025-07","value":128400.5}],"lower_ci":[121000.2],"upper_ci":[135800.9],"confidence_level":0.95,"method":"linear_regression"}`,
+  },
+  {
+    name: "list_available_metrics",
+    desc: "Discovery tool: list metric names (scoped to a domain if given), categories, and periods available in the store.",
+    sig: "list_available_metrics(domain?: str)",
+    args: { domain: "Finance" },
+    response: `{"metrics":["revenue","gross_margin","opex"],"categories":["Finance","Growth","Operations","People","ESG","IT_Ops"],"periods":["2025-01","2025-02"]}`,
+  },
+  {
+    name: "get_executive_summary",
+    desc: "One-shot synthesis of health, top-5 key KPIs, and top-5 Finance anomalies into an executive snapshot. Takes no arguments.",
+    sig: "get_executive_summary()",
+    args: {},
+    response: `{"summary":"Executive snapshot generated by AgentKit","health_score":71.4,"interpretation":"healthy","components":{"growth":0.62},"key_metrics":[/* top 5 */],"anomalies":[/* top 5 */]}`,
+  },
+];
+
+const MCP_RESOURCES = ["Finance", "Growth", "Operations", "People", "ESG", "IT_Ops"];
+
+const MCP_PROMPT = {
+  name: "monthly_executive_briefing",
+  sig: "monthly_executive_briefing(month: str = 'this month')",
+  template: `Produce a monthly executive briefing for {month}. Sections: KEY FINDING, EVIDENCE (from KPI tools), ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. Be concrete and concise.`,
 };
 
 function CopyBtn({ text }: { text: string }) {
@@ -65,79 +240,237 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-export default function ApiDocs() {
+function MethodTag({ method }: { method: string }) {
+  const color = method === "GET" ? "#38bdf8" : method === "POST" ? "#a78bfa" : "#f59e0b";
+  return (
+    <span style={{ fontSize: "0.68rem", fontWeight: 700, fontFamily: "monospace", background: `${color}26`, color, borderRadius: 4, padding: "2px 6px", marginRight: 8 }}>{method}</span>
+  );
+}
+
+function RestTab() {
   const [lang, setLang] = useState<"curl" | "python" | "node">("curl");
   const [active, setActive] = useState(0);
   const ep = ENDPOINTS[active];
+  const groups = ["Core facade", "Admin API"] as const;
 
   return (
-    <div style={{ padding: "24px 32px", maxWidth: 1100, color: "#e2e8f0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-        <Terminal size={28} color="#a78bfa" />
-        <div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>AgentKit API Reference</h1>
-          <p style={{ margin: 0, fontSize: "0.85rem", color: "#94a3b8" }}>Integrate autonomous AI agents into your systems in minutes</p>
-        </div>
-      </div>
-
-      {/* Info banners */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, margin: "20px 0" }}>
-        {[
-          { icon: Globe, label: "Base URL", value: BASE_URL, color: "#38bdf8" },
-          { icon: Shield, label: "Auth", value: "Bearer token (header)", color: "#4ade80" },
-          { icon: Zap, label: "Protocol", value: "REST + SSE streaming", color: "#f59e0b" },
-          { icon: BookOpen, label: "Format", value: "JSON in, JSON out", color: "#a78bfa" },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center" }}>
-            <Icon size={18} color={color} />
-            <div><div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div><div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{value}</div></div>
+    <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 720, overflowY: "auto", paddingRight: 4 }}>
+        {groups.map((g) => (
+          <div key={g}>
+            <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{g} · {ENDPOINTS.filter((e) => e.group === g).length}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {ENDPOINTS.map((e, i) => e.group === g && (
+                <button key={i} onClick={() => setActive(i)} style={{ textAlign: "left", background: active === i ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: active === i ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "9px 12px", cursor: "pointer", transition: "all .15s" }}>
+                  <MethodTag method={e.method} />
+                  <span style={{ fontSize: "0.76rem", fontFamily: "monospace", color: active === i ? "#e2e8f0" : "#94a3b8" }}>{e.path}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 20 }}>
-        {/* Endpoint list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Endpoints</div>
-          {ENDPOINTS.map((e, i) => (
-            <button key={i} onClick={() => setActive(i)} style={{ textAlign: "left", background: active === i ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: active === i ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", cursor: "pointer", transition: "all .15s" }}>
-              <span style={{ fontSize: "0.68rem", fontWeight: 700, fontFamily: "monospace", background: e.method === "GET" ? "rgba(56,189,248,0.15)" : "rgba(167,139,250,0.15)", color: e.method === "GET" ? "#38bdf8" : "#a78bfa", borderRadius: 4, padding: "2px 6px", marginRight: 8 }}>{e.method}</span>
-              <span style={{ fontSize: "0.8rem", fontFamily: "monospace", color: active === i ? "#e2e8f0" : "#94a3b8" }}>{e.path}</span>
-            </button>
-          ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+            <MethodTag method={ep.method} />
+            <code style={{ fontSize: "0.88rem", color: "#e2e8f0", wordBreak: "break-all" }}>{BASE_URL}{ep.path}</code>
+          </div>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "#94a3b8" }}>{ep.desc}</p>
         </div>
 
-        {/* Detail panel */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace", background: ep.method === "GET" ? "rgba(56,189,248,0.15)" : "rgba(167,139,250,0.15)", color: ep.method === "GET" ? "#38bdf8" : "#a78bfa", borderRadius: 5, padding: "3px 8px" }}>{ep.method}</span>
-              <code style={{ fontSize: "0.9rem", color: "#e2e8f0" }}>{BASE_URL}{ep.path}</code>
-            </div>
-            <p style={{ margin: 0, fontSize: "0.85rem", color: "#94a3b8" }}>{ep.desc}</p>
-          </div>
-
-          {ep.body && (
-            <div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Code2 size={13} /> Request body</div>
-              <CodeBlock code={ep.body} />
-            </div>
-          )}
-
+        {ep.body && (
           <div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "#64748b", marginRight: 4 }}>Language:</span>
-              {(["curl", "python", "node"] as const).map((l) => (
-                <button key={l} onClick={() => setLang(l)} style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid", borderColor: lang === l ? "#7c3aed" : "rgba(255,255,255,0.1)", background: lang === l ? "rgba(124,58,237,0.2)" : "transparent", color: lang === l ? "#c4b5fd" : "#94a3b8", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}>{l}</button>
+            <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Code2 size={13} /> Request body</div>
+            <CodeBlock code={ep.body} />
+          </div>
+        )}
+
+        <div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
+            <span style={{ fontSize: "0.75rem", color: "#64748b", marginRight: 4 }}>Language:</span>
+            {(["curl", "python", "node"] as const).map((l) => (
+              <button key={l} onClick={() => setLang(l)} style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid", borderColor: lang === l ? "#7c3aed" : "rgba(255,255,255,0.1)", background: lang === l ? "rgba(124,58,237,0.2)" : "transparent", color: lang === l ? "#c4b5fd" : "#94a3b8", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}>{l}</button>
+            ))}
+          </div>
+          <CodeBlock code={(SNIPPETS as any)[lang](ep)} />
+        </div>
+
+        <div>
+          <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Check size={13} color="#4ade80" /> Sample response</div>
+          <CodeBlock code={ep.response} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function McpTab() {
+  const items = [
+    ...MCP_TOOLS.map((t) => ({ kind: "tool" as const, key: t.name, t })),
+    ...MCP_RESOURCES.map((d) => ({ kind: "resource" as const, key: `kpi://${d}/latest`, domain: d })),
+    { kind: "prompt" as const, key: MCP_PROMPT.name },
+  ];
+  const [active, setActive] = useState(0);
+  const item = items[active];
+
+  return (
+    <div>
+      <div style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: "0.83rem", color: "#94a3b8" }}>
+        MCP tools, resources and the prompt are invoked by an <strong style={{ color: "#e2e8f0" }}>MCP client</strong> (Claude Desktop, Cursor, a LangGraph/CrewAI/Claude Agent SDK integration) over stdio or SSE — <strong style={{ color: "#e2e8f0" }}>not raw HTTP</strong>. See the shapes below and the Connect page for wiring a client.
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 720, overflowY: "auto", paddingRight: 4 }}>
+          <div>
+            <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Tools · 6</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {items.map((it, i) => it.kind === "tool" && (
+                <button key={it.key} onClick={() => setActive(i)} style={{ textAlign: "left", background: active === i ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: active === i ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}>
+                  <Wrench size={12} style={{ marginRight: 8, color: "#a78bfa" }} />
+                  <span style={{ fontSize: "0.78rem", fontFamily: "monospace", color: active === i ? "#e2e8f0" : "#94a3b8" }}>{it.key}</span>
+                </button>
               ))}
             </div>
-            <CodeBlock code={(SNIPPETS as any)[lang](ep)} />
           </div>
-
           <div>
-            <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Check size={13} color="#4ade80" /> Sample response</div>
-            <CodeBlock code={ep.response} />
+            <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Resources · 6</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {items.map((it, i) => it.kind === "resource" && (
+                <button key={it.key} onClick={() => setActive(i)} style={{ textAlign: "left", background: active === i ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: active === i ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}>
+                  <Database size={12} style={{ marginRight: 8, color: "#38bdf8" }} />
+                  <span style={{ fontSize: "0.76rem", fontFamily: "monospace", color: active === i ? "#e2e8f0" : "#94a3b8" }}>{it.key}</span>
+                </button>
+              ))}
+            </div>
           </div>
+          <div>
+            <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Prompt · 1</div>
+            {items.map((it, i) => it.kind === "prompt" && (
+              <button key={it.key} onClick={() => setActive(i)} style={{ textAlign: "left", width: "100%", background: active === i ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: active === i ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}>
+                <MessageSquareQuote size={12} style={{ marginRight: 8, color: "#4ade80" }} />
+                <span style={{ fontSize: "0.76rem", fontFamily: "monospace", color: active === i ? "#e2e8f0" : "#94a3b8" }}>{it.key}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {item.kind === "tool" && (
+            <>
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 20px" }}>
+                <code style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>{item.t.sig}</code>
+                <p style={{ margin: "8px 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>{item.t.desc}</p>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Code2 size={13} /> Example tool call (MCP tools/call)</div>
+                <CodeBlock code={JSON.stringify({ method: "tools/call", params: { name: item.t.name, arguments: item.t.args } }, null, 2)} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6 }}>Python MCP client</div>
+                <CodeBlock code={`await session.call_tool("${item.t.name}", ${JSON.stringify(item.t.args)})`} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Check size={13} color="#4ade80" /> Sample response</div>
+                <CodeBlock code={item.t.response} />
+              </div>
+            </>
+          )}
+          {item.kind === "resource" && (
+            <>
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 20px" }}>
+                <code style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>kpi://{item.domain}/latest</code>
+                <p style={{ margin: "8px 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>Maps 1:1 onto query_kpis(domain="{item.domain}", limit=10) — a live read, not a static snapshot.</p>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Code2 size={13} /> Example resource read (MCP resources/read)</div>
+                <CodeBlock code={JSON.stringify({ method: "resources/read", params: { uri: `kpi://${item.domain}/latest` } }, null, 2)} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Check size={13} color="#4ade80" /> Sample response</div>
+                <CodeBlock code={`{"kpis":[{"metric":"revenue","category":"${item.domain}","period":"2025-06","value":128000}],"total":1}`} />
+              </div>
+            </>
+          )}
+          {item.kind === "prompt" && (
+            <>
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 20px" }}>
+                <code style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>{MCP_PROMPT.sig}</code>
+                <p style={{ margin: "8px 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>Returns a filled instruction template an agent hands itself to structure a briefing — it does not call any tool on its own.</p>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Code2 size={13} /> Example (MCP prompts/get)</div>
+                <CodeBlock code={JSON.stringify({ method: "prompts/get", params: { name: MCP_PROMPT.name, arguments: { month: "July 2026" } } }, null, 2)} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Check size={13} color="#4ade80" /> Returned template</div>
+                <CodeBlock code={MCP_PROMPT.template} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ApiDocs() {
+  const [tab, setTab] = useState<"rest" | "mcp">("rest");
+
+  return (
+    <div style={{ padding: "24px 32px", maxWidth: 1180, color: "#e2e8f0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <Terminal size={28} color="#a78bfa" />
+        <div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>AgentKit API Reference</h1>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "#94a3b8" }}>An MCP server for business-intelligence agents — with a REST facade over the same data for the dashboard you're looking at.</p>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, margin: "20px 0" }}>
+        {[
+          { icon: Globe, label: "REST base URL", value: BASE_URL, color: "#38bdf8" },
+          { icon: Shield, label: "Auth", value: "REST: optional X-OmniIntel-Internal-Token · MCP/SSE: Bearer MCP_AUTH_TOKEN", color: "#4ade80" },
+          { icon: Zap, label: "Protocol", value: "REST (JSON over HTTP) + MCP (stdio/SSE)", color: "#f59e0b" },
+          { icon: BookOpen, label: "Format", value: "JSON in, JSON out", color: "#a78bfa" },
+        ].map(({ icon: Icon, label, value, color }) => (
+          <div key={label} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center" }}>
+            <Icon size={18} color={color} />
+            <div><div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div><div style={{ fontSize: "0.8rem", fontWeight: 600, wordBreak: "break-word" }}>{value}</div></div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <button onClick={() => setTab("rest")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid", borderColor: tab === "rest" ? "#7c3aed" : "rgba(255,255,255,0.1)", background: tab === "rest" ? "rgba(124,58,237,0.2)" : "transparent", color: tab === "rest" ? "#c4b5fd" : "#94a3b8", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>
+          <Globe size={14} /> REST facade · 18 endpoints
+        </button>
+        <button onClick={() => setTab("mcp")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid", borderColor: tab === "mcp" ? "#7c3aed" : "rgba(255,255,255,0.1)", background: tab === "mcp" ? "rgba(124,58,237,0.2)" : "transparent", color: tab === "mcp" ? "#c4b5fd" : "#94a3b8", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>
+          <Wrench size={14} /> MCP surface · 6 tools / 6 resources / 1 prompt
+        </button>
+      </div>
+
+      {tab === "rest" ? <RestTab /> : <McpTab />}
+
+      <div style={{ marginTop: 28, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "18px 22px" }}>
+        <div style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}><GitBranch size={16} color="#f59e0b" /> Beyond single tool calls</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, fontSize: "0.83rem", color: "#94a3b8" }}>
+          <div>
+            <strong style={{ color: "#e2e8f0" }}>LangGraph workflow</strong> — a real 3-node agent chain (Planner → Analyst → Reporter, <code>src/agentkit_mcp/workflow.py</code>) that plans, calls the same MCP tools, and synthesizes an executive report. Trigger it via <code>POST /api/workflow/run</code> above, or the Workflow page.
+          </div>
+          <div>
+            <strong style={{ color: "#e2e8f0" }}>Claude Agent SDK demo</strong> — <code>demos/claude_agent_sdk_demo.py</code> exposes the same tools as an in-process SDK MCP server for Claude to plan and call.
+          </div>
+          <div>
+            <strong style={{ color: "#e2e8f0" }}>CrewAI demo</strong> — <code>demos/crewai_demo.py</code> wraps the tools as CrewAI <code>@tool</code> functions in a Researcher → Analyst → Reporter crew.
+          </div>
+          <div>
+            <strong style={{ color: "#e2e8f0" }}>DSPy research scaffold</strong> — <code>research/dspy_experiment.py</code> frames planner → analyst → reporter as a compilable, optimizable DSPy program (research artifact, not production).
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: "0.78rem", color: "#64748b" }}>
+          <Boxes size={13} /> All four paths call into the exact same tool functions in <code>mcp_server.py</code> — the same live database, the same results, whichever framework you use.
         </div>
       </div>
     </div>
