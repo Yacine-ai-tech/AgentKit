@@ -26,8 +26,8 @@ const LOCAL_CONFIG = `{
       "env": {
         "MCP_TRANSPORT": "stdio",
         "POSTGRES_URL": "postgresql://...",
-        "ANTHROPIC_API_KEY": "sk-ant-...",
-        "GROQ_API_KEY": "gsk_..."
+        "LLM_ENDPOINT": "https://api.openai.com/v1",
+        "LLM_TOKEN": "sk-..."
       }
     }
   }
