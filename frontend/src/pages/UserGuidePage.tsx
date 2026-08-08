@@ -82,8 +82,8 @@ export default function UserGuidePage() {
       "args": ["-m", "agentkit_mcp.mcp_server"],
       "env": {
         "POSTGRES_URL": "postgresql://user:password@localhost/db",
-        "GROQ_API_KEY": "your_groq_key",
-        "ANTHROPIC_API_KEY": "your_anthropic_key"
+        "LLM_ENDPOINT": "https://api.openai.com/v1",
+        "LLM_TOKEN": "your_api_token"
       }
     }
   }
@@ -149,12 +149,11 @@ export default function UserGuidePage() {
 
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
               <h3 className="font-semibold text-green-400 text-lg mb-2 flex items-center gap-2">
-                <Zap className="w-5 h-5" /> API Keys Required
+                <Zap className="w-5 h-5" /> Provider Agnostic Settings
               </h3>
               <ul className="text-sm text-gray-300 space-y-2">
-                <li>• <strong>GROQ_API_KEY:</strong> Default LLM provider</li>
-                <li>• <strong>ANTHROPIC_API_KEY:</strong> Reasoning LLM</li>
-                <li>• <strong>OPENAI_API_KEY:</strong> Optional backup</li>
+                <li>• <strong>LLM_ENDPOINT:</strong> Base URL for LiteLLM routing</li>
+                <li>• <strong>LLM_TOKEN:</strong> Bearer token for LLM access</li>
                 <li>• <strong>MCP_AUTH_TOKEN:</strong> For remote SSE access</li>
               </ul>
             </div>
