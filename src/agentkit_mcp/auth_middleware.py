@@ -76,8 +76,6 @@ class BearerAuthRateLimit:
             await send({"type": "http.response.body", "body": body})
             return
 
-
-
         headers = {k.lower(): v for k, v in (scope.get("headers") or [])}
 
         # 1) auth
