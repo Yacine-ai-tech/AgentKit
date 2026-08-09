@@ -3,6 +3,14 @@ import { BookOpen, Monitor, Terminal, FileCode, CheckCircle, ShieldAlert,
          Brain, Globe, Wrench, Database, MessageSquareQuote, GitBranch,
          Activity, BarChart3, Cable } from 'lucide-react';
 
+// Same resolution order as lib/api.ts / ApiDocs.tsx: an explicit VITE_API_BASE_URL wins
+// (split deployments), otherwise fall back to the current origin — so the sample MCP
+// client config below always shows wherever this guide is actually being served from,
+// not a hardcoded domain.
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "");
+
 export default function UserGuidePage() {
   return (
     <div className="p-8 max-w-6xl mx-auto h-full overflow-y-auto">
@@ -127,7 +135,7 @@ export default function UserGuidePage() {
     "agentkit-remote": {
       "command": "npx",
       "args": ["-y", "mcp-remote",
-               "https://gateway.ysiddo-ai-projects.app/agentkit/sse",
+               "${BASE_URL}/sse",
                "--header", "Authorization: Bearer \${MCP_AUTH_TOKEN}"],
       "env": { "MCP_AUTH_TOKEN": "<your token>" }
     }
