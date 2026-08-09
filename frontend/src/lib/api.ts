@@ -1,4 +1,4 @@
-/** Typed client for the AgentKit read-only facade (GAP_REPORT.md §2).
+/** Typed client for the AgentKit read-only facade.
  *  Every endpoint executes the SAME function the corresponding MCP tool runs. */
 
 export type ToolParam = { name: string; type: string; required: boolean; default?: unknown };
