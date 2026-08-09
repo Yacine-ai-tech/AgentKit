@@ -57,3 +57,6 @@ frontend/node_modules/
 .env.local
 .pytest_cache/
 .coverage
+
+# Backup from the .env line-ending repair (safe to delete once verified)
+.env.bak-corrupted
