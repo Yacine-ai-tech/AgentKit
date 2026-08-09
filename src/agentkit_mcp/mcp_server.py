@@ -7,12 +7,16 @@ Usage:
     python mcp_server.py
 """
 from __future__ import annotations
+from agentkit_mcp.services.pg_store import (
+    get_kpi_metrics,
+    get_available_metrics,
+    get_available_categories,
+    get_available_periods,
+)
 
-import asyncio
 import os
 from typing import Any, Dict, List, Optional
 
-from agentkit_mcp.core.config import settings
 from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
@@ -24,12 +28,6 @@ except ImportError:
     _FASTMCP = False
     log.warning("fastmcp not installed — MCP server not available")
 
-from agentkit_mcp.services.pg_store import (
-    get_kpi_metrics,
-    get_available_metrics,
-    get_available_categories,
-    get_available_periods,
-)
 _PG = True
 
 try:
