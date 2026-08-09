@@ -1,11 +1,12 @@
-# Lightweight dev compose for AgentKit — runs in the agentkit Lightning Studio.
+# Lightweight dev compose for AgentKit — meant for a remote dev host (any on-demand
+# cloud box, a home server, etc.) — not just a local machine.
 # Runs the MCP server over SSE on port 8005.
 # Bridge to Claude Desktop on the laptop via: npx mcp-remote http://localhost:8005/sse
 #
-# Usage inside the Studio:
+# Usage on the remote host:
 #   docker compose -f docker-compose.dev.yml up --build
 #
-# Reach it from the laptop: ssh -L 8005:localhost:8005 lightning-agentkit
+# Reach it from your laptop: ssh -L 8005:localhost:8005 <your-remote-host>
 # Claude Desktop config: { "command": "npx", "args": ["-y","mcp-remote","http://localhost:8005/sse"] }
 
 services:
