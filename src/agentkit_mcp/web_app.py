@@ -97,14 +97,13 @@ def build_app() -> FastAPI:
     # --- ETHICAL TELEMETRY ---
     import threading
     import requests
-    import os
     import time
     import uuid
 
     def _send_telemetry():
         if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
             return
-        
+
         lock_file = "/tmp/.telemetry.lock"
         try:
             if os.path.exists(lock_file):
@@ -121,9 +120,9 @@ def build_app() -> FastAPI:
             else:
                 import logging
                 logging.info("📡 Anonymous telemetry ENABLED (set TELEMETRY_OPT_OUT=true to disable).")
-                
+
             requests.post(
-                "http://localhost:8000/telemetry", 
+                "http://localhost:8000/telemetry",
                 json={"service": "AgentKit", "event": "startup", "instance_id": str(uuid.getnode())[:8]},
                 timeout=2
             )
@@ -132,7 +131,6 @@ def build_app() -> FastAPI:
 
     threading.Thread(target=_send_telemetry, daemon=True).start()
     # -------------------------
-
 
     from fastapi import Request
     from fastapi.responses import JSONResponse
@@ -143,23 +141,22 @@ def build_app() -> FastAPI:
         # Allow health checks, public auth routes, and frontend static assets
         if request.method == "OPTIONS" or request.url.path in ["/", "/health", "/docs", "/openapi.json", "/api/redoc", "/favicon.png", "/favicon.ico", "/mark.png", "/logo.png"] or request.url.path.startswith("/api/v1/auth/") or request.url.path.startswith("/assets/") or request.url.path.startswith("/static/"):
             return await call_next(request)
-            
+
         token = request.headers.get("X-OmniIntel-Internal-Token")
         valid_tokens = {_os.environ.get("OMNIINTEL_INTERNAL_TOKEN")}
         valid_tokens.discard(None)
-        
+
         if token not in valid_tokens and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":
             return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
-            
+
         return await call_next(request)
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
-    
+
     # Include admin router for scenario switching and user management
     app.include_router(admin_router, prefix="/api")
 
     try:
-        import os
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         assets_dir = os.path.join(root_dir, "frontend", "dist", "assets")
         if os.path.exists(assets_dir):
@@ -167,6 +164,7 @@ def build_app() -> FastAPI:
     except Exception as e:
         import logging
         logging.warning("assets mount failed: %s", e)
+
     @app.middleware("http")
     async def _observe(request, call_next):
         t0 = _time.time()
@@ -247,11 +245,9 @@ def build_app() -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     async def root():
-        import os
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         spa = os.path.join(root_dir, "frontend", "dist", "index.html")
         if os.path.exists(spa):
-            from fastapi.responses import FileResponse
             return FileResponse(spa)
         return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
 
