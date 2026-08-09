@@ -5,13 +5,12 @@ CPU-friendly: uses scikit-learn LinearRegression (no GPU needed).
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
 
 from agentkit_mcp.core.i18n import I18N
 from agentkit_mcp.core.logger import get_logger
@@ -39,9 +38,6 @@ class ForecastEngine:
         model = LinearRegression().fit(X, y)
         preds = model.predict(X)
         residual_std = np.std(y - preds)
-
-        mse = mean_squared_error(y, preds)
-        r2 = r2_score(y, preds)
 
         last_idx = df["time_index"].max()
         future_idx = np.arange(last_idx + 1, last_idx + periods + 1).reshape(-1, 1)
@@ -95,37 +91,37 @@ class ScenarioEngine:
         """
         results = np.zeros((iterations, periods))
         shocks = np.random.normal(0, 1, (iterations, periods))
-        
+
         for i in range(iterations):
             value = base_value
             for t in range(periods):
                 # Correlated random walk
                 if t > 0:
-                    prev_shock = shocks[i, t-1]
+                    prev_shock = shocks[i, t - 1]
                     current_shock = correlation * prev_shock + np.sqrt(1 - correlation**2) * shocks[i, t]
                 else:
                     current_shock = shocks[i, t]
-                
+
                 # Growth with stochastic component
                 drift = growth_rate / 12  # Monthly drift
                 volatility = std_dev / np.sqrt(12)  # Monthly volatility
-                
+
                 # Occasional large shocks (10% probability of 20% move)
                 if np.random.random() < 0.1:
                     current_shock *= 2
-                
+
                 value = value * (1 + drift + volatility * current_shock)
                 results[i, t] = max(0, value)  # Prevent negative values
-        
+
         mean_path = np.mean(results, axis=0)
         p10_path = np.percentile(results, 10, axis=0)
         p50_path = np.percentile(results, 50, axis=0)
         p90_path = np.percentile(results, 90, axis=0)
-        
+
         worst_case = np.min(results[:, -1])
         best_case = np.max(results[:, -1])
         probability_positive = np.mean(results[:, -1] > base_value) * 100
-        
+
         return {
             "mean_path": mean_path.tolist(),
             "p10_path": p10_path.tolist(),
@@ -152,7 +148,7 @@ class ScenarioEngine:
         """
         data = current_data.sort_values("period").copy() if "period" in current_data.columns else current_data.copy()
         data["scenario_value"] = data.get("value", data.get("actual", 1))
-        
+
         shock_point = len(data) // 2
         for idx in range(shock_point, len(data)):
             months_since_shock = idx - shock_point
@@ -163,7 +159,7 @@ class ScenarioEngine:
                 # Recover gradually (exponential recovery)
                 recovery_factor = 1 - (event_impact * np.exp(-months_since_shock / recovery_months))
                 data.iloc[idx, data.columns.get_loc("scenario_value")] *= recovery_factor
-        
+
         return data
 
     def sensitivity_analysis(
@@ -177,20 +173,20 @@ class ScenarioEngine:
         """
         sensitivity = {}
         base_value = base_forecast["forecast"].iloc[-1] if not base_forecast.empty else 1
-        
+
         for var, (min_val, max_val) in variables.items():
             mid = (min_val + max_val) / 2
             change_pct = 0.1  # Test ±10% change
-            
+
             impact_up = (mid * (1 + change_pct) - base_value) / base_value * 100
             impact_down = (mid * (1 - change_pct) - base_value) / base_value * 100
-            
+
             sensitivity[var] = {
                 "impact_up_pct": float(impact_up),
                 "impact_down_pct": float(impact_down),
                 "elasticity": float((impact_up - impact_down) / 20),  # % output change / % input change
             }
-        
+
         return sensitivity
 
 
