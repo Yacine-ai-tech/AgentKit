@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { Terminal, Copy, Check, Code2, BookOpen, Zap, Shield, Globe, Wrench, Database, MessageSquareQuote, GitBranch, Boxes } from "lucide-react";
 
-/* The real gateway path for the deployed backend (see frontend/.env.production / vercel.json). */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://gateway.ysiddo-ai-projects.app/agentkit";
+// Same resolution order as lib/api.ts's request client: an explicit VITE_API_BASE_URL
+// (for split frontend/backend deployments) wins, otherwise fall back to the current
+// origin (same-origin deployments, e.g. the Docker single-container setup) — so the
+// copy-paste examples always match wherever this page is actually being served from,
+// author's deployment or any self-hoster's, instead of a hardcoded URL.
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 /* ────────────────────────────────────────────────────────────────────────────
    REST facade — web_app.py (core, mounted on the app root) + src/api/admin.py
