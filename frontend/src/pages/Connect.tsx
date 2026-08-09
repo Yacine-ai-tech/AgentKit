@@ -5,12 +5,19 @@ import { Card, Chip } from "../kit/primitives";
 
 /* All snippets are real: claude_desktop_config.example.json (repo root) and demos/. */
 
+// Same resolution order as ApiDocs.tsx/lib/api.ts: an explicit VITE_API_BASE_URL wins,
+// otherwise same-origin — without this fallback the snippet below would render the
+// literal string "undefined/sse" for anyone building without that env var set.
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "");
+
 const REMOTE_CONFIG = `{
   "mcpServers": {
     "agentkit-remote": {
       "command": "npx",
       "args": ["-y", "mcp-remote",
-               "${import.meta.env.VITE_API_BASE_URL}/sse",
+               "${BASE_URL}/sse",
                "--header",
                "Authorization: Bearer \${MCP_AUTH_TOKEN}"],
       "env": { "MCP_AUTH_TOKEN": "<your token>" }
