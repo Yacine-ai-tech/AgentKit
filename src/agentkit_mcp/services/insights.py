@@ -107,18 +107,18 @@ def detect_anomalies(
     """
     if df.empty:
         return df.copy()
-    
+
     sort_col = "period" if "period" in df.columns else ("month_tag" if "month_tag" in df.columns else df.columns[0])
     df = df.sort_values(sort_col).copy()
     value_col = "value" if "value" in df.columns else ("actual" if "actual" in df.columns else df.columns[0])
-    
+
     if method == "zscore":
         # Z-score based anomaly detection
         mean = df[value_col].mean()
         std = df[value_col].std() or 1
         df["z_score"] = (df[value_col] - mean) / std
         df["is_anomaly"] = df["z_score"].abs() > z_threshold
-    
+
     elif method == "iqr":
         # Interquartile range method (robust to extremes)
         Q1 = df[value_col].quantile(0.25)
@@ -127,7 +127,7 @@ def detect_anomalies(
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
         df["is_anomaly"] = (df[value_col] < lower_bound) | (df[value_col] > upper_bound)
-    
+
     elif method == "isolation_forest":
         # Unsupervised ML anomaly detection
         try:
@@ -140,20 +140,20 @@ def detect_anomalies(
             std = df[value_col].std() or 1
             df["z_score"] = (df[value_col] - mean) / std
             df["is_anomaly"] = df["z_score"].abs() > z_threshold
-    
+
     elif method == "ewma":
         # Exponential weighted moving average (time-series aware)
         ewma = df[value_col].ewm(span=5).mean()
         ewma_std = df[value_col].rolling(window=5).std()
         df["is_anomaly"] = (df[value_col] - ewma).abs() > 2 * ewma_std
-    
+
     else:
         # Default to Z-score
         mean = df[value_col].mean()
         std = df[value_col].std() or 1
         df["z_score"] = (df[value_col] - mean) / std
         df["is_anomaly"] = df["z_score"].abs() > z_threshold
-    
+
     return df
 
 

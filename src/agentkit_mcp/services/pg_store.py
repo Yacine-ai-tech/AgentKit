@@ -11,6 +11,7 @@ Handles all persistence:
   - Monitoring logs
 """
 from __future__ import annotations
+from datetime import datetime
 
 import uuid
 from typing import Any, Dict, List, Optional
@@ -35,7 +36,7 @@ _pool_lock = None
 
 def _init_pool():
     """Initialize a persistent connection pool for Neon PostgreSQL.
-    
+
     This is the #2 fix for IntelAI latency. Previously every DB call created a
     fresh TCP+TLS connection to Neon (2-4s each). With pool=3 min connections,
     subsequent calls reuse existing connections (<50ms overhead).
@@ -75,7 +76,7 @@ def _init_pool():
 
 def _get_conn():
     """Get a PostgreSQL connection. Uses pool if available, else direct connect.
-    
+
     Pool reuse eliminates the 2-4s Neon cold-start per call. Falls back
     gracefully to direct psycopg.connect() if psycopg_pool is not installed.
     """
@@ -85,12 +86,16 @@ def _get_conn():
             def __init__(self, p):
                 self._p = p
                 self._c = p.getconn(timeout=10)
+
             def __getattr__(self, item):
                 return getattr(self._c, item)
+
             def close(self):
                 self._p.putconn(self._c)
+
             def __enter__(self):
                 return self._c.__enter__()
+
             def __exit__(self, exc_type, exc_val, exc_tb):
                 res = self._c.__exit__(exc_type, exc_val, exc_tb)
                 self.close()
@@ -308,7 +313,6 @@ def init_pg_tables():
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_data_spreadsheet_user ON data_spreadsheet(username)")
 
-        
         conn.execute("""
             CREATE TABLE IF NOT EXISTS monitoring_logs (
                 id          SERIAL PRIMARY KEY,
@@ -320,7 +324,7 @@ def init_pg_tables():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)")
-        
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS integration_credentials (
                 id SERIAL PRIMARY KEY,
@@ -332,7 +336,7 @@ def init_pg_tables():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_integration_user ON integration_credentials(username)")
-        
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS oauth_states (
                 state TEXT PRIMARY KEY,
@@ -581,7 +585,6 @@ def get_user_files(username: str, limit: int = 50, offset: int = 0) -> List[Dict
         conn.close()
 
 
-
 def delete_file(file_id: str, username: str) -> bool:
     """Delete a file from the database for the given user."""
     conn = _get_conn()
@@ -594,6 +597,7 @@ def delete_file(file_id: str, username: str) -> bool:
     except Exception as e:
         log.warning("Failed to delete file: %s", e)
         return False
+
 
 def get_file_content(file_id: str, username: str) -> Optional[str]:
     """Return extracted content for a file owned by a user."""
@@ -684,6 +688,7 @@ def store_knowledge_docs(docs_df: "pd.DataFrame", replace_prefix: Optional[str] 
 
 
 _DOCS_SEED_CACHE = None
+
 
 def _get_seeded_fallback_docs() -> "pd.DataFrame":
     import pandas as pd
@@ -809,7 +814,6 @@ def get_audit_trail(limit: int = 100) -> "pd.DataFrame":
 
 
 # ── Integration credentials (encrypted) ─────────────────────────────────────
-
 
     # ── Chat session helpers ───────────────────────────────────────────────────
 def store_chat_session(session_id: str, user_id: str, title: str = "New Chat", persona: str = "general", is_pinned: bool = False) -> None:
@@ -1127,7 +1131,7 @@ def store_token_refresh_metadata(
 ) -> bool:
     """
     Store refresh token metadata for long-lived OAuth integrations.
-    
+
     Args:
         username: User account
         integration_type: gmail, sheets, clickup, etc.
@@ -1135,18 +1139,18 @@ def store_token_refresh_metadata(
         token_expires_at: ISO 8601 timestamp when access token expires
         scope: OAuth scope
         encrypt: Whether to encrypt the refresh token before storing
-    
+
     Returns:
         True if successful
     """
     conn = _get_conn()
     try:
         from src.core.crypto import encrypt_value
-        
+
         encrypted_token = refresh_token
         if encrypt:
             encrypted_token = encrypt_value(refresh_token)
-        
+
         conn.execute(
             """
             INSERT INTO token_refresh_metadata (
@@ -1179,14 +1183,14 @@ def get_token_refresh_metadata(
 ) -> Optional[Dict[str, Any]]:
     """
     Retrieve refresh token metadata for OAuth integration.
-    
+
     Returns:
         Dict with refresh_token, token_expires_at, scope, etc. or None
     """
     conn = _get_conn()
     try:
         from src.core.crypto import decrypt_value
-        
+
         row = conn.execute(
             """
             SELECT refresh_token, token_expires_at, scope, last_refresh_success,
@@ -1196,17 +1200,17 @@ def get_token_refresh_metadata(
             """,
             [username, integration_type],
         ).fetchone()
-        
+
         if not row:
             return None
-        
+
         # Decrypt refresh token
         try:
             refresh_token = decrypt_value(row["refresh_token"])
         except Exception as e:
             log.warning("Failed to decrypt refresh token: %s", e)
             refresh_token = row["refresh_token"]  # Return encrypted if decryption fails
-        
+
         return {
             "refresh_token": refresh_token,
             "token_expires_at": row["token_expires_at"],
@@ -1231,14 +1235,14 @@ def update_token_refresh_status(
 ) -> bool:
     """
     Update token refresh attempt status.
-    
+
     Args:
         username: User account
         integration_type: Integration type
         success: True if refresh succeeded
         new_expires_at: New expiry time if successful
         error_message: Error if failed
-    
+
     Returns:
         True if successful
     """
@@ -1270,7 +1274,7 @@ def update_token_refresh_status(
                 """,
                 [username, integration_type],
             )
-            
+
             # Record failure event
             if error_message:
                 conn.execute(
@@ -1281,7 +1285,7 @@ def update_token_refresh_status(
                     """,
                     [username, integration_type, error_message[:500]],
                 )
-        
+
         conn.commit()
         return True
     except Exception as e:
@@ -1310,7 +1314,7 @@ def log_data_ingestion(
 ) -> int:
     """
     Log data ingestion attempt.
-    
+
     Returns:
         Ingestion log ID
     """
@@ -1394,7 +1398,7 @@ def log_data_export(
 ) -> int:
     """
     Log data export request.
-    
+
     Returns:
         Export log ID
     """
@@ -1600,13 +1604,13 @@ def append_spreadsheet_rows(
             "SELECT data FROM data_spreadsheet WHERE username = %s AND name = %s",
             [username, spreadsheet_name],
         ).fetchone()
-        
+
         if not current:
             return False
-        
+
         data = json.loads(current["data"]) if current["data"] else []
         data.extend(rows)
-        
+
         # Update
         conn.execute(
             """
@@ -1634,23 +1638,22 @@ def export_spreadsheet(
     import json
     import csv
     from io import StringIO
-    
+
     conn = _get_conn()
     try:
         row = conn.execute(
             "SELECT data, schema_columns FROM data_spreadsheet WHERE username = %s AND name = %s",
             [username, spreadsheet_name],
         ).fetchone()
-        
+
         if not row:
             return None
-        
+
         data = json.loads(row["data"]) if row["data"] else []
-        schema = json.loads(row["schema_columns"]) if row["schema_columns"] else []
-        
+
         if format == "json":
             return json.dumps(data, indent=2)
-        
+
         elif format == "csv":
             output = StringIO()
             if data:
@@ -1658,19 +1661,17 @@ def export_spreadsheet(
                 writer.writeheader()
                 writer.writerows(data)
             return output.getvalue()
-        
+
         else:
             log.warning("Unsupported export format: %s", format)
             return None
-    
+
     except Exception as e:
         log.error("Failed to export spreadsheet: %s", e)
         return None
     finally:
         conn.close()
 
-
-from datetime import datetime
 
 def store_integration_credentials(username: str, integration_type: str, credentials_encrypted: str) -> None:
     conn = _get_conn()
@@ -1684,6 +1685,7 @@ def store_integration_credentials(username: str, integration_type: str, credenti
     finally:
         conn.close()
 
+
 def remove_integration_credentials(username: str, integration_type: str) -> None:
     conn = _get_conn()
     try:
@@ -1692,6 +1694,7 @@ def remove_integration_credentials(username: str, integration_type: str) -> None
     finally:
         conn.close()
 
+
 def get_integration_credentials(username: str, integration_type: str):
     conn = _get_conn()
     try:
@@ -1699,6 +1702,7 @@ def get_integration_credentials(username: str, integration_type: str):
         return dict(row) if row else None
     finally:
         conn.close()
+
 
 def store_integration_token_refresh(username: str, integration_type: str, refresh_token: str, expires_in: int = 3600) -> None:
     from datetime import timedelta
@@ -1716,21 +1720,26 @@ def store_integration_token_refresh(username: str, integration_type: str, refres
     finally:
         conn.close()
 
+
 def get_integration_refresh_token(username: str, integration_type: str):
     conn = _get_conn()
     try:
         row = conn.execute("SELECT credentials_encrypted FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
-        if not row: return None
+        if not row:
+            return None
         from agentkit_mcp.core.crypto import decrypt_value
         import json as _json
         try:
             decrypted = decrypt_value(row["credentials_encrypted"])
             metadata = _json.loads(decrypted)
-            if "refresh_token" in metadata: return metadata
-        except: pass
+            if "refresh_token" in metadata:
+                return metadata
+        except Exception:
+            pass
         return None
     finally:
         conn.close()
+
 
 def log_monitoring_event(event_type: str, module: str, detail: str, actor: str) -> None:
     conn = _get_conn()
@@ -1739,6 +1748,7 @@ def log_monitoring_event(event_type: str, module: str, detail: str, actor: str) 
         conn.commit()
     finally:
         conn.close()
+
 
 def get_monitoring_stats():
     conn = _get_conn()

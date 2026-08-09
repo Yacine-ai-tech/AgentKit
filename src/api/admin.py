@@ -2,8 +2,7 @@
 Admin API endpoints for AgentKit - scenario switching, database info, user management
 """
 from fastapi import APIRouter, HTTPException
-from typing import Dict, List, Optional
-import os
+from typing import Dict
 from datetime import datetime
 
 # Try to import database services
@@ -18,7 +17,7 @@ router = APIRouter()
 # Scenario definitions matching frontend
 SCENARIOS = [
     "healthy",
-    "declining_revenue", 
+    "declining_revenue",
     "high_churn",
     "forecast_uncertainty",
     "anomaly_spike",
@@ -31,22 +30,24 @@ current_scenario = "healthy"
 users_db = []
 audit_log = []
 
+
 @router.get("/scenario")
 async def get_current_scenario() -> Dict:
     """Get currently active data scenario"""
     return {"current_scenario": current_scenario}
 
+
 @router.post("/scenario")
 async def switch_scenario(scenario_data: Dict) -> Dict:
     """Switch to a different data scenario"""
     global current_scenario
-    
+
     scenario_id = scenario_data.get("scenario")
     if scenario_id not in SCENARIOS:
         raise HTTPException(status_code=400, detail=f"Invalid scenario: {scenario_id}")
-    
+
     current_scenario = scenario_id
-    
+
     # Log the scenario switch
     audit_log.append({
         "timestamp": datetime.now().isoformat(),
@@ -54,8 +55,9 @@ async def switch_scenario(scenario_data: Dict) -> Dict:
         "details": f"Switched to scenario: {scenario_id}",
         "username": "admin"
     })
-    
+
     return {"status": "success", "current_scenario": current_scenario}
+
 
 @router.get("/database/info")
 async def get_database_info() -> Dict:
@@ -72,25 +74,25 @@ async def get_database_info() -> Dict:
             "forecast_available": False,
             "anomaly_available": False
         }
-    
+
     try:
         # Get database statistics
         metrics = get_kpi_metrics()
-        
+
         # Calculate statistics
         total_records = len(metrics)
         categories = len(set(m.get("category", "") for m in metrics))
         metric_types = len(set(m.get("metric", "") for m in metrics))
-        
+
         dates = [m.get("date") for m in metrics if m.get("date")]
         date_range = f"{min(dates)} to {max(dates)}" if dates else "N/A"
-        
+
         # Check data availability
         finance_available = any(m.get("category") == "Finance" for m in metrics)
         people_available = any(m.get("category") == "People" for m in metrics)
         forecast_available = any(m.get("category") == "Forecasting" for m in metrics)
         anomaly_available = any(m.get("category") == "Anomalies" for m in metrics)
-        
+
         return {
             "connected": True,
             "total_records": total_records,
@@ -116,10 +118,12 @@ async def get_database_info() -> Dict:
             "anomaly_available": False
         }
 
+
 @router.get("/users")
 async def list_users() -> Dict:
     """List all users"""
     return {"users": users_db}
+
 
 @router.post("/register")
 async def register_user(user_data: Dict) -> Dict:
@@ -127,14 +131,14 @@ async def register_user(user_data: Dict) -> Dict:
     username = user_data.get("username")
     password = user_data.get("password")
     role = user_data.get("role", "viewer")
-    
+
     if not username or not password:
         raise HTTPException(status_code=400, detail="Username and password required")
-    
+
     # Check if user already exists
     if any(u.get("username") == username for u in users_db):
         raise HTTPException(status_code=400, detail="Username already exists")
-    
+
     # Create new user
     new_user = {
         "id": len(users_db) + 1,
@@ -145,9 +149,9 @@ async def register_user(user_data: Dict) -> Dict:
         "is_active": True,
         "created_at": datetime.now().isoformat()
     }
-    
+
     users_db.append(new_user)
-    
+
     # Log user creation
     audit_log.append({
         "timestamp": datetime.now().isoformat(),
@@ -155,8 +159,9 @@ async def register_user(user_data: Dict) -> Dict:
         "details": f"Created user: {username} with role: {role}",
         "username": "admin"
     })
-    
+
     return {"status": "success", "user": {"id": new_user["id"], "username": username, "role": role}}
+
 
 @router.patch("/users/{user_id}")
 async def update_user(user_id: int, updates: Dict) -> Dict:
@@ -164,12 +169,12 @@ async def update_user(user_id: int, updates: Dict) -> Dict:
     user = next((u for u in users_db if u.get("id") == user_id), None)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Update user fields
     for key, value in updates.items():
         if key in user:
             user[key] = value
-    
+
     # Log user update
     audit_log.append({
         "timestamp": datetime.now().isoformat(),
@@ -177,13 +182,15 @@ async def update_user(user_id: int, updates: Dict) -> Dict:
         "details": f"Updated user {user_id}: {updates}",
         "username": "admin"
     })
-    
+
     return {"status": "success", "user": user}
+
 
 @router.get("/audit-log")
 async def get_audit_log(limit: int = 150) -> Dict:
     """Get audit log entries"""
     return {"logs": audit_log[-limit:]}
+
 
 @router.get("/roles")
 async def list_roles() -> Dict:
