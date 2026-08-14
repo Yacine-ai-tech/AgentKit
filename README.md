@@ -47,7 +47,7 @@ demonstrates all of this — not the limit of what the server does.
 ## PyPI Package
 
 ```bash
-pip install agentkit-mcp   # v0.1.8
+pip install agentkit-mcp   # v0.1.9
 agentkit-mcp               # CLI entrypoint
 ```
 
