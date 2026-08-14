@@ -286,22 +286,6 @@ shape) is already generic and already correct for this.
 
 ## Known limitations — documented, not fixed this session
 
-- **`INFERENCE_MODE`/`LLM_LOCAL` declared but not wired.** `config.py` defines both (and
-  a test checks they exist), matching the portfolio-wide "never assume a cloud provider
-  is the only option" constraint in spirit, but `workflow.py`'s planner/reporter always
-  call `settings.LLM_REASONING` directly — there's no actual fallback path to
-  `LLM_LOCAL`/Ollama when `INFERENCE_MODE=local`. Every sibling project (DocIntel Route
-  B, VoiceFlow's local/remote ASR) implements this real toggle; AgentKit only declares
-  it. Didn't implement this session because it touches live LLM call behavior I can't
-  fully verify without a local Ollama install.
-- **`get_executive_summary` / `/api/summary` is slow** (3 sequential unfiltered-ish DB
-  round trips — `get_company_health()`, `query_kpis(limit=10)` with no domain filter, and
-  `detect_kpi_anomalies(domain="Finance")` — each taking ~6–7s because `query_kpis`
-  fetches the *entire* table into pandas before applying `limit` in Python instead of
-  pushing `LIMIT`/domain filtering down to SQL). Not a hang (that was bug #2, now fixed),
-  but a real ~15–20s worst-case latency on the README's own demo script's "Generate a
-  full executive report" step. Worth a follow-up: push filtering to SQL in
-  `pg_store.get_kpi_metrics`.
 - **90-second embedded Loom demo** (STRATEGY.md §2.4 checklist) — not present in the
   README as an embedded video; only a live-site link. Not code-verifiable either way.
 
