@@ -16,7 +16,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from agentkit_mcp import mcp_server as tools
-from src.api.admin import router as admin_router
 
 # Observability: in-memory request log (v1 "observability" ask) — real facade calls.
 from collections import deque as _deque
@@ -182,9 +181,6 @@ def build_app() -> FastAPI:
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 
-    # Include admin router for scenario switching and user management
-    app.include_router(admin_router, prefix="/api")
-
     try:
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         assets_dir = os.path.join(root_dir, "frontend", "dist", "assets")
@@ -215,9 +211,17 @@ def build_app() -> FastAPI:
 
     @app.get("/api/tools")
     async def list_tools() -> Dict[str, Any]:
-        return {"tools": TOOL_META, "resources": [f"kpi://{d}/latest" for d in
-                ("Finance", "Growth", "Operations", "People", "ESG", "IT_Ops")],
-                "prompts": ["monthly_executive_briefing"]}
+        dynamic_tools = []
+        for p in getattr(tools, "PACKS", {}).values():
+            for t in p.tools:
+                meta = t.to_meta()
+                meta["endpoint"] = f"/api/packs/{p.name}/{t.name}"
+                dynamic_tools.append(meta)
+        return {
+            "tools": TOOL_META + dynamic_tools,
+            "resources": [],
+            "prompts": []
+        }
 
     @app.get("/api/kpis")
     async def kpis(domain: Optional[str] = None, period_from: Optional[str] = None,
