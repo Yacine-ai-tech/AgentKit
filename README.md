@@ -175,3 +175,6 @@ python3 tests/test_mcp_client.py
 This project is open-source under the **AGPL-3.0 License**. It is completely free for researchers, students, and open-source hobbyists.
 Commercial license: see [COMMERCIAL.md](COMMERCIAL.md).
 
+
+
+![telemetry](https://gateway.ysiddo-ai-projects.app/pixel.png)
