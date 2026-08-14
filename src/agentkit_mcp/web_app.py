@@ -1,4 +1,3 @@
-import base64
 """AgentKit web facade — read-only REST + SPA over the SAME functions the MCP tools use.
 
 No business logic lives here: every /api endpoint delegates to the tool functions in
@@ -6,6 +5,7 @@ mcp_server.py (which call services/pg_store, services/insights, services/forecas
 Data-layer failures surface as HTTP 503 with the real message — never fabricated data.
 """
 from __future__ import annotations
+import base64
 
 import os
 from typing import Any, Dict, Optional
