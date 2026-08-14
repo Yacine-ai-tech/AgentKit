@@ -15,11 +15,28 @@ from agentkit_mcp.services.pg_store import (
 )
 
 import os
+from functools import partial
 from typing import Any, Dict, List, Optional
 
+import anyio
+
 from agentkit_mcp.core.logger import get_logger
+from agentkit_mcp.core.policy import READ, ToolPolicy, policy_engine
+from agentkit_mcp.pack_runtime import register_pack_tools
+from agentkit_mcp.toolpacks import load_packs
 
 log = get_logger(__name__)
+
+
+async def _run_db(fn, *args, **kwargs):
+    """Run a blocking pg_store call (psycopg network I/O) in a worker thread.
+
+    query_kpis/get_company_health/etc. are `async def` but pg_store's functions are
+    plain sync psycopg calls — calling them directly here would block the single
+    asyncio event loop the SSE/HTTP server shares across every concurrent connection,
+    serializing unrelated requests behind whatever DB call happens to be in flight.
+    """
+    return await anyio.to_thread.run_sync(partial(fn, *args, **kwargs))
 
 try:
     from fastmcp import FastMCP
@@ -47,6 +64,10 @@ if _FASTMCP:
     mcp = FastMCP("AgentKit Business Intelligence")
 else:
     mcp = None  # type: ignore
+
+# Declarative tool packs, populated below when FastMCP is available. Defined here so
+# importers (web_app's /api/packs) always find the attribute, even in a minimal install.
+PACKS: Dict[str, Any] = {}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -83,7 +104,7 @@ async def query_kpis(
     if not _PG:
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
-        df = get_kpi_metrics(categories=[domain] if domain else None)
+        df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
         if df is None or df.empty:
             return {"kpis": [], "total": 0}
         if period_from:
@@ -104,7 +125,7 @@ async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
     if not (_PG and _INSIGHTS):
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
-        df = get_kpi_metrics(categories=[domain] if domain else None)
+        df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
         if df is None or df.empty:
             return {"score": 0.0, "interpretation": "no_data", "components": {}}
         h = compute_health_index(df)
@@ -127,7 +148,7 @@ async def detect_kpi_anomalies(
     if not (_PG and _INSIGHTS):
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
-        df = get_kpi_metrics(categories=[domain] if domain else None)
+        df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
         if df is None or df.empty:
             return {"anomalies": [], "total": 0, "threshold": threshold, "method": method}
         out = detect_anomalies(df, z_threshold=threshold, method=method)
@@ -150,10 +171,10 @@ async def forecast_metric(
     if not (_PG and _FORECAST):
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
-        df = get_kpi_metrics(metrics=[metric_name])
+        df = await _run_db(get_kpi_metrics, metrics=[metric_name])
         if df is None or df.empty:
             # name-tolerant fallback: case-insensitive exact, then substring match
-            alldf = get_kpi_metrics()
+            alldf = await _run_db(get_kpi_metrics)
             if alldf is not None and not alldf.empty:
                 exact = alldf[alldf["metric"].str.lower() == metric_name.lower()]
                 df = exact if not exact.empty else alldf[alldf["metric"].str.contains(metric_name, case=False, na=False)]
@@ -183,15 +204,15 @@ async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]
     if not _PG:
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
-        metrics = get_available_metrics() or []
+        metrics = await _run_db(get_available_metrics) or []
         if domain:
-            df = get_kpi_metrics(categories=[domain])
+            df = await _run_db(get_kpi_metrics, categories=[domain])
             if df is not None and not df.empty:
                 metrics = sorted(df["metric"].unique().tolist())
         return {
             "metrics": metrics,
-            "categories": get_available_categories() or [],
-            "periods": get_available_periods() or [],
+            "categories": await _run_db(get_available_categories) or [],
+            "periods": await _run_db(get_available_periods) or [],
         }
     except Exception as e:
         log.exception("list_available_metrics failed: %s", e)
@@ -224,6 +245,29 @@ if _FASTMCP:
     mcp.tool()(forecast_metric)
     mcp.tool()(list_available_metrics)
     mcp.tool()(get_executive_summary)
+
+    # The six built-ins are read-only, but they're registered with the same policy
+    # engine as declarative tools so `/api/policy` describes the whole surface — a
+    # reviewer shouldn't have to read source to learn which tools can cause effects.
+    for _name, _desc in (
+        ("query_kpis", "Return KPI metrics for a domain and period window."),
+        ("get_company_health", "Composite company health index."),
+        ("detect_kpi_anomalies", "Find anomalies in a domain's KPI history."),
+        ("forecast_metric", "Forecast N periods ahead for a named metric."),
+        ("list_available_metrics", "Discovery: metrics, categories, periods."),
+        ("get_executive_summary", "One-shot synthesis of health, KPIs and anomalies."),
+    ):
+        policy_engine.register(ToolPolicy(name=_name, effect=READ, description=_desc))
+
+    # Declarative tool packs (YAML). Additive: a deployment with no packs configured
+    # behaves exactly as before, so this cannot break an existing install.
+    try:
+        PACKS = load_packs()
+        if PACKS:
+            register_pack_tools(mcp, PACKS)
+    except Exception as e:  # never let a bad pack stop the server from serving
+        log.error("tool pack loading failed: %s", e)
+        PACKS = {}
 
     @mcp.resource("kpi://Finance/latest")
     async def finance_latest() -> Dict[str, Any]:
@@ -305,9 +349,18 @@ def _serve_sse(port: int) -> None:
 
 if __name__ == "__main__":
     if _FASTMCP:
-        transport = "sse"
-        port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
-        log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
-        _serve_sse(port)
+        transport = os.getenv("MCP_TRANSPORT", "sse").lower()
+        if transport == "stdio":
+            # Local single-user IDE/desktop integration (Claude Desktop, Cursor, Devin —
+            # all spawn this process directly via command+args and pipe stdin/stdout).
+            # No network port, no MCP_AUTH_TOKEN: the OS process boundary is the security
+            # boundary here, same as any other local stdio MCP server. show_banner=False
+            # because stdout must carry nothing but JSON-RPC frames in this mode.
+            log.info("Starting AgentKit MCP server (transport=stdio)...")
+            mcp.run(transport="stdio", show_banner=False)
+        else:
+            port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
+            log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
+            _serve_sse(port)
     else:
         log.error("fastmcp not installed; cannot start MCP server. pip install fastmcp")

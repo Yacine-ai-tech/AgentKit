@@ -49,7 +49,7 @@ jobs:
       - name: Check code style
         run: |
           pip install flake8
-          flake8 src/ --max-line-length=100 --ignore=E501
+          flake8 src/   # config in .flake8 (keeps local == CI)
 
   # ═══════════════════════════════════════════════════════════════════════════
   # PHASE 2 — Frontend Tests

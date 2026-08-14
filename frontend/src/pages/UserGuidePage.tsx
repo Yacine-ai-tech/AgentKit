@@ -269,7 +269,7 @@ export default function UserGuidePage() {
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300">The admin API's users/roles/audit-log/scenario endpoints are an in-memory demo layer for exercising the dashboard — they reset on every process restart and are not the production auth system.</span>
+              <span className="text-sm text-gray-300">The admin API's users/roles/audit-log/scenario endpoints (see API Docs) are an in-memory demo layer with no bundled UI — call them directly to exercise the REST facade. They reset on every process restart and are not the production auth system.</span>
             </li>
           </ul>
         </section>

@@ -1,11 +1,25 @@
-# AgentKit — MCP Server for Business Intelligence Agents
+# AgentKit — A Governed MCP Tool Server
 
 [![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
-Expose enterprise KPIs, health scores, forecasting, and anomaly detection as
-tools, resources, and prompt templates that any MCP-compatible agent (Claude
-Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
+An MCP server where **tools are declarative, effects are typed, and every action is
+policy-gated and audited** — usable by any MCP client (Claude Desktop, Cursor,
+LangGraph, Claude Agent SDK, CrewAI).
+
+Three things distinguish it from a typical MCP server:
+
+- **Declarative tools** — define tools in YAML over your own Postgres or HTTP API. No
+  Python, no fork. ([docs/REUSE.md](docs/REUSE.md))
+- **Real actions, not just reads** — tools declare an effect (`read` / `write` /
+  `destructive`) and mutating tools genuinely mutate.
+- **Guardrails that hold regardless of the prompt** — writes are off by default,
+  destructive actions need a human-held approval token the model never sees, everything
+  supports dry-run, and every call (allowed *and denied*) is audited.
+  ([SECURITY.md](SECURITY.md#capability-guardrails))
+
+The bundled business-intelligence tools below are the **reference pack** that
+demonstrates all of this — not the limit of what the server does.
 
 > 🔗 **Live MCP server (dashboard):** https://agentkit.ysiddo-ai-projects.app — connect from Claude Desktop
 > via `mcp-remote` (see [claude_desktop_config.example.json](claude_desktop_config.example.json)). On-demand backend (first call ~30–60 s).
@@ -14,9 +28,16 @@ Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
 
 ## What It Does
 
+**Reference BI pack (built in):**
 - **6 MCP Tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary`
 - **6 MCP Resources**: `kpi://Finance/latest` and similar for Growth, Operations, People, ESG, IT_Ops
 - **1 Reusable Prompt**: `monthly_executive_briefing`
+
+**Platform capabilities:**
+- **Declarative tool packs** — add tools over your own Postgres/HTTP in YAML (`packs/`)
+- **Typed effects + policy engine** — `GET /api/policy` publishes the capability envelope
+- **Audit trail** — `GET /api/audit`, allowed and denied, with deny reasons
+- **Multi-provider LLM routing incl. self-hosted** — `GET /api/llm-routing`
 - **LangGraph 3-agent workflow** in `workflow.py` (Planner → Analyst → Reporter)
 - **Claude Agent SDK demo** in `demos/claude_agent_sdk_demo.py`
 - **CrewAI demo** in `demos/crewai_demo.py`
@@ -26,7 +47,7 @@ Desktop, Cursor, LangGraph, Claude Agent SDK, CrewAI) can use.
 ## PyPI Package
 
 ```bash
-pip install agentkit-mcp   # v0.1.4
+pip install agentkit-mcp   # v0.1.8
 agentkit-mcp               # CLI entrypoint
 ```
 
@@ -50,9 +71,8 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
       "command": "python",
       "args": ["/abs/path/to/agentkit/mcp_server.py"],
       "env": {
+        "MCP_TRANSPORT": "stdio",
         "POSTGRES_URL": "postgresql://...",
-        "LLM_ENDPOINT": "https://api.openai.com/v1",
-        "LLM_TOKEN": "sk-...",
         "LOG_LEVEL": "DEBUG",
         "TELEMETRY_OPT_OUT": "true"
       }
@@ -61,12 +81,27 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 }
 ```
 
-### Leveraging Full Platform Capabilities
-AgentKit is highly configurable. Make sure you are not underestimating its capabilities by omitting key environment variables:
-- **LLM Routing/Overrides**: Use `LLM_ENDPOINT` and `LLM_TOKEN` to route distinct tasks to the most suitable models via LiteLLM, ensuring you get the best balance of speed and cost.
-- **Provider Agnostic**: The architecture is provider-agnostic, supporting any OpenAI-compatible endpoint.
-- **Diagnostics**: You can adjust `LOG_LEVEL` to `DEBUG` to gain deeper insights into the orchestration engine.
-- **Telemetry**: The platform automatically sends anonymous telemetry, but you have the flexibility to disable it via `TELEMETRY_OPT_OUT=true`.
+`MCP_TRANSPORT=stdio` is required here — without it `mcp_server.py` defaults to serving
+over SSE (a network port) instead of talking JSON-RPC over the pipes Claude Desktop
+spawns it with, and no tools will appear. Local stdio mode doesn't need
+`MCP_AUTH_TOKEN` (the OS process boundary is the auth boundary); that variable only
+matters for the SSE/network path — e.g. connecting to a remote deployment via
+`mcp-remote` (see the note at the top of this README).
+
+### Multi-Provider LLM Routing
+The 3-agent LangGraph workflow (`workflow.py`) and the demos/research scripts route
+each role to its own model via [LiteLLM](https://docs.litellm.ai/), configured with
+plain `provider/model` strings — no code changes to switch providers:
+- `LLM_REASONING` — planner + reporter agents (defaults to `anthropic/claude-sonnet-4-6`)
+- `LLM_DEFAULT` — the tool-calling analyst agent (defaults to `groq/llama-3.3-70b-versatile`)
+- `LLM_JUDGE` — used by the eval suite (defaults to `anthropic/claude-haiku-4-5`)
+- `LLM_LOCAL` + `INFERENCE_MODE=local` — route to a local/self-hosted model (e.g. Ollama)
+  instead of a hosted provider
+
+Set the matching provider API key(s) (`GROQ_API_KEY`, `ANTHROPIC_API_KEY`,
+`OPENAI_API_KEY`) for whichever models you reference above. See `.env.example`.
+- **Diagnostics**: adjust `LOG_LEVEL` to `DEBUG` for verbose logs.
+- **Telemetry**: an anonymous startup ping is sent by default; disable with `TELEMETRY_OPT_OUT=true`.
 
 Restart Claude Desktop, then ask:
 - "What's our company health right now?"

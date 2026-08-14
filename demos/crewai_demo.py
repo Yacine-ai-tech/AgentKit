@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import os
 
-from core.logger import get_logger
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 
@@ -25,7 +25,7 @@ except ImportError:
     log.warning("crewai not installed — demo unavailable")
 
 
-from mcp_server import get_company_health, get_executive_summary, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics  # noqa: E402
+from agentkit_mcp.mcp_server import get_company_health, get_executive_summary, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics  # noqa: E402
 
 
 def _sync(coro):

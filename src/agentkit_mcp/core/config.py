@@ -7,7 +7,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+# parents[3] = repo root (core -> agentkit_mcp -> src -> root). A no-op if the file
+# isn't there (e.g. `pip install agentkit-mcp` usage, which relies on real env vars
+# instead of a .env file).
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / "logs"
