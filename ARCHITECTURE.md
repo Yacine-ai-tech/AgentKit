@@ -315,3 +315,14 @@ only my local test process's pool went stale, and it fully recovered after the
 `check_connection` fix. No data was written or corrupted (every endpoint touched was
 read-only). Flagging this so it isn't mistaken for an incident — it wasn't one, but it's
 why the fix exists.
+
+## Pass 4 (2026-08-14) — UI parity & Hygiene Pass
+- **UI ↔ Backend Parity Gap Closed:** The `frontend` React app was completely unaware of the new policy capabilities (effects, scopes, writes_enabled) added in Pass 3.
+  - Fixed `lib/api.ts` to include `PolicyResponse`, `ToolPolicy`, and the `api.policy()` fetcher.
+  - Rewrote `pages/Tools.tsx` to query `/api/policy` and map its output onto the tool cards. It now correctly displays global capability switches (Writes ENABLED/DISABLED, Approval CONFIGURED/NOT SET) at the top of the page.
+  - Tool cards now display `effect` tags (`[READ]`, `[WRITE]`, `[DESTRUCTIVE]`) and list required `scopes`.
+  - Added checkboxes for `dry_run` and an input field for `approval_token` if a tool is `write` or `destructive`.
+- **Hygiene & Secrets Pass:** 
+  - Verified that `.env.example` has no leaked production URLs or hardcoded third-party tokens. All database URLs default to a placeholder `postgresql://user:password@localhost/dbname`.
+  - Removed stray and corrupted `.env` backup files (`.env.bak-20260811`, `.env.bak-corrupted`) left over from the workspace splitting.
+  - Verified no stray "TODO" or internal hack comments remained in `src/`.
