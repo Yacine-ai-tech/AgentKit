@@ -2,7 +2,32 @@
  *  Every endpoint executes the SAME function the corresponding MCP tool runs. */
 
 export type ToolParam = { name: string; type: string; required: boolean; default?: unknown };
-export type ToolMeta = { name: string; description: string; params: ToolParam[]; endpoint: string };
+export type ToolMeta = { 
+  name: string; 
+  description: string; 
+  params: ToolParam[]; 
+  endpoint: string;
+  effect?: string;
+  scopes?: string[];
+  pack?: string;
+};
+
+export type ToolPolicy = {
+  name: string;
+  effect: string;
+  scopes: string[];
+  rate_limit?: number | null;
+  requires_approval?: boolean | null;
+  description: string;
+};
+
+export type PolicyResponse = {
+  writes_enabled: boolean;
+  approval_configured: boolean;
+  granted_scopes: string[];
+  tools: Record<string, ToolPolicy>;
+  audit_sink: string | null;
+};
 
 export type KPI = Record<string, unknown> & {
   metric?: string;
@@ -93,6 +118,7 @@ const q = (params: Record<string, string | number | undefined>) => {
 
 export const api = {
   health: () => req<{ status: string }>("/health"),
+  policy: () => req<PolicyResponse>("/api/policy"),
   tools: () => req<{ tools: ToolMeta[]; resources: string[]; prompts: string[] }>("/api/tools"),
   kpis: (p: { domain?: string; period_from?: string; period_to?: string; metric_filter?: string; limit?: number }) =>
     req<{ kpis: KPI[]; total: number; error?: string }>(`/api/kpis${q(p)}`),
