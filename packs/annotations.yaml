@@ -1,0 +1,72 @@
+# Reference ACTION pack — shows AgentKit doing more than reading.
+#
+# An analyst agent that can only read produces opinions nobody can act on. These tools
+# let an agent record what it found back into the system of record: annotate a metric,
+# then (with human approval) retract an annotation it got wrong.
+#
+# Every tool here is gated. Nothing in this file can run unless the operator has set
+# AGENTKIT_ALLOW_WRITES=true, and `retract_annotation` additionally needs a human-held
+# AGENTKIT_APPROVAL_TOKEN — see core/policy.py.
+#
+# Table (created by scripts/init_annotations.sql):
+#   kpi_annotations(id, metric, period, note, severity, author, created_at, retracted_at)
+
+name: annotations
+description: >
+  Write-back annotations on KPI metrics — lets an agent record findings, not just report
+  them. Demonstrates AgentKit's guarded action path (effects, scopes, dry-run, approval).
+
+datasource:
+  type: postgres
+  url_env: POSTGRES_URL
+
+tools:
+  - name: list_annotations
+    description: >
+      Read annotations, most recent first. Optionally filter to one metric. Retracted
+      annotations are excluded unless include_retracted is true.
+    effect: read
+    params:
+      - {name: metric, type: string, required: false, description: "Metric name; omit for all"}
+      - {name: include_retracted, type: boolean, required: false, default: false}
+      - {name: limit, type: integer, required: false, default: 50}
+    # The ::text / ::boolean casts are load-bearing, not decoration: a parameter that
+    # only ever appears in an `IS NULL` test gives Postgres nothing to infer a type
+    # from, and it errors with "could not determine data type of parameter $1".
+    query: >
+      SELECT id, metric, period, note, severity, author, created_at, retracted_at
+      FROM kpi_annotations
+      WHERE (%(metric)s::text IS NULL OR metric = %(metric)s::text)
+        AND (%(include_retracted)s::boolean OR retracted_at IS NULL)
+      ORDER BY created_at DESC
+      LIMIT %(limit)s
+
+  - name: annotate_metric
+    description: >
+      Attach a durable note to a metric/period — e.g. an agent recording the root cause
+      it identified for an anomaly, so the next reader sees the explanation inline.
+    effect: write
+    scopes: [annotations.write]
+    rate_limit: 30
+    params:
+      - {name: metric, type: string, required: true}
+      - {name: period, type: string, required: true, description: "e.g. 2026-07"}
+      - {name: note, type: string, required: true}
+      - {name: severity, type: string, required: false, default: info, description: "info|warning|critical"}
+      - {name: author, type: string, required: false, default: agentkit}
+    statement: >
+      INSERT INTO kpi_annotations (metric, period, note, severity, author)
+      VALUES (%(metric)s, %(period)s, %(note)s, %(severity)s, %(author)s)
+
+  - name: retract_annotation
+    description: >
+      Soft-delete an annotation (sets retracted_at). Irreversible from the agent's side
+      and externally visible, so it is classed destructive and requires human approval.
+    effect: destructive
+    scopes: [annotations.write]
+    rate_limit: 10
+    params:
+      - {name: annotation_id, type: integer, required: true}
+    statement: >
+      UPDATE kpi_annotations SET retracted_at = NOW()
+      WHERE id = %(annotation_id)s AND retracted_at IS NULL

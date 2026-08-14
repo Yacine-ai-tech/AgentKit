@@ -1,0 +1,21 @@
+[flake8]
+max-line-length = 100
+
+# W503/W504 are mutually exclusive (line break before vs. after a binary operator) and
+# flake8 ships both in its DEFAULT ignore list for that reason. Passing --ignore=... on
+# the command line *replaces* that default list rather than extending it, which silently
+# re-enables both and makes some multi-line boolean expressions unfixable. Keeping the
+# config here means local runs and CI agree, and CI can just call `flake8 src/`.
+extend-ignore =
+    E501,
+    W503,
+    W504,
+    E203
+
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    build,
+    dist,
+    frontend

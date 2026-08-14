@@ -121,8 +121,8 @@ async def get_database_info() -> Dict:
 
 @router.get("/users")
 async def list_users() -> Dict:
-    """List all users"""
-    return {"users": users_db}
+    """List all users (passwords never leave the server, even for this in-memory demo store)"""
+    return {"users": [{k: v for k, v in u.items() if k != "password"} for u in users_db]}
 
 
 @router.post("/register")

@@ -60,6 +60,12 @@ def _init_pool():
                 open=False,
                 reconnect_timeout=30,
                 reconnect_failed=None,
+                # Neon (serverless) closes idle/over-limit connections server-side without
+                # telling the pool; without this check the pool keeps handing out those dead
+                # connections and every call fails with "server closed the connection
+                # unexpectedly" until the whole pool is stale. check_connection pings on
+                # checkout and transparently replaces a dead connection with a fresh one.
+                check=ConnectionPool.check_connection,
             )
             # Open the pool in the background so it doesn't block startup
             import threading

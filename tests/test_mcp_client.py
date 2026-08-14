@@ -1,8 +1,9 @@
 """
 AgentKit MCP Client Verification Test
 
-Simulates Claude Desktop, Cursor IDE, and Devin AI Agent JSON-RPC 2.0 stdio protocol calls
-and tests tool execution with mock/offline fallback.
+Direct in-process smoke test of the 6 tool functions (not a real MCP/stdio round-trip —
+for that, see test_stdio_transport.py, which actually spawns the process and speaks
+JSON-RPC over its stdin/stdout the way Claude Desktop/Cursor/Devin do).
 """
 import sys
 import os

@@ -49,7 +49,11 @@ def test_allows_with_correct_token():
 
 def test_rate_limit_429():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token=None, rate=3, window=60)
+    # token="" (not None) explicitly disables auth for this test regardless of whatever
+    # MCP_AUTH_TOKEN happens to be in the ambient environment — token=None falls back to
+    # os.getenv("MCP_AUTH_TOKEN"), which made this test flaky (401 instead of 429) whenever
+    # a real token was set/loaded from .env elsewhere in the test session.
+    mw = BearerAuthRateLimit(app, token="", rate=3, window=60)
     for _ in range(3):
         _run(mw, ip="9.9.9.9")
     sent = _run(mw, ip="9.9.9.9")          # 4th request in window
