@@ -50,7 +50,7 @@ STATUS.md
 drafts/
 steps.md
 
-# Redesigned SPA: built bundle IS deployed (Render Docker copies the repo)
+# Redesigned SPA: built bundle IS deployed (Docker copies the repo)
 frontend/node_modules/
 !frontend/dist/
 !frontend/dist/**
@@ -61,3 +61,6 @@ frontend/node_modules/
 
 # Backup from the .env line-ending repair (safe to delete once verified)
 .env.bak-corrupted
+
+# Internal dev-session architecture notes (not committed) — session-specific
+ARCHITECTURE.md
