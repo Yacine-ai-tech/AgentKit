@@ -420,6 +420,9 @@ def get_kpi_metrics(
     categories: Optional[List[str]] = None,
     segments: Optional[List[str]] = None,
     limit: Optional[int] = 2000,
+    period_from: Optional[str] = None,
+    period_to: Optional[str] = None,
+    metric_filter: Optional[str] = None,
 ) -> "pd.DataFrame":
     import pandas as pd
     conn = _get_conn()
@@ -432,9 +435,19 @@ def get_kpi_metrics(
                 ph = ",".join(["%s"] * len(vals))
                 filters.append(f"{col} IN ({ph})")
                 params.extend(vals)
+        if period_from:
+            filters.append("period >= %s")
+            params.append(period_from)
+        if period_to:
+            filters.append("period <= %s")
+            params.append(period_to)
+        if metric_filter:
+            filters.append("metric ILIKE %s")
+            params.append(f"%{metric_filter}%")
+
         if filters:
             q += " WHERE " + " AND ".join(filters)
-        q += " ORDER BY period, metric"
+        q += " ORDER BY period DESC, metric"
         if limit:
             q += " LIMIT %s"
             params.append(limit)
