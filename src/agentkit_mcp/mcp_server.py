@@ -104,16 +104,17 @@ async def query_kpis(
     if not _PG:
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
-        df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
+        df = await _run_db(
+            get_kpi_metrics, 
+            categories=[domain] if domain else None,
+            period_from=period_from,
+            period_to=period_to,
+            metric_filter=metric_filter,
+            limit=limit
+        )
         if df is None or df.empty:
             return {"kpis": [], "total": 0}
-        if period_from:
-            df = df[df["period"] >= period_from]
-        if period_to:
-            df = df[df["period"] <= period_to]
-        if metric_filter:
-            df = df[df["metric"].str.contains(metric_filter, case=False, na=False)]
-        rows = _records(df, limit=limit)
+        rows = _records(df)
         return {"kpis": rows, "total": len(rows)}
     except Exception as e:
         log.exception("query_kpis failed: %s", e)
