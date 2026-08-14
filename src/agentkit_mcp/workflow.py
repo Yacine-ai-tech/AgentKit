@@ -15,7 +15,6 @@ import asyncio
 import json
 from typing import Any, Dict, List, Optional, TypedDict
 
-from agentkit_mcp.core.config import settings
 from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
@@ -27,8 +26,10 @@ except ImportError:
     _LANGGRAPH = False
     log.warning("langgraph not installed — workflow will not run")
 
+from agentkit_mcp.core.llm_router import LLMUnavailable, llm_call  # noqa: E402
+
 try:
-    from litellm import acompletion
+    import litellm  # noqa: F401  (routing goes through llm_router; this is a presence check)
     _LITELLM = True
 except ImportError:
     _LITELLM = False
@@ -61,9 +62,8 @@ async def planner_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         return state
     try:
         metrics = await list_available_metrics()
-        resp = await acompletion(
-            model=settings.LLM_REASONING,
-            messages=[
+        resp = await llm_call(
+            [
                 {"role": "system", "content": (
                     "You are a planner. Produce a concise 3-4 step plan for answering "
                     f"the question using available tools. Available metrics/categories: "
@@ -71,9 +71,13 @@ async def planner_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
                 )},
                 {"role": "user", "content": state["question"]},
             ],
+            tier="reasoning",
             temperature=0.3,
         )
         state["plan"] = resp.choices[0].message.content or ""
+    except LLMUnavailable as e:
+        log.warning("planner_agent: no model available (%s)", e)
+        state["error"] = str(e)
     except Exception as e:
         log.exception("planner_agent failed: %s", e)
         state["error"] = str(e)
@@ -114,9 +118,8 @@ async def reporter_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         state["report_sections"] = {"key_finding": "stub"}
         return state
     try:
-        resp = await acompletion(
-            model=settings.LLM_REASONING,
-            messages=[
+        resp = await llm_call(
+            [
                 {"role": "system", "content": (
                     "You synthesize raw data into an executive report with these sections: "
                     "KEY FINDING, EVIDENCE, ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. "
@@ -128,6 +131,7 @@ async def reporter_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
                     f"Raw data: {json.dumps(state.get('raw_data', {}))[:6000]}"
                 )},
             ],
+            tier="reasoning",
             temperature=0.2,
         )
         text = resp.choices[0].message.content or ""
@@ -149,6 +153,9 @@ async def reporter_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         if current:
             sections[current.lower().replace(" ", "_")] = "\n".join(buffer).strip()
         state["report_sections"] = sections
+    except LLMUnavailable as e:
+        log.warning("reporter_agent: no model available (%s)", e)
+        state["error"] = str(e)
     except Exception as e:
         log.exception("reporter_agent failed: %s", e)
         state["error"] = str(e)

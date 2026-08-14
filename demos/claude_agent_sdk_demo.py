@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import os
 
-from core.logger import get_logger
+from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
 
@@ -32,7 +32,7 @@ except ImportError:
     _SDK = False
     log.warning("claude_agent_sdk not installed — demo unavailable")
 
-from mcp_server import get_company_health, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics, get_executive_summary  # noqa: E402
+from agentkit_mcp.mcp_server import get_company_health, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics, get_executive_summary  # noqa: E402
 
 
 if _SDK:
