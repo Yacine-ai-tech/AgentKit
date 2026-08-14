@@ -270,37 +270,6 @@ if _FASTMCP:
         log.error("tool pack loading failed: %s", e)
         PACKS = {}
 
-    @mcp.resource("kpi://Finance/latest")
-    async def finance_latest() -> Dict[str, Any]:
-        return await query_kpis(domain="Finance", limit=10)
-
-    @mcp.resource("kpi://Growth/latest")
-    async def growth_latest() -> Dict[str, Any]:
-        return await query_kpis(domain="Growth", limit=10)
-
-    @mcp.resource("kpi://Operations/latest")
-    async def ops_latest() -> Dict[str, Any]:
-        return await query_kpis(domain="Operations", limit=10)
-
-    @mcp.resource("kpi://People/latest")
-    async def people_latest() -> Dict[str, Any]:
-        return await query_kpis(domain="People", limit=10)
-
-    @mcp.resource("kpi://ESG/latest")
-    async def esg_latest() -> Dict[str, Any]:
-        return await query_kpis(domain="ESG", limit=10)
-
-    @mcp.resource("kpi://IT_Ops/latest")
-    async def itops_latest() -> Dict[str, Any]:
-        return await query_kpis(domain="IT_Ops", limit=10)
-
-    @mcp.prompt("monthly_executive_briefing")
-    def monthly_briefing(month: str = "this month") -> str:
-        return (
-            f"Produce a monthly executive briefing for {month}. "
-            "Sections: KEY FINDING, EVIDENCE (from KPI tools), ROOT CAUSE, "
-            "RECOMMENDED ACTION, RISK IF UNADDRESSED. Be concrete and concise."
-        )
 
 
 def _serve_sse(port: int) -> None:
