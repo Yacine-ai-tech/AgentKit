@@ -111,7 +111,7 @@ def compile_program() -> dict:
     compiled = optimizer.compile(BusinessAnalysisPipeline(), trainset=TRAINSET)
 
     # Free-tier LLM rate limits: space out the post-compile eval calls (same pattern as
-    # IntelAI's scripts/evaluate_with_rageval_package.py) and skip, rather than crash on,
+    # a standalone evaluator script and skip, rather than crash on,
     # any single example that hits a rate limit or transient error.
     import time
     call_delay = float(os.getenv("DSPY_CALL_DELAY_SECONDS", "5"))
@@ -137,7 +137,7 @@ def compile_program() -> dict:
 
 def _log_compilation_to_rageval(summary: dict) -> None:
     """Log the compile run to RAGeval, in-process (no network call, no evaluator URL to
-    configure) — the same "drop-in library" pattern IntelAI's
+    configure) — following a modular "drop-in library" pattern.
     scripts/evaluate_with_rageval_package.py uses. Optional: rageval isn't a core
     requirement.txt dependency for AgentKit, so this degrades to a clear skip message
     rather than failing the research run if it isn't installed."""

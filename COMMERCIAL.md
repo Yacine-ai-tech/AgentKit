@@ -12,4 +12,4 @@ If your corporate legal policies forbid you from open-sourcing your proprietary 
 - Deploy the software for internal business operations without publishing your modifications.
 - Offer the software as part of a managed or hosted service.
 
-**To obtain a Commercial License, contact:** contact@ysiddo-ai-projects.app
+**To obtain a Commercial License, contact:** Open a GitHub issue tagged `[commercial]` or reach out via the repository's contact page.

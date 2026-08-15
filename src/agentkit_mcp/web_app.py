@@ -141,7 +141,7 @@ def build_app() -> FastAPI:
 
         try:
             telemetry_url = os.environ.get(
-                "TELEMETRY_URL", os.environ.get("TELEMETRY_URL", "https://gateway.ysiddo-ai-projects.app/telemetry")
+                "TELEMETRY_URL", os.environ.get("TELEMETRY_URL", "")  # set TELEMETRY_URL to opt into telemetry
             )
             if "log" in globals():
                 globals()["log"].info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
@@ -170,12 +170,12 @@ def build_app() -> FastAPI:
         if request.method == "OPTIONS" or request.url.path in ["/", "/health", "/docs", "/openapi.json", "/api/redoc", "/favicon.png", "/favicon.ico", "/mark.png", "/logo.png"] or request.url.path.startswith("/api/v1/auth/") or request.url.path.startswith("/assets/") or request.url.path.startswith("/static/"):
             return await call_next(request)
 
-        token = request.headers.get("X-OmniIntel-Internal-Token")
-        valid_tokens = {_os.environ.get("OMNIINTEL_INTERNAL_TOKEN")}
+        token = request.headers.get("X-AgentKit-Internal-Token")
+        valid_tokens = {_os.environ.get("AGENTKIT_INTERNAL_TOKEN")}
         valid_tokens.discard(None)
 
         if token not in valid_tokens and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":
-            return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
+            return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-AgentKit-Internal-Token"})
 
         return await call_next(request)
 
