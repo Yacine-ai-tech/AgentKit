@@ -105,7 +105,7 @@ async def query_kpis(
         raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
     try:
         df = await _run_db(
-            get_kpi_metrics, 
+            get_kpi_metrics,
             categories=[domain] if domain else None,
             period_from=period_from,
             period_to=period_to,
@@ -269,7 +269,6 @@ if _FASTMCP:
     except Exception as e:  # never let a bad pack stop the server from serving
         log.error("tool pack loading failed: %s", e)
         PACKS = {}
-
 
 
 def _serve_sse(port: int) -> None:
