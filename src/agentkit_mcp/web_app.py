@@ -96,70 +96,6 @@ def build_app() -> FastAPI:
 
 
 
-    # project can count distinct installs. Sends only {service, event, instance_id} —
-    # no document content, filenames, IPs, or other request data. Disable entirely
-
-    import threading
-    import requests
-    import time
-    import uuid
-
-    from agentkit_mcp.core.config import settings as _settings
-
-    def _telemetry_instance_id() -> str:
-        """A random, locally-generated install ID — NOT derived from MAC address or any
-        other hardware fingerprint. Persisted under LOGS_DIR so repeat startups of the
-        same install report the same ID (for dedup on the receiving end); delete the
-        file to reset it."""
-        id_file = os.path.join(_settings.LOGS_DIR, ".telemetry_instance_id")
-        try:
-            if os.path.exists(id_file):
-                existing = open(id_file).read().strip()
-                if existing:
-                    return existing
-        except Exception:
-            pass
-        new_id = uuid.uuid4().hex[:16]
-        try:
-            with open(id_file, "w") as f:
-                f.write(new_id)
-        except Exception:
-            pass
-        return new_id
-
-    def _send_telemetry():
-
-        lock_file = os.path.join(_settings.LOGS_DIR, ".telemetry_last_ping")
-        try:
-            if os.path.exists(lock_file):
-                if time.time() - os.path.getmtime(lock_file) < 21600:
-                    return
-            with open(lock_file, "w") as f:
-                f.write(str(time.time()))
-        except Exception:
-            pass
-
-        try:
-            telemetry_url = os.environ.get(
-                "TELEMETRY_URL", os.environ.get("TELEMETRY_URL", "")  # set TELEMETRY_URL to opt into telemetry
-            )
-            if "log" in globals():
-                globals()["log"].info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
-            else:
-                import logging
-                logging.info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
-
-            requests.post(
-                telemetry_url,
-                json={"service": "AgentKit", "event": "startup", "instance_id": _telemetry_instance_id()},
-                timeout=2
-            )
-        except Exception:
-            pass
-
-    threading.Thread(target=_send_telemetry, daemon=True).start()
-    # -------------------------
-
     from fastapi import Request
     from fastapi.responses import JSONResponse
     import os as _os
@@ -174,7 +110,8 @@ def build_app() -> FastAPI:
         valid_tokens = {_os.environ.get("AGENTKIT_INTERNAL_TOKEN")}
         valid_tokens.discard(None)
 
-        if token not in valid_tokens and _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":
+        auth_disabled = _os.environ.get("ALLOW_UNAUTHENTICATED_API", "false").lower() == "true"
+        if token not in valid_tokens and not auth_disabled:
             return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-AgentKit-Internal-Token"})
 
         return await call_next(request)
@@ -229,9 +166,15 @@ def build_app() -> FastAPI:
         resources_out: list = []
         prompts_out:   list = []
         try:
-            async with _MCPClient(_mcp_mod.mcp) as mcp_client:
-                raw_resources = await mcp_client.list_resources()
-                raw_prompts   = await mcp_client.list_prompts()
+            # Optimize: Avoid full Client initialization on every request
+            mcp_srv = getattr(_mcp_mod.mcp, "_mcp_server", _mcp_mod.mcp)
+            raw_resources = []
+            if hasattr(_mcp_mod.mcp, "_resources"):
+                raw_resources = list(_mcp_mod.mcp._resources.values())
+            raw_prompts = []
+            if hasattr(_mcp_mod.mcp, "_prompts"):
+                raw_prompts = list(_mcp_mod.mcp._prompts.values())
+
             resources_out = [
                 {"uri": str(r.uri), "name": r.name or str(r.uri), "description": r.description or ""}
                 for r in raw_resources
@@ -264,15 +207,24 @@ def build_app() -> FastAPI:
         Returns {"uri", "content", "mime_type"} or {"error": ...} on failure.
         """
         from agentkit_mcp import mcp_server as _mcp_mod
-        from fastmcp import Client as _MCPClient
         try:
-            async with _MCPClient(_mcp_mod.mcp) as mcp_client:
-                result = await mcp_client.read_resource(uri)
-            # result is a list of content parts; join text parts
-            content_parts = [
-                part.text if hasattr(part, "text") else str(part)
-                for part in (result or [])
-            ]
+            # Bypass Client overhead
+            func = _mcp_mod.mcp._resources.get(uri)
+            if not func:
+                return {"error": "not found", "uri": uri}
+            import inspect
+            if inspect.iscoroutinefunction(func):
+                result = await func()
+            else:
+                result = func()
+            
+            # result is a list of content parts or single string; join text parts
+            content_parts = []
+            if isinstance(result, str):
+                content_parts.append(result)
+            else:
+                for part in (result or []):
+                    content_parts.append(part.text if hasattr(part, "text") else str(part))
             return {"uri": uri, "content": "\n".join(content_parts), "mime_type": "text/plain"}
         except Exception as exc:
             return {"error": str(exc), "uri": uri}
@@ -283,19 +235,29 @@ def build_app() -> FastAPI:
         Returns {"name", "content"} where content is the rendered prompt string.
         """
         from agentkit_mcp import mcp_server as _mcp_mod
-        from fastmcp import Client as _MCPClient
         args = {k: v for k, v in request.query_params.items()}
         try:
-            async with _MCPClient(_mcp_mod.mcp) as mcp_client:
-                result = await mcp_client.get_prompt(name, args)
-            # result.messages is a list of PromptMessage; join text content
+            func = _mcp_mod.mcp._prompts.get(name)
+            if not func:
+                return {"error": "not found", "name": name}
+            
+            import inspect
+            if inspect.iscoroutinefunction(func):
+                result = await func(**args)
+            else:
+                result = func(**args)
+            
+            # result is a string or list of PromptMessage; join text content
             parts = []
-            for msg in (result.messages or []):
-                content = msg.content
-                if hasattr(content, "text"):
-                    parts.append(content.text)
-                else:
-                    parts.append(str(content))
+            if isinstance(result, str):
+                parts.append(result)
+            else:
+                for msg in (result or []):
+                    content = getattr(msg, "content", msg)
+                    if hasattr(content, "text"):
+                        parts.append(content.text)
+                    else:
+                        parts.append(str(content))
             return {"name": name, "content": "\n".join(parts)}
         except Exception as exc:
             return {"error": str(exc), "name": name}
