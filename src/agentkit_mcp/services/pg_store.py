@@ -54,8 +54,8 @@ def _init_pool():
             from psycopg_pool import ConnectionPool
             _pool = ConnectionPool(
                 settings.POSTGRES_URL,
-                min_size=2,
-                max_size=8,
+                min_size=4,
+                max_size=32,
                 kwargs={"row_factory": dict_row},
                 open=False,
                 reconnect_timeout=30,
@@ -125,44 +125,6 @@ def init_pg_tables():
     conn = _get_conn()
     try:
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id          TEXT PRIMARY KEY,
-                username    TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                role        TEXT NOT NULL DEFAULT 'viewer',
-                is_active   BOOLEAN NOT NULL DEFAULT TRUE,
-                preferred_language TEXT NOT NULL DEFAULT 'en',
-                full_name   TEXT,
-                avatar_url  TEXT,
-                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS chat_sessions (
-                id          TEXT PRIMARY KEY,
-                user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                title       TEXT NOT NULL DEFAULT 'New Chat',
-                persona     TEXT DEFAULT 'general',
-                is_pinned   BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS chat_messages (
-                id          SERIAL PRIMARY KEY,
-                session_id  TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
-                role        TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
-                content     TEXT NOT NULL,
-                mode        TEXT DEFAULT 'conversation',
-                sources     JSONB DEFAULT '[]'::jsonb,
-                tokens_used INTEGER DEFAULT 0,
-                latency_ms  INTEGER DEFAULT 0,
-                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        conn.execute("""
             CREATE TABLE IF NOT EXISTS kpi_metrics (
                 id          SERIAL PRIMARY KEY,
                 period      TEXT NOT NULL,
@@ -216,108 +178,10 @@ def init_pg_tables():
             )
         """)
         # Indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_period ON kpi_metrics(period)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_category ON kpi_metrics(category)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_metric ON kpi_metrics(metric)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_trail(event_type)")
-
-        # File management (uploaded artifacts and extracted content)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS uploaded_files (
-                id TEXT PRIMARY KEY,
-                username TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                file_path TEXT,
-                file_type TEXT,
-                extracted_content TEXT,
-                metadata JSONB DEFAULT '{}'::jsonb,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-            """
-        )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_uploaded_files_user ON uploaded_files(username)")
-
-        # Ingestion and export operation logs
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS data_ingestion_log (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL,
-                filename TEXT,
-                file_type TEXT,
-                source TEXT,
-                status TEXT NOT NULL DEFAULT 'processing',
-                row_count INTEGER DEFAULT 0,
-                file_size_bytes BIGINT,
-                import_destination TEXT,
-                mapping_config JSONB,
-                preview_data JSONB,
-                error_message TEXT,
-                ingested_at TIMESTAMPTZ,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-            """
-        )
-
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS data_export_log (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL,
-                export_name TEXT NOT NULL,
-                export_format TEXT NOT NULL,
-                source_type TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending',
-                query JSONB,
-                output_location TEXT,
-                row_count INTEGER,
-                file_size_bytes BIGINT,
-                error_message TEXT,
-                expiration_at TIMESTAMPTZ,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-            """
-        )
-
-        # Domain preference and history
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS domain_preference (
-                username TEXT PRIMARY KEY,
-                default_domain TEXT NOT NULL DEFAULT 'general',
-                last_used_domain TEXT,
-                domain_history JSONB DEFAULT '{}'::jsonb,
-                last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-            """
-        )
-
-        # Mini spreadsheet store
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS data_spreadsheet (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL,
-                name TEXT NOT NULL,
-                domain TEXT DEFAULT 'general',
-                description TEXT,
-                is_public BOOLEAN NOT NULL DEFAULT FALSE,
-                data TEXT,
-                schema_columns TEXT,
-                row_count INTEGER DEFAULT 0,
-                created_by TEXT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE(username, name)
-            )
-            """
-        )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_data_spreadsheet_user ON data_spreadsheet(username)")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS monitoring_logs (
@@ -330,29 +194,6 @@ def init_pg_tables():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)")
-
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS integration_credentials (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL,
-                integration_type TEXT NOT NULL,
-                credentials_encrypted TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_integration_user ON integration_credentials(username)")
-
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS oauth_states (
-                state TEXT PRIMARY KEY,
-                username TEXT NOT NULL,
-                integration_type TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                expires_at TIMESTAMPTZ
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_oauth_state_username ON oauth_states(username)")
 
         conn.commit()
         log.info("✅ PostgreSQL tables initialized")
