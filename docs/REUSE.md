@@ -105,6 +105,44 @@ SSE) *and* at `POST /api/packs/{pack}/{tool}` — same policy enforcement either
 
 ---
 
+## Direction 3 — Adding your own MCP Resources and Prompts
+
+Tool packs (Direction 2) cover tools. MCP also exposes two other primitive types:
+
+- **Resources** — read-only data anchors at a stable URI (e.g. `myapp://config/current`). An agent or client can pin a resource in its context rather than calling a tool every time.
+- **Prompts** — reusable prompt templates a client can invoke by name, optionally with arguments (e.g. `weekly_summary(metric="revenue")`).
+
+The core AgentKit server registers **none of these by default** — intentionally blank. You add your own in a Python extension file:
+
+```python
+# my_extension.py
+from agentkit_mcp.mcp_server import mcp   # import the shared FastMCP instance
+
+@mcp.resource("myapp://config/current")
+async def current_config() -> str:
+    """Latest runtime configuration snapshot, pinnable by clients."""
+    return '{"mode": "production", "feature_flags": ["new_dashboard"]}'
+
+@mcp.resource("myapp://report/{period}")
+async def periodic_report(period: str) -> str:
+    """A period-scoped report, e.g. myapp://report/2026-07."""
+    return f"Report for {period}: ..."
+
+@mcp.prompt("weekly_summary")
+async def weekly_summary_prompt(metric: str = "revenue") -> str:
+    """Prompt template for a weekly metric briefing."""
+    return (
+        f"You are a business analyst. Summarise the {metric} trend for the past week. "
+        f"Use the available tools to retrieve the data before writing your summary."
+    )
+```
+
+Load it by importing it before the server starts — e.g. add a line to your entrypoint, or set `AGENTKIT_EXTENSIONS=my_extension.py` if your deployment supports it. The decorated resources and prompts appear immediately in `resources/list` and `prompts/list` to any connecting MCP client.
+
+> **Design principle.** Domain-specific resources and prompts belong to the consuming project, not the core server. Keeping the server blank means any team can layer their own `@mcp.resource` / `@mcp.prompt` decorators without forking — they get the policy engine and transport for free.
+
+---
+
 ## Safety notes for pack authors
 
 - **Parameters are bound, never interpolated.** `%(name)s` goes through the driver's
