@@ -21,10 +21,7 @@ Three things distinguish it from a typical MCP server:
 The bundled business-intelligence tools below are the **reference pack** that
 demonstrates all of this — not the limit of what the server does.
 
-> 🔗 **Live MCP server (dashboard):** https://agentkit.ysiddo-ai-projects.app — connect from Claude Desktop
-> via `mcp-remote` (see [claude_desktop_config.example.json](claude_desktop_config.example.json)). On-demand backend (first call ~30–60 s).
-> Self-hosting: see [SELF_HOSTING.md](SELF_HOSTING.md).
-
+> 🔗 **Self-hosting:** see [SELF_HOSTING.md](SELF_HOSTING.md) to run your own instance.
 
 ## What It Does
 
@@ -85,8 +82,7 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 over SSE (a network port) instead of talking JSON-RPC over the pipes Claude Desktop
 spawns it with, and no tools will appear. Local stdio mode doesn't need
 `MCP_AUTH_TOKEN` (the OS process boundary is the auth boundary); that variable only
-matters for the SSE/network path — e.g. connecting to a remote deployment via
-`mcp-remote` (see the note at the top of this README).
+matters for the SSE/network path.
 
 ### Multi-Provider LLM Routing
 The 3-agent LangGraph workflow (`workflow.py`) and the demos/research scripts route
@@ -138,9 +134,9 @@ print(result["report"])
 
 ## Research Novelty & Scientific Contributions
 
-AgentKit is both industry-proof and scientifically reproducible:
+AgentKit is an industry-proof intelligence engine:
 - **Standardized Model Context Protocol (MCP) Middleware**: Unified stdio and SSE transport for hot-swappable agent tools.
-- **Zero-Latency Schema Validation**: Formal runtime schema type checking and injection safety bounds.
+- **Capability Policy Engine**: Formal effect separation (read/write/destructive) and prompt-independent guardrails.
 - **Multi-Agent Interoperability**: Tested and verified across **Claude Desktop**, **Cursor IDE**, and **Devin AI**.
 
 For full theoretical formulation, math bounds, and citation details, see [RESEARCH.md](RESEARCH.md).
@@ -174,7 +170,3 @@ python3 tests/test_mcp_client.py
 
 This project is open-source under the **AGPL-3.0 License**. It is completely free for researchers, students, and open-source hobbyists.
 Commercial license: see [COMMERCIAL.md](COMMERCIAL.md).
-
-
-
-![telemetry](https://gateway.ysiddo-ai-projects.app/pixel.png)

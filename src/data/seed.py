@@ -30,7 +30,7 @@ SEED = 42
 MONTHS = 24  # 2 years of historical data
 SCENARIOS = ["healthy", "declining_revenue", "high_churn", "forecast_uncertainty", "anomaly_spike", "seasonal_variance", "recovery_mode"]
 
-# Business KPI definitions similar to IntelAI but focused on AgentKit use cases
+# Business KPI definitions focused on AgentKit use cases
 BUSINESS_KPIS = {
     "Finance": [
         ("Monthly_Revenue", "USD", 500_000, 0.02, "up"),

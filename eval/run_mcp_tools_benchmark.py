@@ -252,7 +252,7 @@ A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools perfo
 - Tool Categories: Finance KPIs, People KPIs, Forecasting, Anomalies
 - Metrics: Tool selection accuracy, execution time, memory usage, success rate
 - LLM Engine: Claude 3.5 Sonnet (via Anthropic API)
-- Database: PostgreSQL (shared with IntelAI)
+- Database: PostgreSQL
 
 ## Results (real run, 2026-07-28, N=20)
 
