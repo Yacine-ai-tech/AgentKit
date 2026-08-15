@@ -30,6 +30,11 @@ demonstrates all of this — not the limit of what the server does.
 - **6 MCP Resources**: `kpi://Finance/latest` and similar for Growth, Operations, People, ESG, IT_Ops
 - **1 Reusable Prompt**: `monthly_executive_briefing`
 
+> These come from the **reference pack** — the core server ships with no hardcoded resources or prompts.
+> You can add your own `@mcp.resource` / `@mcp.prompt` decorators, or load them from a tool pack.
+> See [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
+
+
 **Platform capabilities:**
 - **Declarative tool packs** — add tools over your own Postgres/HTTP in YAML (`packs/`)
 - **Typed effects + policy engine** — `GET /api/policy` publishes the capability envelope
