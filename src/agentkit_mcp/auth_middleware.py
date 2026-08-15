@@ -19,6 +19,7 @@ from typing import Deque, Dict
 # auth). A browser can't speak MCP, so this shows liveness, the tool catalog, and how to connect.
 _DEMO_HTML = b"""<!DOCTYPE html><html lang=en><head><meta charset=utf-8>\n<title>AgentKit - MCP server</title>\n</head><body>\n<h1>AgentKit - MCP server</h1>\n<p>Standalone MCP Intelligence Engine</p>\n</body></html>"""
 
+
 class BearerAuthRateLimit:
     def __init__(self, app, token: str | None = None, rate: int = 120, window: int = 60):
         self.app = app

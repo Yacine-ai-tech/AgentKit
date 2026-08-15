@@ -219,7 +219,7 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
     score = 0
     max_score = 0
     details: Dict[str, int] = {}
-    
+
     if config is None:
         config = {
             "revenue_growth_pct": [(20, 25), (10, 20), (0, 15)],
@@ -275,4 +275,3 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
         rating, color = ("Poor", "🔴")
 
     return {"score": final, "rating": rating, "color": color, "details": details, "max_score": max_score}
-
