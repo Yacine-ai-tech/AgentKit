@@ -32,14 +32,14 @@ add a tool to AgentKit and every consumer sees it on next discovery.
    render/expose whatever discovery returns.
 3. **Degrade gracefully.** If the URL is unset or the service is unreachable, run
    without those tools. AgentKit being down must never be fatal to your app.
-4. Send `X-OmniIntel-Internal-Token` (or whatever the deployment requires) only if that
+4. Send `X-AgentKit-Internal-Token` (or whatever the deployment requires) only if that
    deployment sets `REQUIRE_INTERNAL_TOKEN=true`.
 
 **Worked example — a voice agent giving its model live business tools.** VoiceFlow's
 `services/agent_tools_bridge.py` implements exactly the contract above: it discovers at
 connect time, converts each tool's declared params into the function-calling schema its
 realtime provider expects, and calls back on tool invocation. Its config is
-`AGENT_TOOLS_URL` — pointed at AgentKit in this portfolio's demo, but any server
+`AGENT_TOOLS_URL` — pointed at AgentKit in the demo, but any server
 speaking the contract works unchanged. Neither side imports the other.
 
 **For StreamPulse / IntelAI / DocIntel**, the same shape applies — add a generic env var

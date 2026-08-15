@@ -13,7 +13,7 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION:   "20"
   AGENTKIT_URL:    ${{ secrets.AGENTKIT_URL   || '' }}
-  OMNIINTEL_INTERNAL_TOKEN: ${{ secrets.OMNIINTEL_INTERNAL_TOKEN  }}
+  AGENTKIT_INTERNAL_TOKEN: ${{ secrets.AGENTKIT_INTERNAL_TOKEN  }}
   TELEMETRY_OPT_OUT: "false"
 
 jobs:
@@ -114,7 +114,7 @@ jobs:
         if: env.AGENTKIT_URL != ''
         env:
           TEST_BASE_URL: ${{ env.AGENTKIT_URL }}
-          OMNIINTEL_INTERNAL_TOKEN: ${{ env.OMNIINTEL_INTERNAL_TOKEN }}
+          AGENTKIT_INTERNAL_TOKEN: ${{ env.AGENTKIT_INTERNAL_TOKEN }}
         run: |
           pytest tests/test_exhaustive_api.py -v --tb=short
       
@@ -122,7 +122,7 @@ jobs:
         run: |
           python -c "
           import httpx
-          headers = {'X-OmniIntel-Internal-Token': '${{ env.OMNIINTEL_INTERNAL_TOKEN }}'}
+          headers = {'X-AgentKit-Internal-Token': '${{ env.AGENTKIT_INTERNAL_TOKEN }}'}
           
           # Test health endpoint
           response = httpx.get('${{ env.AGENTKIT_URL }}/health', timeout=10)
@@ -135,20 +135,4 @@ jobs:
           print('All endpoints accessible')
           "
 
-  # ═══════════════════════════════════════════════════════════════════════════
-  # PHASE 4 — Deploy: Trigger Render deploy
-  # ═════════════════════════════════════════════════════════════════════════
-  deploy:
-    name: "Trigger Render Deploy"
-    runs-on: ubuntu-latest
-    needs: [e2e-smoke]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Trigger Render Deploy
-        run: |
-          echo "Render deploy would be triggered here"
-          echo "Configure render.yaml to auto-deploy on push to main"
+

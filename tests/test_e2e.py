@@ -6,7 +6,7 @@ import os
 
 app = build_app()
 client = TestClient(app)
-HEADERS = {"X-OmniIntel-Internal-Token": os.getenv("OMNIINTEL_INTERNAL_TOKEN", "")}
+HEADERS = {"X-AgentKit-Internal-Token": os.getenv("AGENTKIT_INTERNAL_TOKEN", "")}
 
 @pytest.mark.asyncio
 async def test_e2e_agentkit_mcp_tools_list():

@@ -37,7 +37,7 @@ _pool_lock = None
 def _init_pool():
     """Initialize a persistent connection pool for Neon PostgreSQL.
 
-    This is the #2 fix for IntelAI latency. Previously every DB call created a
+    This fixes standard connection latency. Previously every DB call created a
     fresh TCP+TLS connection to Neon (2-4s each). With pool=3 min connections,
     subsequent calls reuse existing connections (<50ms overhead).
     """

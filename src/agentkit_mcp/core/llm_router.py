@@ -2,7 +2,7 @@
 
 Every LLM call in AgentKit goes through `llm_call()` rather than talking to a provider
 SDK directly, so switching providers — including to a model running on hardware you
-control — is a config change, not a code change (STRATEGY.md §4.5 / §2.10 Move 1).
+control — is a config change, not a code change.
 
 Tiers (each an env-configurable LiteLLM "provider/model" string):
     default    LLM_DEFAULT    high-volume work (tool-calling analyst)
@@ -11,9 +11,7 @@ Tiers (each an env-configurable LiteLLM "provider/model" string):
     local      LLM_LOCAL      self-hosted (Ollama or any OpenAI-compatible server)
 
 "Local" here means *inference on hardware you control*, not necessarily this machine —
-never an assumption that a third-party cloud provider is the only option
-(portfolio-wide constraint; same shape as DocIntel's Route B local/remote split and
-VoiceFlow's ASR local/remote split):
+never an assumption that a third-party cloud provider is the only option:
 
     INFERENCE_MODE=remote  (default)  use the hosted tier models above
     INFERENCE_MODE=local              force EVERY tier to LLM_LOCAL — no hosted
@@ -114,12 +112,12 @@ def local_api_key() -> Optional[str]:
     """Bearer token for the self-hosted endpoint, if it requires one.
 
     A bare Ollama on localhost needs nothing; a shared orchestrator or anything exposed
-    beyond your LAN will. Falls back to the portfolio-wide internal-service token so a
+    beyond your LAN will. Falls back to the global internal-service token so a
     deployment that already sets that doesn't need a second secret.
     """
     return (os.getenv("LOCAL_LLM_TOKEN") or
             os.getenv("INFERENCE_TOKEN") or
-            os.getenv("OMNIINTEL_INTERNAL_TOKEN") or
+            os.getenv("AGENTKIT_INTERNAL_TOKEN") or
             None)
 
 
