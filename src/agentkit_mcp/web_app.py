@@ -5,7 +5,6 @@ mcp_server.py (which call services/pg_store, services/insights, services/forecas
 Data-layer failures surface as HTTP 503 with the real message — never fabricated data.
 """
 from __future__ import annotations
-import base64
 
 import os
 from typing import Any, Dict, Optional
@@ -94,8 +93,6 @@ def build_app() -> FastAPI:
     app = FastAPI(title="AgentKit", version="0.1.0",
                   description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
 
-
-
     from fastapi import Request
     from fastapi.responses import JSONResponse
     import os as _os
@@ -153,7 +150,6 @@ def build_app() -> FastAPI:
         server and every connected consumer sees it on their next discovery refresh.
         """
         from agentkit_mcp import mcp_server as _mcp_mod
-        from fastmcp import Client as _MCPClient
 
         dynamic_tools = []
         for p in getattr(tools, "PACKS", {}).values():
@@ -167,7 +163,6 @@ def build_app() -> FastAPI:
         prompts_out:   list = []
         try:
             # Optimize: Avoid full Client initialization on every request
-            mcp_srv = getattr(_mcp_mod.mcp, "_mcp_server", _mcp_mod.mcp)
             raw_resources = []
             if hasattr(_mcp_mod.mcp, "_resources"):
                 raw_resources = list(_mcp_mod.mcp._resources.values())
@@ -217,7 +212,7 @@ def build_app() -> FastAPI:
                 result = await func()
             else:
                 result = func()
-            
+
             # result is a list of content parts or single string; join text parts
             content_parts = []
             if isinstance(result, str):
@@ -240,13 +235,13 @@ def build_app() -> FastAPI:
             func = _mcp_mod.mcp._prompts.get(name)
             if not func:
                 return {"error": "not found", "name": name}
-            
+
             import inspect
             if inspect.iscoroutinefunction(func):
                 result = await func(**args)
             else:
                 result = func(**args)
-            
+
             # result is a string or list of PromptMessage; join text content
             parts = []
             if isinstance(result, str):
