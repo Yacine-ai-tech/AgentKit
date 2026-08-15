@@ -211,17 +211,94 @@ def build_app() -> FastAPI:
 
     @app.get("/api/tools")
     async def list_tools() -> Dict[str, Any]:
+        """Discovery endpoint: returns all registered tools, resources, and prompts.
+        Consumers should call this once and cache; add a tool/resource/prompt to the
+        server and every connected consumer sees it on their next discovery refresh.
+        """
+        from agentkit_mcp import mcp_server as _mcp_mod
+        from fastmcp import Client as _MCPClient
+
         dynamic_tools = []
         for p in getattr(tools, "PACKS", {}).values():
             for t in p.tools:
                 meta = t.to_meta()
                 meta["endpoint"] = f"/api/packs/{p.name}/{t.name}"
                 dynamic_tools.append(meta)
+
+        # Discover live resources and prompts from the FastMCP server
+        resources_out: list = []
+        prompts_out:   list = []
+        try:
+            async with _MCPClient(_mcp_mod.mcp) as mcp_client:
+                raw_resources = await mcp_client.list_resources()
+                raw_prompts   = await mcp_client.list_prompts()
+            resources_out = [
+                {"uri": str(r.uri), "name": r.name or str(r.uri), "description": r.description or ""}
+                for r in raw_resources
+            ]
+            prompts_out = [
+                {
+                    "name": p.name,
+                    "description": p.description or "",
+                    "arguments": [
+                        {"name": a.name, "description": a.description or "", "required": a.required}
+                        for a in (p.arguments or [])
+                    ],
+                }
+                for p in raw_prompts
+            ]
+        except Exception as _e:
+            import logging as _logging
+            _logging.getLogger(__name__).debug("resource/prompt listing failed: %s", _e)
+
         return {
-            "tools": TOOL_META + dynamic_tools,
-            "resources": [],
-            "prompts": []
+            "tools":     TOOL_META + dynamic_tools,
+            "resources": resources_out,
+            "prompts":   prompts_out,
         }
+
+    @app.get("/api/resources")
+    async def read_resource(uri: str) -> Dict[str, Any]:
+        """Fetch a single MCP resource by URI.
+        Consumers (e.g. a voice agent) call this to pin live data into their context.
+        Returns {"uri", "content", "mime_type"} or {"error": ...} on failure.
+        """
+        from agentkit_mcp import mcp_server as _mcp_mod
+        from fastmcp import Client as _MCPClient
+        try:
+            async with _MCPClient(_mcp_mod.mcp) as mcp_client:
+                result = await mcp_client.read_resource(uri)
+            # result is a list of content parts; join text parts
+            content_parts = [
+                part.text if hasattr(part, "text") else str(part)
+                for part in (result or [])
+            ]
+            return {"uri": uri, "content": "\n".join(content_parts), "mime_type": "text/plain"}
+        except Exception as exc:
+            return {"error": str(exc), "uri": uri}
+
+    @app.get("/api/prompts/{name}")
+    async def render_prompt(name: str, request: Request) -> Dict[str, Any]:
+        """Render a named MCP prompt template, optionally with arguments passed as query params.
+        Returns {"name", "content"} where content is the rendered prompt string.
+        """
+        from agentkit_mcp import mcp_server as _mcp_mod
+        from fastmcp import Client as _MCPClient
+        args = {k: v for k, v in request.query_params.items()}
+        try:
+            async with _MCPClient(_mcp_mod.mcp) as mcp_client:
+                result = await mcp_client.get_prompt(name, args)
+            # result.messages is a list of PromptMessage; join text content
+            parts = []
+            for msg in (result.messages or []):
+                content = msg.content
+                if hasattr(content, "text"):
+                    parts.append(content.text)
+                else:
+                    parts.append(str(content))
+            return {"name": name, "content": "\n".join(parts)}
+        except Exception as exc:
+            return {"error": str(exc), "name": name}
 
     @app.get("/api/kpis")
     async def kpis(domain: Optional[str] = None, period_from: Optional[str] = None,
