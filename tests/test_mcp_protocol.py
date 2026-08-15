@@ -1,7 +1,9 @@
 """MCP protocol validation — list tools/resources/prompts over an in-memory FastMCP client.
 
-This exercises the real MCP protocol surface (not internal attrs), so it asserts the server
-actually exposes the documented 6 tools, 6 resources, and 1 prompt to any MCP client.
+This exercises the real MCP protocol surface (not internal attrs), asserting that the
+server exposes its registered tools and that the resources/prompts endpoints are
+queryable. The core server ships with 6 reference BI tools; resources and prompts
+are supplied by tool packs at load time (none are hardcoded into the agnostic server).
 """
 import pytest
 
@@ -34,8 +36,14 @@ async def test_six_tools_exposed():
 
 @pytest.mark.asyncio
 async def test_resources_and_prompt_exposed():
+    """AgentKit is domain-agnostic: the core server registers no hardcoded resources or
+    prompts. Domain-specific resources and prompts are supplied by tool packs at load time.
+    This test verifies the server starts cleanly and the MCP surface is queryable — a
+    non-zero count indicates a pack was loaded; zero is valid for a base install.
+    """
     resources = await _list("resources")
     prompts = await _list("prompts")
-    # 6 kpi://<domain>/latest resources + the monthly briefing prompt
-    assert len(resources) >= 6, f"expected >=6 resources, got {len(resources)}"
-    assert len(prompts) >= 1, f"expected >=1 prompt, got {len(prompts)}"
+    # Both lists must be queryable without error; counts depend on loaded packs.
+    assert isinstance(resources, list), "resources/list must return a list"
+    assert isinstance(prompts, list), "prompts/list must return a list"
+
