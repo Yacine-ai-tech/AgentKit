@@ -3,10 +3,11 @@ import httpx
 from fastapi.testclient import TestClient
 from agentkit_mcp.web_app import build_app
 import os
+os.environ["AGENTKIT_INTERNAL_TOKEN"] = "test-token"
 
 app = build_app()
 client = TestClient(app)
-HEADERS = {"X-AgentKit-Internal-Token": os.getenv("AGENTKIT_INTERNAL_TOKEN", "")}
+HEADERS = {"X-AgentKit-Internal-Token": "test-token"}
 
 @pytest.mark.asyncio
 async def test_e2e_agentkit_mcp_tools_list():

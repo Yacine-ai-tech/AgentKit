@@ -5,14 +5,13 @@ CPU-friendly: uses scikit-learn LinearRegression (no GPU needed).
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
-from agentkit_mcp.core.i18n import I18N
 from agentkit_mcp.core.logger import get_logger
 
 log = get_logger(__name__)
@@ -205,31 +204,38 @@ def calculate_cash_runway(
         runway_months = current_cash / net_burn
         runway_date = datetime.now() + timedelta(days=30 * runway_months)
 
-    fr = I18N.lang() == "fr"
     return {
         "current_cash": current_cash,
         "monthly_burn": monthly_burn,
         "monthly_revenue": monthly_revenue,
         "net_burn": net_burn,
         "runway_months": runway_months,
-        "runway_date": runway_date.strftime("%Y-%m-%d") if runway_date else ("Indéfini" if fr else "Indefinite"),
+        "runway_date": runway_date.strftime("%Y-%m-%d") if runway_date else "Indefinite",
         "is_healthy": runway_months > 12 or runway_months == float("inf"),
     }
 
 
-def calculate_financial_health_score(metrics: Dict[str, float]) -> Dict[str, Any]:
+def calculate_financial_health_score(metrics: Dict[str, float], config: Optional[Dict[str, List[tuple]]] = None) -> Dict[str, Any]:
     score = 0
     max_score = 0
     details: Dict[str, int] = {}
+    
+    if config is None:
+        config = {
+            "revenue_growth_pct": [(20, 25), (10, 20), (0, 15)],
+            "profit_margin_pct": [(20, 25), (10, 20), (0, 15)],
+            "cash_runway_months": [(18, 25), (12, 20), (6, 15), (3, 10)],
+            "variance_vs_plan_pct": [(-5, 25), (-10, 20), (-15, 15), (-25, 10)]
+        }
 
     def _score_bucket(value: float, thresholds: List[tuple]) -> int:
         for threshold, pts in thresholds:
             if value >= threshold:
                 return pts
-        return thresholds[-1][1]
+        return thresholds[-1][1] if thresholds else 0
 
     if "revenue_growth_pct" in metrics:
-        pts = _score_bucket(metrics["revenue_growth_pct"], [(20, 25), (10, 20), (0, 15)])
+        pts = _score_bucket(metrics["revenue_growth_pct"], config.get("revenue_growth_pct", []))
         if metrics["revenue_growth_pct"] < 0:
             pts = max(0, int(15 + metrics["revenue_growth_pct"]))
         score += pts
@@ -237,7 +243,7 @@ def calculate_financial_health_score(metrics: Dict[str, float]) -> Dict[str, Any
         details["revenue_growth"] = pts
 
     if "profit_margin_pct" in metrics:
-        pts = _score_bucket(metrics["profit_margin_pct"], [(20, 25), (10, 20), (0, 15)])
+        pts = _score_bucket(metrics["profit_margin_pct"], config.get("profit_margin_pct", []))
         if metrics["profit_margin_pct"] < 0:
             pts = max(0, int(15 + metrics["profit_margin_pct"]))
         score += pts
@@ -245,28 +251,28 @@ def calculate_financial_health_score(metrics: Dict[str, float]) -> Dict[str, Any
         details["profitability"] = pts
 
     if "cash_runway_months" in metrics:
-        pts = _score_bucket(metrics["cash_runway_months"], [(18, 25), (12, 20), (6, 15), (3, 10)])
+        pts = _score_bucket(metrics["cash_runway_months"], config.get("cash_runway_months", []))
         score += pts
         max_score += 25
         details["cash_position"] = pts
 
     if "variance_vs_plan_pct" in metrics:
         var = abs(metrics["variance_vs_plan_pct"])
-        pts = _score_bucket(-var, [(-5, 25), (-10, 20), (-15, 15), (-25, 10)])
+        pts = _score_bucket(-var, config.get("variance_vs_plan_pct", []))
         score += pts
         max_score += 25
         details["operational_efficiency"] = pts
 
     final = (score / max_score * 100) if max_score else 0
 
-    fr = I18N.lang() == "fr"
     if final >= 90:
         rating, color = ("Excellent", "🟢")
     elif final >= 75:
-        rating, color = ("Bon" if fr else "Good", "🟡")
+        rating, color = ("Good", "🟡")
     elif final >= 60:
-        rating, color = ("Passable" if fr else "Fair", "🟠")
+        rating, color = ("Fair", "🟠")
     else:
-        rating, color = ("Faible" if fr else "Poor", "🔴")
+        rating, color = ("Poor", "🔴")
 
     return {"score": final, "rating": rating, "color": color, "details": details, "max_score": max_score}
+
