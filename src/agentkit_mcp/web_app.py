@@ -103,13 +103,13 @@ def build_app() -> FastAPI:
         if request.method == "OPTIONS" or request.url.path in ["/", "/health", "/docs", "/openapi.json", "/api/redoc", "/favicon.png", "/favicon.ico", "/mark.png", "/logo.png"] or request.url.path.startswith("/api/v1/auth/") or request.url.path.startswith("/assets/") or request.url.path.startswith("/static/"):
             return await call_next(request)
 
-        token = request.headers.get("X-AgentKit-Internal-Token")
-        valid_tokens = {_os.environ.get("AGENTKIT_INTERNAL_TOKEN")}
+        token = request.headers.get("X-OmniIntel-Internal-Token")
+        valid_tokens = {_os.environ.get("OMNIINTEL_INTERNAL_TOKEN")}
         valid_tokens.discard(None)
 
         auth_disabled = _os.environ.get("ALLOW_UNAUTHENTICATED_API", "false").lower() == "true"
         if token not in valid_tokens and not auth_disabled:
-            return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-AgentKit-Internal-Token"})
+            return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-OmniIntel-Internal-Token"})
 
         return await call_next(request)
 
