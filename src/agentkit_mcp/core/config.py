@@ -26,7 +26,7 @@ class Settings:
 
     POSTGRES_URL = os.getenv("POSTGRES_URL", "")
 
-    LLM_DEFAULT = os.getenv("LLM_DEFAULT", "groq/llama-3.3-70b-versatile")
+    LLM_DEFAULT = os.getenv("LLM_DEFAULT", "groq/openai/gpt-oss-120b")
     LLM_REASONING = os.getenv("LLM_REASONING", "anthropic/claude-sonnet-4-6")
     LLM_JUDGE = os.getenv("LLM_JUDGE", "anthropic/claude-haiku-4-5")
     LLM_LOCAL = os.getenv("LLM_LOCAL", "ollama/llama3.3")

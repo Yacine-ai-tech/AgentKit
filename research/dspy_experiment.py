@@ -160,7 +160,7 @@ def main():
     if not _DSPY:
         print("dspy-ai not installed. pip install dspy-ai")
         return
-    model = os.getenv("LLM_DEFAULT", "groq/llama-3.3-70b-versatile")
+    model = os.getenv("LLM_DEFAULT", "groq/openai/gpt-oss-120b")
     if not (os.getenv("GROQ_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY")):
         print("No LLM key found (set GROQ_API_KEY / ANTHROPIC_API_KEY).")
         return
