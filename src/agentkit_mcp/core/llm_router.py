@@ -29,11 +29,11 @@ point `LOCAL_LLM_ENDPOINT` (or `OLLAMA_HOST`) at whichever you actually have:
 
   * Ollama on this machine ......... http://localhost:11434        (needs a local GPU)
   * Ollama on your own GPU box ..... http://192.168.1.50:11434     (LAN or via tunnel)
-  * A shared inference orchestrator  https://<your-orchestrator>   + LOCAL_LLM_TOKEN
+  * A shared inference gateway you run  https://<your-host>        + LOCAL_LLM_TOKEN
   * Any OpenAI-compatible server .... vLLM / llama.cpp / LM Studio / TGI
 
 `LOCAL_LLM_TOKEN` sets the bearer token for endpoints that require auth (a shared
-orchestrator will; a bare Ollama on localhost won't). Note the model prefix selects the
+gateway will; a bare Ollama on localhost won't). Note the model prefix selects the
 wire protocol LiteLLM speaks: `ollama/<model>` calls `/api/generate`, while
 `ollama_chat/<model>` calls `/api/chat` — pick whichever your endpoint implements.
 """
@@ -89,7 +89,7 @@ def local_api_base() -> Optional[str]:
     OLLAMA_HOST is the conventional name and is what most self-hosters already set;
     LOCAL_LLM_ENDPOINT is accepted as an explicit alias for non-Ollama OpenAI-compatible
     servers (vLLM, llama.cpp, LM Studio, text-generation-webui, ...) and for a shared
-    inference orchestrator fronting any of the above.
+    inference gateway fronting any of the above.
     """
     base = os.getenv("LOCAL_LLM_ENDPOINT") or os.getenv("OLLAMA_HOST") or None
     if not base:
@@ -111,7 +111,7 @@ def local_api_base() -> Optional[str]:
 def local_api_key() -> Optional[str]:
     """Bearer token for the self-hosted endpoint, if it requires one.
 
-    A bare Ollama on localhost needs nothing; a shared orchestrator or anything exposed
+    A bare Ollama on localhost needs nothing; a shared gateway or anything exposed
     beyond your LAN will. Falls back to the global internal-service token so a
     deployment that already sets that doesn't need a second secret.
     """
