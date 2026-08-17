@@ -94,7 +94,7 @@ The 3-agent LangGraph workflow (`workflow.py`) and the demos/research scripts ro
 each role to its own model via [LiteLLM](https://docs.litellm.ai/), configured with
 plain `provider/model` strings — no code changes to switch providers:
 - `LLM_REASONING` — planner + reporter agents (defaults to `anthropic/claude-sonnet-4-6`)
-- `LLM_DEFAULT` — the tool-calling analyst agent (defaults to `groq/llama-3.3-70b-versatile`)
+- `LLM_DEFAULT` — the tool-calling analyst agent (defaults to `groq/openai/gpt-oss-120b`)
 - `LLM_JUDGE` — used by the eval suite (defaults to `anthropic/claude-haiku-4-5`)
 - `LLM_LOCAL` + `INFERENCE_MODE=local` — route to a local/self-hosted model (e.g. Ollama)
   instead of a hosted provider
