@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -300,14 +300,20 @@ def build_app() -> FastAPI:
         return policy_engine.describe()
 
     @app.get("/api/audit")
-    async def audit(limit: int = 100, effect: Optional[str] = None) -> Dict[str, Any]:
+    async def audit(
+        limit: int = 100,
+        effect: Optional[str] = None,
+        x_demo_session_id: Optional[str] = Header(default=None, alias="X-Demo-Session-Id"),
+    ) -> Dict[str, Any]:
         """Audit trail of tool invocations — allowed and denied, with the deny reason.
 
         Denials are recorded too: "the agent tried to do X and was blocked" is exactly
-        the event an operator needs to see.
+        the event an operator needs to see. Scoped to entries with no visitor session of
+        their own (MCP/CLI calls) plus this caller's own REST calls, never another
+        visitor's — see PolicyEngine.audit_log.
         """
         from agentkit_mcp.core.policy import policy_engine
-        return {"entries": policy_engine.audit_log(limit=limit, effect=effect)}
+        return {"entries": policy_engine.audit_log(limit=limit, effect=effect, session_id=x_demo_session_id)}
 
     @app.get("/api/llm-routing")
     async def llm_routing() -> Dict[str, Any]:
@@ -333,7 +339,12 @@ def build_app() -> FastAPI:
         }
 
     @app.post("/api/packs/{pack_name}/{tool_name}")
-    async def run_pack_tool(pack_name: str, tool_name: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    async def run_pack_tool(
+        pack_name: str,
+        tool_name: str,
+        body: Dict[str, Any],
+        x_demo_session_id: Optional[str] = Header(default=None, alias="X-Demo-Session-Id"),
+    ) -> Dict[str, Any]:
         """Invoke a declarative pack tool through the same policy path the MCP tools use.
 
         POST (not GET) because a pack tool may mutate; the effect class in /api/policy
@@ -349,7 +360,7 @@ def build_app() -> FastAPI:
         if tool is None:
             raise HTTPException(status_code=404, detail=f"unknown tool: {tool_name}")
         try:
-            return await call_pack_tool(pack, tool, body or {}, caller="rest")
+            return await call_pack_tool(pack, tool, body or {}, caller="rest", session_id=x_demo_session_id)
         except PolicyDenied as e:
             # 403 with the actual reason — a guardrail that blocks silently is not one.
             raise HTTPException(status_code=403, detail=str(e))
