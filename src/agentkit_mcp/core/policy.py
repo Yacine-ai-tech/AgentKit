@@ -118,6 +118,11 @@ class AuditRecord:
     outcome: str = "pending"
     error: Optional[str] = None
     duration_ms: Optional[float] = None
+    # Visitor session id (from a browser-set header), distinct from `caller` which
+    # describes *how* the call arrived (rest/mcp/cli), not *who* made it. None for
+    # non-browser callers (MCP, CLI) — those stay visible to every audit_log() reader,
+    # same as everywhere else in this codebase where "no session" means "global".
+    session_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return dict(self.__dict__)
@@ -260,6 +265,7 @@ class PolicyEngine:
         *,
         args: Optional[Dict[str, Any]] = None,
         caller: str = "unknown",
+        session_id: Optional[str] = None,
     ) -> AuditRecord:
         effect = decision.policy.effect if decision.policy else "unknown"
         rec = AuditRecord(
@@ -273,6 +279,7 @@ class PolicyEngine:
             caller=caller,
             args_digest=_digest_args(args or {}),
             outcome="denied" if not decision.allowed else "pending",
+            session_id=session_id,
         )
         with self._lock:
             self._audit.appendleft(rec)
@@ -291,11 +298,18 @@ class PolicyEngine:
         rec.duration_ms = duration_ms
         _sink_write(rec, update=True)
 
-    def audit_log(self, limit: int = 100, effect: Optional[str] = None) -> List[Dict[str, Any]]:
+    def audit_log(
+        self, limit: int = 100, effect: Optional[str] = None, session_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """session_id, when given, additionally scopes results to entries with no
+        session_id of their own (MCP/CLI calls — global, not tied to any visitor) plus
+        this caller's own — never another visitor's browser-originated calls."""
         with self._lock:
             items = list(self._audit)
         if effect:
             items = [r for r in items if r.effect == effect]
+        if session_id is not None:
+            items = [r for r in items if r.session_id is None or r.session_id == session_id]
         return [r.to_dict() for r in items[:limit]]
 
     def describe(self) -> Dict[str, Any]:
