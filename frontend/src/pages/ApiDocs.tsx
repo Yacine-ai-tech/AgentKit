@@ -437,7 +437,7 @@ export default function ApiDocs() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, margin: "20px 0" }}>
         {[
           { icon: Globe, label: "REST base URL", value: BASE_URL, color: "#38bdf8" },
-          { icon: Shield, label: "Auth", value: "REST: optional X-OmniIntel-Internal-Token · MCP/SSE: Bearer MCP_AUTH_TOKEN", color: "#4ade80" },
+          { icon: Shield, label: "Auth", value: "REST: optional X-AgentKit-Internal-Token · MCP/SSE: Bearer MCP_AUTH_TOKEN", color: "#4ade80" },
           { icon: Zap, label: "Protocol", value: "REST (JSON over HTTP) + MCP (stdio/SSE)", color: "#f59e0b" },
           { icon: BookOpen, label: "Format", value: "JSON in, JSON out", color: "#a78bfa" },
         ].map(({ icon: Icon, label, value, color }) => (
