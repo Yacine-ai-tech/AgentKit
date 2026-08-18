@@ -101,6 +101,7 @@ async def call_pack_tool(
     *,
     caller: str = "mcp",
     caller_scopes: Optional[set] = None,
+    session_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one pack tool end-to-end under policy. Raises PolicyDenied if refused."""
     args = dict(args or {})
@@ -111,7 +112,7 @@ async def call_pack_tool(
         tool.name, args=args, caller_scopes=caller_scopes,
         approval_token=approval_token, dry_run=dry_run,
     )
-    record = policy_engine.record(tool.name, decision, args=args, caller=caller)
+    record = policy_engine.record(tool.name, decision, args=args, caller=caller, session_id=session_id)
     if not decision.allowed:
         raise PolicyDenied(decision.reason)
 
