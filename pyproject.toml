@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentkit-mcp"
 version = "0.1.11"
-description = "AgentKit MCP Server — Business Intelligence tools for Claude/Cursor agents."
+description = "AgentKit MCP Server — a generic, policy-gated MCP server for Claude/Cursor agents; ships with a business-intelligence reference pack."
 readme = "README.md"
 license = { text = "AGPL-3.0" }
 requires-python = ">=3.10"
