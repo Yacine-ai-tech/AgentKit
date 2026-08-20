@@ -93,6 +93,76 @@ def build_app() -> FastAPI:
     app = FastAPI(title="AgentKit", version="0.1.0",
                   description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
 
+    # --- ETHICAL TELEMETRY ---
+    # See TELEMETRY.md / .env.example. One anonymous startup ping per ~6h, sending only
+    # {service, event, instance_id} — no document content, filenames, IPs, or other
+    # request data. Fully controllable: TELEMETRY_OPT_OUT=true disables it outright, and
+    # leaving TELEMETRY_URL blank (the default) disables it too, since there's nowhere to
+    # send the ping.
+    import threading
+    import time
+    import uuid
+
+    from agentkit_mcp.core.config import settings as _settings
+
+    def _telemetry_instance_id() -> str:
+        """A random, locally-generated install ID — NOT derived from MAC address or any
+        other hardware fingerprint. Persisted under LOGS_DIR so repeat startups of the
+        same install report the same ID (for dedup on the receiving end); delete the
+        file to reset it."""
+        id_file = os.path.join(_settings.LOGS_DIR, ".telemetry_instance_id")
+        try:
+            if os.path.exists(id_file):
+                existing = open(id_file).read().strip()
+                if existing:
+                    return existing
+        except Exception:
+            pass
+        new_id = uuid.uuid4().hex[:16]
+        try:
+            with open(id_file, "w") as f:
+                f.write(new_id)
+        except Exception:
+            pass
+        return new_id
+
+    def _send_telemetry():
+        if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
+            return
+
+        telemetry_url = os.environ.get("TELEMETRY_URL", "")
+        if not telemetry_url:
+            return
+
+        lock_file = os.path.join(_settings.LOGS_DIR, ".telemetry_last_ping")
+        try:
+            if os.path.exists(lock_file):
+                if time.time() - os.path.getmtime(lock_file) < 21600:
+                    return
+            with open(lock_file, "w") as f:
+                f.write(str(time.time()))
+        except Exception:
+            pass
+
+        try:
+            import httpx
+            if "log" in globals():
+                globals()["log"].info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
+            else:
+                import logging
+                logging.info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
+
+            httpx.post(
+                telemetry_url,
+                json={"service": "AgentKit", "event": "startup", "instance_id": _telemetry_instance_id()},
+                timeout=2,
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_send_telemetry, daemon=True).start()
+    # -------------------------
+
     from fastapi import Request
     from fastapi.responses import JSONResponse
     import os as _os
