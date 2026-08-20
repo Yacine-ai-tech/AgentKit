@@ -102,7 +102,9 @@ plain `provider/model` strings — no code changes to switch providers:
 Set the matching provider API key(s) (`GROQ_API_KEY`, `ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`) for whichever models you reference above. See `.env.example`.
 - **Diagnostics**: adjust `LOG_LEVEL` to `DEBUG` for verbose logs.
-- **Telemetry**: an anonymous startup ping is sent by default; disable with `TELEMETRY_OPT_OUT=true`.
+- **Telemetry**: off by default (`TELEMETRY_URL` is blank out of the box). Set
+  `TELEMETRY_URL` to opt in to an anonymous startup ping, or set `TELEMETRY_OPT_OUT=true`
+  to disable it outright regardless of `TELEMETRY_URL`. See `TELEMETRY.md`.
 
 Restart Claude Desktop, then ask:
 - "What's our company health right now?"
