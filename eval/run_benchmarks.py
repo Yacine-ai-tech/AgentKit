@@ -24,7 +24,7 @@ if str(SRC_DIR) not in sys.path:
 def run_agentkit_benchmarks(seed: int = 42):
     random.seed(seed)
     print(f"==================================================")
-    print(f"🔬 AgentKit Research Benchmark Suite (Seed: {seed})")
+    print(f"AgentKit Research Benchmark Suite (Seed: {seed})")
     print(f"==================================================")
 
     results = {

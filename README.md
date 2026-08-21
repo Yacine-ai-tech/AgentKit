@@ -21,7 +21,7 @@ Three things distinguish it from a typical MCP server:
 The bundled business-intelligence tools below are the **reference pack** that
 demonstrates all of this — not the limit of what the server does.
 
-> 🔗 **Self-hosting:** see [SELF_HOSTING.md](SELF_HOSTING.md) to run your own instance.
+> **Self-hosting:** see [SELF_HOSTING.md](SELF_HOSTING.md) to run your own instance.
 
 ## What It Does
 
@@ -49,7 +49,7 @@ demonstrates all of this — not the limit of what the server does.
 ## PyPI Package
 
 ```bash
-pip install agentkit-mcp   # v0.1.11
+pip install agentkit-mcp   # v0.1.12
 agentkit-mcp               # CLI entrypoint
 ```
 

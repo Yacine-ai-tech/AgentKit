@@ -239,11 +239,11 @@ def main():
 
     if success:
         print("✅ Database seeded successfully")
-        print(f"📊 Generated {len(healthy_data)} KPI records over {MONTHS} months")
-        print("🔧 Other scenarios available for testing: " + ", ".join(SCENARIOS[1:]))
+        print(f"Generated {len(healthy_data)} KPI records over {MONTHS} months")
+        print("Other scenarios available for testing: " + ", ".join(SCENARIOS[1:]))
     else:
         print("⚠️  Database seeding failed (DB may not be available)")
-        print("💾 Data generation complete - can be used for mock responses")
+        print("Data generation complete - can be used for mock responses")
 
     return all_data
 
