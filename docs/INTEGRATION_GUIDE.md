@@ -100,7 +100,7 @@ If connecting to a deployed AgentKit instance on Render:
 {
   "mcpServers": {
     "agentkit-remote": {
-      "url": "https://agentkit-backend.onrender.com/sse",
+      "url": "https://agentkit-<your-app>.onrender.com/sse",
       "headers": {
         "Authorization": "Bearer YOUR_MCP_AUTH_TOKEN"
       }
