@@ -30,7 +30,7 @@ from agentkit_mcp.mcp_server import (
 
 async def test_direct_tools():
     print("--------------------------------------------------")
-    print("🧪 Testing Direct Tool Execution (Claude / Cursor / Devin engine)")
+    print("Testing Direct Tool Execution (Claude / Cursor / Devin engine)")
     print("--------------------------------------------------")
     
     # Tool 1: list_available_metrics
@@ -76,9 +76,9 @@ async def test_direct_tools():
         print(f"ℹ️ get_executive_summary (offline/stub fallback): {type(e).__name__}")
 
 def main():
-    print("🚀 Starting AgentKit MCP Verification Suite...")
+    print("Starting AgentKit MCP Verification Suite...")
     asyncio.run(test_direct_tools())
-    print("\n🎉 ALL AGENTKIT MCP TESTS COMPLETED SUCCESSFULLY!")
+    print("\nALL AGENTKIT MCP TESTS COMPLETED SUCCESSFULLY!")
 
 if __name__ == "__main__":
     main()
