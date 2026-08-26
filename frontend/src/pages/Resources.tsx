@@ -18,7 +18,7 @@ export default function Resources() {
     <div>
       <PageHeader
         title="Resources & prompts"
-        sub="MCP first-class citizens: six live kpi:// resources and a reusable briefing prompt — exactly what a connected agent discovers."
+        sub="MCP first-class citizens: live kpi:// resources and reusable prompt templates — exactly what a connected agent discovers."
       />
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {RESOURCES.map((d) => <ResourceCard key={d} domain={d} />)}

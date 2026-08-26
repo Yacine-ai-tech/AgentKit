@@ -453,7 +453,7 @@ export default function ApiDocs() {
           <Globe size={14} /> REST facade · 18 endpoints
         </button>
         <button onClick={() => setTab("mcp")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "1px solid", borderColor: tab === "mcp" ? "#7c3aed" : "rgba(255,255,255,0.1)", background: tab === "mcp" ? "rgba(124,58,237,0.2)" : "transparent", color: tab === "mcp" ? "#c4b5fd" : "#94a3b8", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>
-          <Wrench size={14} /> MCP surface · 6 tools / 6 resources / 1 prompt
+          <Wrench size={14} /> MCP surface · Reference BI Pack & Declarative Tool Packs
         </button>
       </div>
 
