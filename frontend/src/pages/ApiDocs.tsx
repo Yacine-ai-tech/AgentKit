@@ -24,7 +24,7 @@ const ENDPOINTS = [
   },
   {
     group: "Core facade", method: "GET", path: "/api/tools",
-    desc: "Static metadata for the 6 tools (name, description, params, endpoint), the 6 kpi:// resource URIs, and the 1 prompt name. This is what the Tools/Resources pages render.",
+    desc: "Dynamic metadata for registered tools (bundled Reference BI Pack + custom declarative tool packs), the 6 kpi:// resource URIs, and the monthly briefing prompt.",
     body: null,
     response: `{
   "tools": [
@@ -330,7 +330,7 @@ function McpTab() {
       <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: 720, overflowY: "auto", paddingRight: 4 }}>
           <div>
-            <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Tools · 6</div>
+            <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Reference BI Tools & Declarative Packs</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {items.map((it, i) => it.kind === "tool" && (
                 <button key={it.key} onClick={() => setActive(i)} style={{ textAlign: "left", background: active === i ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", border: active === i ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "9px 12px", cursor: "pointer" }}>
