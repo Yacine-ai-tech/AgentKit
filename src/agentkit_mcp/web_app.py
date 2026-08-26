@@ -173,12 +173,21 @@ def build_app() -> FastAPI:
         if request.method == "OPTIONS" or request.url.path in ["/", "/health", "/docs", "/openapi.json", "/api/redoc", "/favicon.png", "/favicon.ico", "/mark.png", "/logo.png"] or request.url.path.startswith("/api/v1/auth/") or request.url.path.startswith("/assets/") or request.url.path.startswith("/static/"):
             return await call_next(request)
 
-        # Off by default (matches SECURITY.md / .env.example): standalone self-hosting
-        # with no gateway in front should not need to configure this at all.
         if _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":
-            token = request.headers.get("X-AgentKit-Internal-Token")
-            expected = _os.environ.get("AGENTKIT_INTERNAL_TOKEN", "")
-            if not expected or token != expected:
+            token = (
+                request.headers.get("X-AgentKit-Internal-Token")
+                or request.headers.get("X-Internal-Token")
+                or request.headers.get("X-OmniIntel-Internal-Token")
+                or (request.headers.get("Authorization", "").replace("Bearer ", "") if request.headers.get("Authorization", "").startswith("Bearer ") else "")
+            )
+            expected_tokens = [
+                t for t in (
+                    _os.environ.get("AGENTKIT_INTERNAL_TOKEN"),
+                    _os.environ.get("INTERNAL_TOKEN"),
+                    _os.environ.get("OMNIINTEL_INTERNAL_TOKEN"),
+                ) if t
+            ]
+            if not token or not any(token == exp for exp in expected_tokens):
                 return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-AgentKit-Internal-Token"})
 
         return await call_next(request)
