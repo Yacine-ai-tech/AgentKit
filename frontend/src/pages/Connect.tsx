@@ -45,7 +45,7 @@ export default function Connect() {
     <div>
       <PageHeader
         title="Connect your agents"
-        sub="Two real ways into the six tools: point Claude Desktop at the hosted SSE endpoint, or run the server locally over stdio. The full example ships in the repo."
+        sub="Two direct integration paths: point Claude Desktop at the hosted SSE endpoint, or run the server locally over stdio. Custom declarative tool packs are loaded automatically."
       />
 
       <div className="grid gap-4 lg:grid-cols-2">

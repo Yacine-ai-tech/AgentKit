@@ -23,12 +23,12 @@ export default function Overview() {
     <div>
       <PageHeader
         title="What would you like your agents to analyze today?"
-        sub="AgentKit turns Claude Desktop, Cursor and custom agents into business analysts — six MCP tools with live PostgreSQL access. Everything below is the same data your agents see."
+        sub="AgentKit equips Claude Desktop, Cursor, and custom AI agents with policy-gated MCP tools over live data — extensible via declarative tool packs with live database access. Everything below is the exact data your agents see."
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {[
-          { to: "/tools", icon: Wrench, title: "Explore MCP tools", desc: "Six capability cards — run each one live." },
+          { to: "/tools", icon: Wrench, title: "Explore MCP tools", desc: "Live tool surface & declarative packs with policy gating." },
           { to: "/intelligence", icon: BarChart3, title: "Inspect KPIs", desc: "Domains, anomalies, forecasts on real data." },
           { to: "/workflow", icon: GitBranch, title: "Agent workflow", desc: "Planner, Analyst and Reporter pipeline." },
         ].map((a) => (

@@ -22,11 +22,11 @@ export default function UserGuidePage() {
       </div>
 
       <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-        AgentKit is a <strong className="text-blue-400">Model Context Protocol (MCP) server for business-intelligence
-        agents</strong>. It exposes live company KPIs, a composite health score, anomaly detection, forecasting,
-        and executive summaries as tools, resources and a prompt template — so any MCP-compatible agent can query
-        real business data instead of guessing. It's framework-agnostic: the same tools work from Claude Desktop,
-        Cursor, LangGraph, the Claude Agent SDK, and CrewAI.
+        AgentKit is a <strong className="text-blue-400">policy-governed Model Context Protocol (MCP) server for AI agents</strong>.
+        It enables declarative, YAML-defined tool packs over any Postgres or HTTP datasource and ships with a bundled
+        reference BI pack for company KPIs, health scoring, anomaly detection, forecasting, and executive snapshots.
+        It is framework-agnostic: the same tools work seamlessly from Claude Desktop, Cursor, LangGraph, the Claude Agent SDK,
+        and CrewAI with strict parameter binding and dry-run policy safety.
       </p>
 
       <div className="space-y-8 text-gray-200">
@@ -38,31 +38,29 @@ export default function UserGuidePage() {
           </h2>
           <div className="space-y-4">
             <p className="text-gray-300">
-              Under the hood, AgentKit is one Python service (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/mcp_server.py</code>)
-              that reads KPI rows from PostgreSQL and exposes them two ways:
+              Under the hood, AgentKit is a modular Python MCP platform (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/mcp_server.py</code> and <code className="bg-gray-900 px-1 rounded">agentkit_mcp/toolpacks.py</code>)
+              that exposes capabilities two ways:
             </p>
             <ul className="list-disc list-inside text-sm text-gray-300 space-y-2 ml-2">
-              <li><strong className="text-blue-400">As an MCP server</strong> — 6 tools, 6 resources and 1 prompt, reachable from any MCP client over stdio (local) or SSE (hosted). This is the primary interface: it's what an agent actually calls.</li>
-              <li><strong className="text-green-400">As a read-only REST facade</strong> (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/web_app.py</code>) — every <code className="bg-gray-900 px-1 rounded">/api/*</code> route delegates to the exact same tool functions, which is how this dashboard renders live data in your browser. See the <strong>API Docs</strong> page for every endpoint.</li>
+              <li><strong className="text-blue-400">As an MCP server</strong> — tool packs, resources and prompts reachable from any MCP client over stdio (local) or SSE (hosted), gated by a fine-grained policy engine.</li>
+              <li><strong className="text-green-400">As a REST facade</strong> (<code className="bg-gray-900 px-1 rounded">agentkit_mcp/web_app.py</code>) — every <code className="bg-gray-900 px-1 rounded">/api/*</code> route delegates to the exact same tool functions, which is how this dashboard renders live telemetry and capability inspection in your browser. See the <strong>API Docs</strong> page for every endpoint.</li>
             </ul>
             <p className="text-gray-300">
               A business user asking an agent "what's our finance health look like, and is anything off?" gets answered
-              by these tools chaining together — <code className="bg-gray-900 px-1 rounded">get_company_health</code>,
-              then <code className="bg-gray-900 px-1 rounded">detect_kpi_anomalies</code> — without the agent ever
-              seeing raw SQL or a database credential.
+              by tools chaining together — <code className="bg-gray-900 px-1 rounded">get_company_health</code>,
+              then <code className="bg-gray-900 px-1 rounded">detect_kpi_anomalies</code> — with bound parameters and without the agent ever
+              seeing raw credentials.
             </p>
           </div>
         </section>
 
-        {/* The 6 tools, in plain language */}
+        {/* Declarative Packs & Reference BI Tools */}
         <section className="bg-gray-800/50 backdrop-blur-md p-8 rounded-xl border border-gray-700 shadow-2xl">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Wrench className="w-6 h-6 text-green-400" /> The 6 Tools — What They're For
+            <Wrench className="w-6 h-6 text-green-400" /> Reference BI Pack & Declarative Tool Packs
           </h2>
           <p className="text-gray-300 mb-4 text-sm">
-            Each row below is a real capability an agent can invoke. The right column is a business question
-            that maps onto it — you don't call these directly, an MCP-aware agent picks the right one from your
-            plain-English request.
+            AgentKit is fully extensible: load custom YAML packs from <code className="bg-gray-900 px-1 rounded">AGENTKIT_PACKS</code> to connect any table or API. The bundled Reference BI Pack provides 6 out-of-the-box analytical tools:
           </p>
           <div className="grid md:grid-cols-2 gap-4">
             <ToolCard color="green" name="query_kpis" title="Look up KPIs" ask="“What were our Growth metrics last quarter?”" />
@@ -73,7 +71,7 @@ export default function UserGuidePage() {
             <ToolCard color="cyan" name="get_executive_summary" title="One-shot executive snapshot" ask="“Give me the state of the business in one summary.”" />
           </div>
           <p className="text-xs text-gray-400 mt-4">
-            All six read from the live <code className="bg-gray-900 px-1 rounded">kpi_metrics</code> table via
+            All analytical tools read from the live <code className="bg-gray-900 px-1 rounded">kpi_metrics</code> table via
             <code className="bg-gray-900 px-1 rounded ml-1">POSTGRES_URL</code>. If that connection isn't configured,
             tools return an explicit error — never fabricated numbers. Full parameter lists and JSON response
             shapes are on the <strong>API Docs</strong> page.
