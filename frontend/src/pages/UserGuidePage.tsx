@@ -226,7 +226,7 @@ export default function UserGuidePage() {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
               <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-purple-400" /> Business Intelligence & Tools</h3>
-              <p className="text-sm text-gray-300">Run any of the 6 tools live from a form and see the exact JSON an agent would receive.</p>
+              <p className="text-sm text-gray-300">Run any registered tool live from a form and see the exact JSON an agent would receive.</p>
             </div>
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
               <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><Activity className="w-4 h-4 text-green-400" /> Observability</h3>
