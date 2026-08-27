@@ -90,15 +90,16 @@ Reproducible (deterministic, no external services): `python eval/run_benchmarks.
 
 ## 5. DSPy Pipeline Optimization (Research Scaffold)
 
-| Configuration | Eval score |
-|---|---|
-| Uncompiled (zero-shot) | 0.4 |
-| BootstrapFewShot compiled | 0.6 |
+| Configuration | Eval score | Examples actually scored |
+|---|---|---|
+| Uncompiled (zero-shot) | 0.680 | 30 / 30 |
+| BootstrapFewShot compiled | 0.673 | 11 / 30 |
 
-**Caveat:** N=4 evaluation examples — far too small to draw statistical conclusions. This
-scaffold demonstrates that declarative MCP tools can be optimized programmatically via
-DSPy; a statistically valid study (N ≥ 50) is identified as future work. A proper run
-requires hundreds of LLM calls and is limited by free-tier API quota at this scale.
+**Caveat:** N=30 held-out examples (up from an earlier N=4 pilot) for the uncompiled baseline,
+but the compiled run hit a real Groq daily quota ceiling partway through and only scored 11 of
+30 — not yet a clean apples-to-apples comparison, and the 0.673 vs 0.680 gap should not be read
+as "compiled is worse." This scaffold demonstrates that declarative MCP tools can be optimized
+programmatically via DSPy; closing the compiled-side sample gap is identified as future work.
 
 Source: `research/dspy_experiment.py`. Full context: [`RESEARCH.md`](RESEARCH.md) §3.
 
