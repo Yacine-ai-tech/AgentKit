@@ -1,6 +1,7 @@
 """
 Insight engine — health index, risk scoring, anomalies, executive summary.
 """
+
 from __future__ import annotations
 
 from typing import Dict, List
@@ -15,6 +16,7 @@ log = get_logger(__name__)
 
 
 # ── Formatting ────────────────────────────────────────────────────────────
+
 
 def format_number(value: float | None, currency: str = "$") -> str:
     """Human-readable number with automatic scale suffix."""
@@ -32,12 +34,14 @@ def format_number(value: float | None, currency: str = "$") -> str:
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+
 def _metric_lookup(df: pd.DataFrame, keywords: List[str]) -> pd.DataFrame:
     mask = df["metric"].str.lower().apply(lambda name: any(k in name for k in keywords))
     return df[mask]
 
 
 # ── Key metrics ───────────────────────────────────────────────────────────
+
 
 def extract_key_metrics(df: pd.DataFrame) -> Dict[str, float]:
     latest = df.sort_values("period").groupby("metric").tail(1)
@@ -52,6 +56,7 @@ def extract_key_metrics(df: pd.DataFrame) -> Dict[str, float]:
 
 
 # ── Health index ──────────────────────────────────────────────────────────
+
 
 def compute_health_index(df: pd.DataFrame) -> Dict[str, float | str]:
     if df.empty:
@@ -69,12 +74,22 @@ def compute_health_index(df: pd.DataFrame) -> Dict[str, float | str]:
     margin = margin_s["value"].mean() if not margin_s.empty else 0
 
     cash_s = _metric_lookup(df, ["cash"])
-    cash_score = min(100, max(0, cash_s["value"].mean() / 1_000_000 * 20)) if not cash_s.empty else 0
+    cash_score = (
+        min(100, max(0, cash_s["value"].mean() / 1_000_000 * 20))
+        if not cash_s.empty
+        else 0
+    )
 
     eff_s = _metric_lookup(df, ["operating expense", "opex"])
-    efficiency = 100 - min(100, eff_s["value"].mean() / 1_000_000 * 10) if not eff_s.empty else 60
+    efficiency = (
+        100 - min(100, eff_s["value"].mean() / 1_000_000 * 10)
+        if not eff_s.empty
+        else 60
+    )
 
-    score = float(np.clip((growth * 2) + (margin * 0.5) + cash_score + efficiency, 0, 100))
+    score = float(
+        np.clip((growth * 2) + (margin * 0.5) + cash_score + efficiency, 0, 100)
+    )
 
     labels_en = {80: "Strong", 60: "Stable", 40: "At Risk", 0: "Critical"}
     labels_fr = {80: "Solide", 60: "Stable", 40: "À risque", 0: "Critique"}
@@ -93,6 +108,7 @@ def compute_health_index(df: pd.DataFrame) -> Dict[str, float | str]:
 
 # ── Anomaly detection ────────────────────────────────────────────────────
 
+
 def detect_anomalies(
     df: pd.DataFrame,
     z_threshold: float = 2.5,
@@ -108,9 +124,17 @@ def detect_anomalies(
     if df.empty:
         return df.copy()
 
-    sort_col = "period" if "period" in df.columns else ("month_tag" if "month_tag" in df.columns else df.columns[0])
+    sort_col = (
+        "period"
+        if "period" in df.columns
+        else ("month_tag" if "month_tag" in df.columns else df.columns[0])
+    )
     df = df.sort_values(sort_col).copy()
-    value_col = "value" if "value" in df.columns else ("actual" if "actual" in df.columns else df.columns[0])
+    value_col = (
+        "value"
+        if "value" in df.columns
+        else ("actual" if "actual" in df.columns else df.columns[0])
+    )
 
     if method == "zscore":
         # Z-score based anomaly detection
@@ -132,6 +156,7 @@ def detect_anomalies(
         # Unsupervised ML anomaly detection
         try:
             from sklearn.ensemble import IsolationForest
+
             iso_forest = IsolationForest(contamination=0.05, random_state=42)
             df["is_anomaly"] = iso_forest.fit_predict(df[[value_col]]) == -1
         except ImportError:
@@ -159,6 +184,7 @@ def detect_anomalies(
 
 # ── Risk score ────────────────────────────────────────────────────────────
 
+
 def compute_risk_score(df: pd.DataFrame) -> Dict[str, float | int | str]:
     volatility = 0.0
     if not df.empty:
@@ -174,11 +200,20 @@ def compute_risk_score(df: pd.DataFrame) -> Dict[str, float | int | str]:
         total = latest["value"].abs().sum()
         if total:
             share = latest["value"].abs() / total
-            concentration = float(share.sort_values(ascending=False).head(3).sum() * 100)
+            concentration = float(
+                share.sort_values(ascending=False).head(3).sum() * 100
+            )
 
-    score = float(np.clip(100 - (volatility * 1.5 + anomaly_count * 5 + concentration * 0.4), 0, 100))
+    score = float(
+        np.clip(
+            100 - (volatility * 1.5 + anomaly_count * 5 + concentration * 0.4), 0, 100
+        )
+    )
 
-    label_map = {"en": {70: "Low", 50: "Moderate", 0: "High"}, "fr": {70: "Faible", 50: "Modéré", 0: "Élevé"}}
+    label_map = {
+        "en": {70: "Low", 50: "Moderate", 0: "High"},
+        "fr": {70: "Faible", 50: "Modéré", 0: "Élevé"},
+    }
     lang_map = label_map.get(I18N.lang(), label_map["en"])
     label = next(v for k, v in sorted(lang_map.items(), reverse=True) if score >= k)
 
@@ -197,6 +232,7 @@ def compute_risk_score(df: pd.DataFrame) -> Dict[str, float | int | str]:
 
 # ── Metric changes (period-over-period) ──────────────────────────────────
 
+
 def compute_metric_changes(df: pd.DataFrame) -> Dict[str, Dict[str, float | str]]:
     results: Dict[str, Dict[str, float | str]] = {}
     if df.empty:
@@ -213,6 +249,7 @@ def compute_metric_changes(df: pd.DataFrame) -> Dict[str, Dict[str, float | str]
 
 # ── Executive summary ─────────────────────────────────────────────────────
 
+
 def build_executive_summary(
     df: pd.DataFrame,
     health: Dict[str, float | str],
@@ -222,29 +259,53 @@ def build_executive_summary(
     fr = I18N.lang() == "fr"
     bullets: List[str] = []
     if fr:
-        bullets.append(f"Indice de santé à {health.get('score', 0):.0f} ({health.get('label')}).")
-        bullets.append(f"Posture de risque : {risk.get('label')} avec volatilité {risk.get('volatility', 0):.1f} %.")
+        bullets.append(
+            f"Indice de santé à {health.get('score', 0):.0f} ({health.get('label')})."
+        )
+        bullets.append(
+            f"Posture de risque : {
+                risk.get('label')} avec volatilité {
+                risk.get(
+                    'volatility',
+                    0):.1f} %.")
         if not np.isnan(key_metrics.get("revenue", np.nan)):
-            bullets.append(f"Revenu actuel à {format_number(key_metrics.get('revenue'))}.")
+            bullets.append(
+                f"Revenu actuel à {format_number(key_metrics.get('revenue'))}."
+            )
         if not np.isnan(key_metrics.get("gross_margin", np.nan)):
-            bullets.append(f"Marge brute à {format_number(key_metrics.get('gross_margin'))}.")
+            bullets.append(
+                f"Marge brute à {format_number(key_metrics.get('gross_margin'))}."
+            )
         if not np.isnan(key_metrics.get("cash", np.nan)):
             bullets.append(f"Trésorerie à {format_number(key_metrics.get('cash'))}.")
     else:
-        bullets.append(f"Health index at {health.get('score', 0):.0f} ({health.get('label')}).")
-        bullets.append(f"Risk posture: {risk.get('label')} with volatility {risk.get('volatility', 0):.1f}%.")
+        bullets.append(
+            f"Health index at {health.get('score', 0):.0f} ({health.get('label')})."
+        )
+        bullets.append(
+            f"Risk posture: {risk.get('label')} with volatility {risk.get('volatility', 0):.1f}%."
+        )
         if not np.isnan(key_metrics.get("revenue", np.nan)):
-            bullets.append(f"Revenue currently at {format_number(key_metrics.get('revenue'))}.")
+            bullets.append(
+                f"Revenue currently at {format_number(key_metrics.get('revenue'))}."
+            )
         if not np.isnan(key_metrics.get("gross_margin", np.nan)):
-            bullets.append(f"Gross margin pool at {format_number(key_metrics.get('gross_margin'))}.")
+            bullets.append(
+                f"Gross margin pool at {format_number(key_metrics.get('gross_margin'))}."
+            )
         if not np.isnan(key_metrics.get("cash", np.nan)):
-            bullets.append(f"Cash visibility at {format_number(key_metrics.get('cash'))}.")
+            bullets.append(
+                f"Cash visibility at {format_number(key_metrics.get('cash'))}."
+            )
     return bullets
 
 
 # ── Target attainment ─────────────────────────────────────────────────────
 
-def compute_target_attainment(kpi_df: pd.DataFrame, targets_df: pd.DataFrame) -> pd.DataFrame:
+
+def compute_target_attainment(
+    kpi_df: pd.DataFrame, targets_df: pd.DataFrame
+) -> pd.DataFrame:
     if kpi_df.empty or targets_df.empty:
         return pd.DataFrame()
 

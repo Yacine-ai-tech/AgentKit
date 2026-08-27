@@ -5,6 +5,7 @@ server exposes its registered tools and that the resources/prompts endpoints are
 queryable. The core server ships with 6 reference BI tools; resources and prompts
 are supplied by tool packs at load time (none are hardcoded into the agnostic server).
 """
+
 import pytest
 
 pytest.importorskip("fastmcp")
@@ -12,13 +13,18 @@ pytest.importorskip("fastmcp")
 from agentkit_mcp import mcp_server  # noqa: E402
 
 EXPECTED_TOOLS = {
-    "query_kpis", "get_company_health", "detect_kpi_anomalies",
-    "forecast_metric", "list_available_metrics", "get_executive_summary",
+    "query_kpis",
+    "get_company_health",
+    "detect_kpi_anomalies",
+    "forecast_metric",
+    "list_available_metrics",
+    "get_executive_summary",
 }
 
 
 async def _list(kind: str):
     from fastmcp import Client
+
     async with Client(mcp_server.mcp) as c:
         if kind == "tools":
             return await c.list_tools()
@@ -46,4 +52,3 @@ async def test_resources_and_prompt_exposed():
     # Both lists must be queryable without error; counts depend on loaded packs.
     assert isinstance(resources, list), "resources/list must return a list"
     assert isinstance(prompts, list), "prompts/list must return a list"
-

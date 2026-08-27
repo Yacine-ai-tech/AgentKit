@@ -7,6 +7,7 @@ Version-independent (doesn't depend on FastMCP internals): wraps any ASGI app. G
 If MCP_AUTH_TOKEN is unset, auth is disabled (dev mode) and a warning should be logged by the
 caller. Rate limiting always applies.
 """
+
 from __future__ import annotations
 
 import os
@@ -14,14 +15,15 @@ import time
 from collections import defaultdict, deque
 from typing import Deque, Dict
 
-
 # Small self-contained browser landing/demo page for the MCP server (served at /demo, before
 # auth). A browser can't speak MCP, so this shows liveness, the tool catalog, and how to connect.
 _DEMO_HTML = b"""<!DOCTYPE html><html lang=en><head><meta charset=utf-8>\n<title>AgentKit - MCP server</title>\n</head><body>\n<h1>AgentKit - MCP server</h1>\n<p>Standalone MCP Intelligence Engine</p>\n</body></html>"""
 
 
 class BearerAuthRateLimit:
-    def __init__(self, app, token: str | None = None, rate: int = 120, window: int = 60):
+    def __init__(
+        self, app, token: str | None = None, rate: int = 120, window: int = 60
+    ):
         self.app = app
         self.token = token if token is not None else os.getenv("MCP_AUTH_TOKEN")
         self.rate = int(os.getenv("MCP_RATE_LIMIT", rate))
@@ -36,9 +38,16 @@ class BearerAuthRateLimit:
         # health-checkable by Docker/orchestrators even though MCP itself serves /sse.
         if scope.get("path") == "/health":
             body = b'{"status":"ok","service":"agentkit"}'
-            await send({"type": "http.response.start", "status": 200,
-                        "headers": [(b"content-type", b"application/json"),
-                                    (b"content-length", str(len(body)).encode())]})
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                    ],
+                }
+            )
             await send({"type": "http.response.body", "body": body})
             return
 
@@ -65,7 +74,14 @@ class BearerAuthRateLimit:
     @staticmethod
     async def _deny(send, code: int, msg: str):
         body = msg.encode()
-        await send({"type": "http.response.start", "status": code,
-                    "headers": [(b"content-type", b"text/plain"),
-                                (b"content-length", str(len(body)).encode())]})
+        await send(
+            {
+                "type": "http.response.start",
+                "status": code,
+                "headers": [
+                    (b"content-type", b"text/plain"),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            }
+        )
         await send({"type": "http.response.body", "body": body})

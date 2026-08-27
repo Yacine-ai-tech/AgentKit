@@ -8,6 +8,7 @@ max-line-length = 100
 # config here means local runs and CI agree, and CI can just call `flake8 src/`.
 extend-ignore =
     E501,
+    E402,
     W503,
     W504,
     E203
