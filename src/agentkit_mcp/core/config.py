@@ -1,10 +1,12 @@
 """
 Slim AgentKit configuration — env-driven, no monolith dependencies.
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # parents[3] = repo root (core -> agentkit_mcp -> src -> root). A no-op if the file
@@ -21,7 +23,9 @@ class Settings:
     """Centralized settings — read from environment."""
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-    LOG_FORMAT = os.getenv("LOG_FORMAT", "%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    LOG_FORMAT = os.getenv(
+        "LOG_FORMAT", "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
     LOGS_DIR = str(LOGS_DIR)
 
     POSTGRES_URL = os.getenv("POSTGRES_URL", "")

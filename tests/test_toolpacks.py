@@ -4,6 +4,7 @@ These cover the properties that make a YAML-defined tool safe to expose to a mod
 credentials stay in env vars, params are validated/coerced before they reach SQL, and a
 malformed pack is rejected rather than silently half-registered.
 """
+
 from __future__ import annotations
 
 import sys
@@ -14,9 +15,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from agentkit_mcp.toolpacks import (  # noqa: E402
-    PackParam, load_pack_file, load_packs,
-)
+from agentkit_mcp.toolpacks import PackParam, load_pack_file, load_packs  # noqa: E402
 
 
 def _write(tmp_path: Path, body: str) -> Path:
@@ -38,66 +37,83 @@ def test_loads_bundled_annotations_pack():
 
 def test_datasource_url_comes_from_env_not_the_file(tmp_path, monkeypatch):
     """A pack file must be safe to commit — the URL is resolved from a named env var."""
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
 name: t
 datasource: {type: postgres, url_env: MY_DB_URL}
 tools:
   - {name: a, description: d, query: "SELECT 1"}
-""")
+""",
+    )
     pack = load_pack_file(p)
     monkeypatch.setenv("MY_DB_URL", "postgresql://example/db")
     assert pack.resolve_url() == "postgresql://example/db"
 
 
 def test_missing_datasource_env_var_raises_actionable_error(tmp_path, monkeypatch):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
 name: t
 datasource: {type: postgres, url_env: ABSENT_DB_URL}
 tools:
   - {name: a, description: d, query: "SELECT 1"}
-""")
+""",
+    )
     monkeypatch.delenv("ABSENT_DB_URL", raising=False)
     with pytest.raises(RuntimeError, match="ABSENT_DB_URL"):
         load_pack_file(p).resolve_url()
 
 
 def test_invalid_effect_is_rejected(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
 name: t
 datasource: {type: postgres, url_env: X}
 tools:
   - {name: a, description: d, effect: sudo, query: "SELECT 1"}
-""")
+""",
+    )
     with pytest.raises(ValueError, match="effect"):
         load_pack_file(p)
 
 
 def test_read_tool_may_not_use_statement(tmp_path):
     """Guards against a mutating tool sneaking in mislabelled as read-only."""
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
 name: t
 datasource: {type: postgres, url_env: X}
 tools:
   - {name: a, description: d, effect: read, statement: "DELETE FROM t"}
-""")
+""",
+    )
     with pytest.raises(ValueError, match="effect=read"):
         load_pack_file(p)
 
 
 def test_tool_without_query_statement_or_request_is_rejected(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
 name: t
 datasource: {type: postgres, url_env: X}
 tools:
   - {name: a, description: d}
-""")
+""",
+    )
     with pytest.raises(ValueError, match="query"):
         load_pack_file(p)
 
 
 def test_malformed_pack_is_skipped_not_fatal(tmp_path, monkeypatch):
     """One bad third-party pack must not stop the rest of the deployment serving."""
-    (tmp_path / "bad.yaml").write_text("name: bad\ntools:\n  - {description: no name}\n")
+    (tmp_path / "bad.yaml").write_text(
+        "name: bad\ntools:\n  - {description: no name}\n"
+    )
     (tmp_path / "good.yaml").write_text(
         "name: good\ndatasource: {type: postgres, url_env: X}\n"
         "tools:\n  - {name: ok, description: d, query: 'SELECT 1'}\n"
@@ -109,8 +125,10 @@ def test_malformed_pack_is_skipped_not_fatal(tmp_path, monkeypatch):
 
 def test_param_binding_coerces_and_defaults():
     from agentkit_mcp.toolpacks import PackTool
+
     tool = PackTool(
-        name="t", description="d",
+        name="t",
+        description="d",
         params=[
             PackParam(name="n", type="integer", required=True),
             PackParam(name="limit", type="integer", default=50),
@@ -124,9 +142,13 @@ def test_param_binding_coerces_and_defaults():
 
 def test_missing_required_param_is_rejected():
     from agentkit_mcp.toolpacks import PackTool
-    tool = PackTool(name="t", description="d",
-                    params=[PackParam(name="n", type="integer", required=True)],
-                    query="SELECT 1")
+
+    tool = PackTool(
+        name="t",
+        description="d",
+        params=[PackParam(name="n", type="integer", required=True)],
+        query="SELECT 1",
+    )
     with pytest.raises(ValueError, match="missing required parameter"):
         tool.bind({})
 
@@ -134,15 +156,25 @@ def test_missing_required_param_is_rejected():
 def test_unknown_param_is_rejected():
     """An arg the pack never declared must not silently reach the query."""
     from agentkit_mcp.toolpacks import PackTool
-    tool = PackTool(name="t", description="d",
-                    params=[PackParam(name="n", type="integer")], query="SELECT 1")
+
+    tool = PackTool(
+        name="t",
+        description="d",
+        params=[PackParam(name="n", type="integer")],
+        query="SELECT 1",
+    )
     with pytest.raises(ValueError, match="unknown parameter"):
         tool.bind({"n": 1, "injected": "DROP TABLE"})
 
 
 def test_bad_type_is_rejected():
     from agentkit_mcp.toolpacks import PackTool
-    tool = PackTool(name="t", description="d",
-                    params=[PackParam(name="n", type="integer")], query="SELECT 1")
+
+    tool = PackTool(
+        name="t",
+        description="d",
+        params=[PackParam(name="n", type="integer")],
+        query="SELECT 1",
+    )
     with pytest.raises(ValueError, match="expects integer"):
         tool.bind({"n": "not-a-number"})

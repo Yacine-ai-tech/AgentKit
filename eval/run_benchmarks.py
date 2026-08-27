@@ -7,12 +7,11 @@ and response fidelity under reproducible random seed conditions.
 Usage:
     python eval/run_benchmarks.py --seed 42
 """
-import sys
-import os
-import time
+import argparse
 import json
 import random
-import argparse
+import sys
+import time
 from pathlib import Path
 
 # Add src/ to PYTHONPATH
@@ -21,11 +20,12 @@ SRC_DIR = AGENTKIT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+
 def run_agentkit_benchmarks(seed: int = 42):
     random.seed(seed)
-    print(f"==================================================")
-    print(f"AgentKit Research Benchmark Suite (Seed: {seed})")
-    print(f"==================================================")
+    print("==================================================")
+    print("AgentKit Research Benchmark Suite (Seed: {seed})")
+    print("==================================================")
 
     results = {
         "benchmark": "AgentKit MCP Middleware Performance & Schema Audit",
@@ -36,12 +36,17 @@ def run_agentkit_benchmarks(seed: int = 42):
 
     # Metric 1: MCP Tool Schema Reflection Overhead
     start_t = time.perf_counter()
-    from agentkit_mcp.mcp_server import mcp, query_kpis, get_company_health, detect_kpi_anomalies, forecast_metric, list_available_metrics, get_executive_summary
+    from agentkit_mcp.mcp_server import (detect_kpi_anomalies, forecast_metric,
+                                         get_company_health,
+                                         get_executive_summary,
+                                         list_available_metrics, query_kpis)
     schema_latency_ms = (time.perf_counter() - start_t) * 1000.0
 
     # Metric 2: Zero-Latency Schema Validation Rate
-    tools = [query_kpis, get_company_health, detect_kpi_anomalies, forecast_metric, list_available_metrics, get_executive_summary]
-    schema_valid_count = sum(1 for t in tools if hasattr(t, "__annotations__") and len(t.__annotations__) > 0)
+    tools = [query_kpis, get_company_health, detect_kpi_anomalies,
+             forecast_metric, list_available_metrics, get_executive_summary]
+    schema_valid_count = sum(1 for t in tools if hasattr(
+        t, "__annotations__") and len(t.__annotations__) > 0)
     schema_validity_pct = (schema_valid_count / len(tools)) * 100.0
 
     results["metrics"] = {
@@ -56,8 +61,9 @@ def run_agentkit_benchmarks(seed: int = 42):
     out_path = AGENTKIT_ROOT / "eval" / "benchmark_results.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(results, indent=2))
-    print(f"\n✅ Benchmark results saved to: {out_path}")
+    print("\n✅ Benchmark results saved to: {out_path}")
     return results
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run AgentKit Reproducible Research Benchmarks")

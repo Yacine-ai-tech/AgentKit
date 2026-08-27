@@ -7,6 +7,7 @@ set LLM_DEFAULT to any LiteLLM model to switch providers.
 
 Run:  python demos/crewai_demo.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,13 +20,21 @@ log = get_logger(__name__)
 try:
     from crewai import LLM, Agent, Crew, Task  # type: ignore
     from crewai.tools import tool  # type: ignore
+
     _CREW = True
 except ImportError:
     _CREW = False
     log.warning("crewai not installed — demo unavailable")
 
 
-from agentkit_mcp.mcp_server import get_company_health, get_executive_summary, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics  # noqa: E402
+from agentkit_mcp.mcp_server import (
+    detect_kpi_anomalies,  # noqa: E402
+    forecast_metric,
+    get_company_health,
+    get_executive_summary,
+    list_available_metrics,
+    query_kpis,
+)
 
 
 def _sync(coro):
@@ -38,6 +47,7 @@ def _sync(coro):
 
 
 if _CREW:
+
     @tool("query_kpis")
     def t_query_kpis(domain: str = "Finance", limit: int = 20) -> str:
         """Return the latest KPI metrics for a business domain (Finance, People, IT, …)."""
@@ -54,9 +64,15 @@ if _CREW:
         return str(_sync(get_executive_summary()))
 
     @tool("detect_kpi_anomalies")
-    def t_detect_anomalies(domain: str, method: str = "zscore", threshold: float = 2.5) -> str:
+    def t_detect_anomalies(
+        domain: str, method: str = "zscore", threshold: float = 2.5
+    ) -> str:
         """Find anomalies in a domain's KPI history."""
-        return str(_sync(detect_kpi_anomalies(domain=domain, method=method, threshold=threshold)))
+        return str(
+            _sync(
+                detect_kpi_anomalies(domain=domain, method=method, threshold=threshold)
+            )
+        )
 
     @tool("forecast_metric")
     def t_forecast(metric_name: str, periods: int = 6) -> str:
@@ -81,25 +97,55 @@ def build_crew(question: str):
         return None
     llm = _llm()
     researcher = Agent(
-        role="Researcher", goal="Collect KPI data relevant to the business question",
+        role="Researcher",
+        goal="Collect KPI data relevant to the business question",
         backstory="Senior data analyst with deep KPI knowledge",
-        tools=[t_query_kpis, t_health, t_summary, t_detect_anomalies, t_forecast, t_list_metrics], llm=llm, verbose=False,
+        tools=[
+            t_query_kpis,
+            t_health,
+            t_summary,
+            t_detect_anomalies,
+            t_forecast,
+            t_list_metrics,
+        ],
+        llm=llm,
+        verbose=False,
     )
     analyst = Agent(
-        role="Analyst", goal="Identify patterns, anomalies and risks from KPI data",
-        backstory="Strategic business analyst with a finance background", tools=[t_detect_anomalies, t_forecast], llm=llm, verbose=False,
+        role="Analyst",
+        goal="Identify patterns, anomalies and risks from KPI data",
+        backstory="Strategic business analyst with a finance background",
+        tools=[t_detect_anomalies, t_forecast],
+        llm=llm,
+        verbose=False,
     )
     reporter = Agent(
-        role="Reporter", goal="Produce a concise executive briefing",
-        backstory="Senior executive communications lead", llm=llm, verbose=False,
+        role="Reporter",
+        goal="Produce a concise executive briefing",
+        backstory="Senior executive communications lead",
+        llm=llm,
+        verbose=False,
     )
-    task1 = Task(description=f"Use the tools to gather KPI evidence for: '{question}'.",
-                 agent=researcher, expected_output="Relevant KPI figures and the company health score")
-    task2 = Task(description="Interpret the gathered data — patterns, anomalies, risks.",
-                 agent=analyst, expected_output="3-5 bullet findings with numbers")
-    task3 = Task(description="Write a short executive briefing (key finding, evidence, recommendation).",
-                 agent=reporter, expected_output="A 4-6 sentence executive briefing")
-    return Crew(agents=[researcher, analyst, reporter], tasks=[task1, task2, task3], verbose=False)
+    task1 = Task(
+        description=f"Use the tools to gather KPI evidence for: '{question}'.",
+        agent=researcher,
+        expected_output="Relevant KPI figures and the company health score",
+    )
+    task2 = Task(
+        description="Interpret the gathered data — patterns, anomalies, risks.",
+        agent=analyst,
+        expected_output="3-5 bullet findings with numbers",
+    )
+    task3 = Task(
+        description="Write a short executive briefing (key finding, evidence, recommendation).",
+        agent=reporter,
+        expected_output="A 4-6 sentence executive briefing",
+    )
+    return Crew(
+        agents=[researcher, analyst, reporter],
+        tasks=[task1, task2, task3],
+        verbose=False,
+    )
 
 
 if __name__ == "__main__":

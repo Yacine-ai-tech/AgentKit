@@ -8,6 +8,7 @@ LangGraph node, CrewAI agent). The order is always:
 so an action is never taken without a decision recorded first, and the record exists
 even when execution then crashes.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -35,7 +36,9 @@ def _rows_to_records(cur, limit: int = 500):
     return [dict(zip(cols, r)) for r in rows]
 
 
-def _run_sql(pack: ToolPack, tool: PackTool, bound: Dict[str, Any], dry_run: bool) -> Dict[str, Any]:
+def _run_sql(
+    pack: ToolPack, tool: PackTool, bound: Dict[str, Any], dry_run: bool
+) -> Dict[str, Any]:
     """Blocking DB work — always called via a worker thread, never on the event loop."""
     import psycopg
     from psycopg.rows import dict_row
@@ -56,36 +59,57 @@ def _run_sql(pack: ToolPack, tool: PackTool, bound: Dict[str, Any], dry_run: boo
             affected = cur.rowcount
             if dry_run:
                 conn.rollback()
-                return {"dry_run": True, "would_affect_rows": affected, "committed": False,
-                        "effect": tool.effect}
+                return {
+                    "dry_run": True,
+                    "would_affect_rows": affected,
+                    "committed": False,
+                    "effect": tool.effect,
+                }
             conn.commit()
             return {"affected_rows": affected, "committed": True, "effect": tool.effect}
 
 
-async def _run_http(pack: ToolPack, tool: PackTool, bound: Dict[str, Any], dry_run: bool) -> Dict[str, Any]:
+async def _run_http(
+    pack: ToolPack, tool: PackTool, bound: Dict[str, Any], dry_run: bool
+) -> Dict[str, Any]:
     import httpx
 
     req = tool.request or {}
     base = pack.resolve_url().rstrip("/")
-    path = str(req.get("path", "/")).format(**{k: ("" if v is None else v) for k, v in bound.items()})
+    path = str(req.get("path", "/")).format(
+        **{k: ("" if v is None else v) for k, v in bound.items()}
+    )
     url = f"{base}{path if path.startswith('/') else '/' + path}"
     method = str(req.get("method", "GET")).upper()
 
     if dry_run and tool.effect != READ:
-        return {"dry_run": True, "committed": False, "would_call": {"method": method, "url": url},
-                "effect": tool.effect}
+        return {
+            "dry_run": True,
+            "committed": False,
+            "would_call": {"method": method, "url": url},
+            "effect": tool.effect,
+        }
 
     headers = dict(req.get("headers", {}) or {})
     for k, v in list(headers.items()):
-        if isinstance(v, str) and v.startswith("$"):   # $ENV_VAR indirection, never inline secrets
+        if isinstance(v, str) and v.startswith(
+            "$"
+        ):  # $ENV_VAR indirection, never inline secrets
             import os
+
             headers[k] = os.getenv(v[1:], "")
 
-    params = {k: v for k, v in bound.items() if v is not None} if method == "GET" else None
-    json_body = {k: v for k, v in bound.items() if v is not None} if method != "GET" else None
+    params = (
+        {k: v for k, v in bound.items() if v is not None} if method == "GET" else None
+    )
+    json_body = (
+        {k: v for k, v in bound.items() if v is not None} if method != "GET" else None
+    )
 
     async with httpx.AsyncClient(timeout=req.get("timeout", 30)) as client:
-        resp = await client.request(method, url, params=params, json=json_body, headers=headers)
+        resp = await client.request(
+            method, url, params=params, json=json_body, headers=headers
+        )
     if resp.status_code >= 400:
         raise RuntimeError(f"http_{resp.status_code}: {resp.text[:300]}")
     try:
@@ -109,10 +133,15 @@ async def call_pack_tool(
     approval_token = args.pop("approval_token", None)
 
     decision = policy_engine.check(
-        tool.name, args=args, caller_scopes=caller_scopes,
-        approval_token=approval_token, dry_run=dry_run,
+        tool.name,
+        args=args,
+        caller_scopes=caller_scopes,
+        approval_token=approval_token,
+        dry_run=dry_run,
     )
-    record = policy_engine.record(tool.name, decision, args=args, caller=caller, session_id=session_id)
+    record = policy_engine.record(
+        tool.name, decision, args=args, caller=caller, session_id=session_id
+    )
     if not decision.allowed:
         raise PolicyDenied(decision.reason)
 
@@ -122,17 +151,24 @@ async def call_pack_tool(
         if tool.request:
             result = await _run_http(pack, tool, bound, dry_run)
         else:
-            result = await anyio.to_thread.run_sync(_run_sql, pack, tool, bound, dry_run)
+            result = await anyio.to_thread.run_sync(
+                _run_sql, pack, tool, bound, dry_run
+            )
     except PolicyDenied:
         raise
     except Exception as e:
-        policy_engine.complete(record, outcome="error", error=str(e),
-                               duration_ms=round((time.time() - t0) * 1000, 1))
+        policy_engine.complete(
+            record,
+            outcome="error",
+            error=str(e),
+            duration_ms=round((time.time() - t0) * 1000, 1),
+        )
         log.exception("pack tool %s.%s failed: %s", pack.name, tool.name, e)
         return {"error": str(e), "tool": tool.name, "pack": pack.name}
 
-    policy_engine.complete(record, outcome="ok",
-                           duration_ms=round((time.time() - t0) * 1000, 1))
+    policy_engine.complete(
+        record, outcome="ok", duration_ms=round((time.time() - t0) * 1000, 1)
+    )
     result.setdefault("tool", tool.name)
     result.setdefault("pack", pack.name)
     result["audit_id"] = record.id
@@ -146,6 +182,7 @@ def _make_tool_callable(pack: ToolPack, tool: PackTool):
     YAML-declared tool has to present a real typed signature rather than **kwargs —
     otherwise every pack tool would advertise an empty schema to the model.
     """
+
     async def _run(**kwargs: Any) -> Dict[str, Any]:
         try:
             return await call_pack_tool(pack, tool, kwargs, caller="mcp")
@@ -162,30 +199,46 @@ def _make_tool_callable(pack: ToolPack, tool: PackTool):
             ann, default = py, inspect.Parameter.empty
         else:
             ann, default = Optional[py], p.default
-        params.append(inspect.Parameter(
-            p.name, inspect.Parameter.KEYWORD_ONLY, default=default, annotation=ann))
+        params.append(
+            inspect.Parameter(
+                p.name, inspect.Parameter.KEYWORD_ONLY, default=default, annotation=ann
+            )
+        )
         annotations[p.name] = ann
 
     if tool.effect != READ:
-        params.append(inspect.Parameter(
-            "dry_run", inspect.Parameter.KEYWORD_ONLY, default=False, annotation=bool))
+        params.append(
+            inspect.Parameter(
+                "dry_run",
+                inspect.Parameter.KEYWORD_ONLY,
+                default=False,
+                annotation=bool,
+            )
+        )
         annotations["dry_run"] = bool
         policy = policy_engine.get(tool.name)
         if policy is not None and policy.approval_required:
-            params.append(inspect.Parameter(
-                "approval_token", inspect.Parameter.KEYWORD_ONLY,
-                default=None, annotation=Optional[str]))
+            params.append(
+                inspect.Parameter(
+                    "approval_token",
+                    inspect.Parameter.KEYWORD_ONLY,
+                    default=None,
+                    annotation=Optional[str],
+                )
+            )
             annotations["approval_token"] = Optional[str]
 
     annotations["return"] = Dict[str, Any]
-    _run.__signature__ = inspect.Signature(params)   # type: ignore[attr-defined]
+    _run.__signature__ = inspect.Signature(params)  # type: ignore[attr-defined]
     _run.__annotations__ = annotations
     _run.__name__ = tool.name
 
     doc = tool.description or f"{tool.name} ({pack.name} pack)"
     if tool.effect != READ:
-        doc += (f"\n\nEffect: {tool.effect.upper()} — mutates data. "
-                f"Pass dry_run=true to preview without committing.")
+        doc += (
+            f"\n\nEffect: {tool.effect.upper()} — mutates data. "
+            f"Pass dry_run=true to preview without committing."
+        )
         p = policy_engine.get(tool.name)
         if p is not None and p.approval_required:
             doc += " Requires a human-supplied approval_token."
@@ -202,7 +255,13 @@ def register_pack_tools(mcp, packs: Dict[str, ToolPack]) -> List[str]:
                 mcp.tool()(_make_tool_callable(pack, tool))
                 registered.append(tool.name)
             except Exception as e:
-                log.error("could not register pack tool %s.%s: %s", pack.name, tool.name, e)
+                log.error(
+                    "could not register pack tool %s.%s: %s", pack.name, tool.name, e
+                )
     if registered:
-        log.info("registered %d declarative pack tool(s): %s", len(registered), ", ".join(registered))
+        log.info(
+            "registered %d declarative pack tool(s): %s",
+            len(registered),
+            ", ".join(registered),
+        )
     return registered

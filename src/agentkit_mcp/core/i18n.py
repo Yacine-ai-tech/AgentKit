@@ -6,6 +6,7 @@ this provides the same ``I18N.lang()`` + ``t(section, key)`` API those modules i
 ``lang()`` fixed to English. (In the services, ``t(...)`` is only invoked on the French
 branch, which never runs here.)
 """
+
 from __future__ import annotations
 
 

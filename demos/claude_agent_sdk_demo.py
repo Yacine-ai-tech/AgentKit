@@ -11,6 +11,7 @@ Requirements (the Claude Agent SDK runs on top of the Claude Code CLI):
 
 Run:  python demos/claude_agent_sdk_demo.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,48 +22,88 @@ from agentkit_mcp.core.logger import get_logger
 log = get_logger(__name__)
 
 try:
-    from claude_agent_sdk import (  # type: ignore
-        ClaudeAgentOptions,
+    from claude_agent_sdk import (
+        ClaudeAgentOptions,  # type: ignore
         create_sdk_mcp_server,
         query,
         tool,
     )
+
     _SDK = True
 except ImportError:
     _SDK = False
     log.warning("claude_agent_sdk not installed — demo unavailable")
 
-from agentkit_mcp.mcp_server import get_company_health, query_kpis, detect_kpi_anomalies, forecast_metric, list_available_metrics, get_executive_summary  # noqa: E402
-
+from agentkit_mcp.mcp_server import (
+    detect_kpi_anomalies,  # noqa: E402
+    forecast_metric,
+    get_company_health,
+    get_executive_summary,
+    list_available_metrics,
+    query_kpis,
+)
 
 if _SDK:
-    @tool("get_company_health", "Composite company health index (score + interpretation).",
-          {"domain": str})
+
+    @tool(
+        "get_company_health",
+        "Composite company health index (score + interpretation).",
+        {"domain": str},
+    )
     async def _health(args):
         res = await get_company_health(domain=args.get("domain") or None)
         return {"content": [{"type": "text", "text": str(res)}]}
 
-    @tool("query_kpis", "Latest KPI metrics for a business domain.", {"domain": str, "limit": int})
+    @tool(
+        "query_kpis",
+        "Latest KPI metrics for a business domain.",
+        {"domain": str, "limit": int},
+    )
     async def _kpis(args):
-        res = await query_kpis(domain=args.get("domain") or "Finance", limit=int(args.get("limit", 20)))
+        res = await query_kpis(
+            domain=args.get("domain") or "Finance", limit=int(args.get("limit", 20))
+        )
         return {"content": [{"type": "text", "text": str(res)}]}
 
-    @tool("detect_kpi_anomalies", "Find anomalies in a domain's KPI history.", {"domain": str, "method": str, "threshold": float})
+    @tool(
+        "detect_kpi_anomalies",
+        "Find anomalies in a domain's KPI history.",
+        {"domain": str, "method": str, "threshold": float},
+    )
     async def _anomalies(args):
-        res = await detect_kpi_anomalies(domain=args.get("domain") or "Finance", method=args.get("method", "zscore"), threshold=float(args.get("threshold", 2.5)))
+        res = await detect_kpi_anomalies(
+            domain=args.get("domain") or "Finance",
+            method=args.get("method", "zscore"),
+            threshold=float(args.get("threshold", 2.5)),
+        )
         return {"content": [{"type": "text", "text": str(res)}]}
 
-    @tool("forecast_metric", "Forecast periods ahead for a named metric.", {"metric_name": str, "periods": int})
+    @tool(
+        "forecast_metric",
+        "Forecast periods ahead for a named metric.",
+        {"metric_name": str, "periods": int},
+    )
     async def _forecast(args):
-        res = await forecast_metric(metric_name=args.get("metric_name") or "Revenue", periods=int(args.get("periods", 6)))
+        res = await forecast_metric(
+            metric_name=args.get("metric_name") or "Revenue",
+            periods=int(args.get("periods", 6)),
+        )
         return {"content": [{"type": "text", "text": str(res)}]}
 
-    @tool("list_available_metrics", "List metrics, categories, and periods.", {"domain": str})
+    @tool(
+        "list_available_metrics",
+        "List metrics, categories, and periods.",
+        {"domain": str},
+    )
     async def _list_metrics(args):
         res = await list_available_metrics(domain=args.get("domain") or None)
         return {"content": [{"type": "text", "text": str(res)}]}
 
-    @tool("get_executive_summary", "Synthesize health, KPIs, and anomalies into a one-shot executive summary.", {})
+    @tool(
+        "get_executive_summary",
+        "Synthesize health, KPIs, and anomalies into a one-shot executive summary.",
+        {},
+    )
     async def _exec_summary(args):
         res = await get_executive_summary()
         return {"content": [{"type": "text", "text": str(res)}]}
@@ -70,20 +111,26 @@ if _SDK:
 
 async def main() -> None:
     if not _SDK:
-        print("claude_agent_sdk not installed. pip install claude-agent-sdk "
-              "(and `npm i -g @anthropic-ai/claude-code`).")
+        print(
+            "claude_agent_sdk not installed. pip install claude-agent-sdk "
+            "(and `npm i -g @anthropic-ai/claude-code`)."
+        )
         return
 
-    server = create_sdk_mcp_server(name="agentkit", version="1.0.0", tools=[_health, _kpis, _anomalies, _forecast, _list_metrics, _exec_summary])
+    server = create_sdk_mcp_server(
+        name="agentkit",
+        version="1.0.0",
+        tools=[_health, _kpis, _anomalies, _forecast, _list_metrics, _exec_summary],
+    )
     options = ClaudeAgentOptions(
         mcp_servers={"agentkit": server},
         allowed_tools=[
-            "mcp__agentkit__get_company_health", 
+            "mcp__agentkit__get_company_health",
             "mcp__agentkit__query_kpis",
             "mcp__agentkit__detect_kpi_anomalies",
             "mcp__agentkit__forecast_metric",
             "mcp__agentkit__list_available_metrics",
-            "mcp__agentkit__get_executive_summary"
+            "mcp__agentkit__get_executive_summary",
         ],
         model=os.getenv("LLM_VISION_PREMIUM", "claude-sonnet-4-6"),
     )

@@ -1,7 +1,7 @@
 """
 Test settings configuration in agentkit_mcp.core.config
 """
-import os
+
 from agentkit_mcp.core.config import settings
 
 
