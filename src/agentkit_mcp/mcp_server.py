@@ -10,13 +10,8 @@ effect-classed, gated by `policy.py`), 0 resources, 0 prompt templates.
 Usage:
     python mcp_server.py
 """
+
 from __future__ import annotations
-from agentkit_mcp.services.pg_store import (
-    get_kpi_metrics,
-    get_available_metrics,
-    get_available_categories,
-    get_available_periods,
-)
 
 import os
 from functools import partial
@@ -27,6 +22,12 @@ import anyio
 from agentkit_mcp.core.logger import get_logger
 from agentkit_mcp.core.policy import READ, ToolPolicy, policy_engine
 from agentkit_mcp.pack_runtime import register_pack_tools
+from agentkit_mcp.services.pg_store import (
+    get_available_categories,
+    get_available_metrics,
+    get_available_periods,
+    get_kpi_metrics,
+)
 from agentkit_mcp.toolpacks import load_packs
 
 log = get_logger(__name__)
@@ -42,8 +43,10 @@ async def _run_db(fn, *args, **kwargs):
     """
     return await anyio.to_thread.run_sync(partial(fn, *args, **kwargs))
 
+
 try:
     from fastmcp import FastMCP
+
     _FASTMCP = True
 except ImportError:
     _FASTMCP = False
@@ -53,12 +56,14 @@ _PG = True
 
 try:
     from agentkit_mcp.services.insights import compute_health_index, detect_anomalies
+
     _INSIGHTS = True
 except Exception:
     _INSIGHTS = False
 
 try:
     from agentkit_mcp.services.forecasting import ForecastEngine
+
     _FORECAST = True
 except Exception:
     _FORECAST = False
@@ -78,9 +83,11 @@ PACKS: Dict[str, Any] = {}
 # TOOLS
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _records(df, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """DataFrame → JSON-safe list of dicts (numpy scalars → native, NaN/Inf → None)."""
     import math
+
     recs = df.to_dict("records")
     if limit is not None:
         recs = recs[:limit]
@@ -88,7 +95,7 @@ def _records(df, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     for r in recs:
         clean: Dict[str, Any] = {}
         for k, v in r.items():
-            if hasattr(v, "item"):       # numpy scalar
+            if hasattr(v, "item"):  # numpy scalar
                 v = v.item()
             if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
                 v = None
@@ -106,7 +113,9 @@ async def query_kpis(
 ) -> Dict[str, Any]:
     """Return KPI metrics for a domain and period window."""
     if not _PG:
-        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
+        raise RuntimeError(
+            "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
+        )
     try:
         df = await _run_db(
             get_kpi_metrics,
@@ -114,7 +123,7 @@ async def query_kpis(
             period_from=period_from,
             period_to=period_to,
             metric_filter=metric_filter,
-            limit=limit
+            limit=limit,
         )
         if df is None or df.empty:
             return {"kpis": [], "total": 0}
@@ -128,7 +137,9 @@ async def query_kpis(
 async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
     """Return composite company health index for a domain (or all)."""
     if not (_PG and _INSIGHTS):
-        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
+        raise RuntimeError(
+            "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
+        )
     try:
         df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
         if df is None or df.empty:
@@ -137,11 +148,20 @@ async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
         return {
             "score": float(h.get("score", 0.0)),
             "interpretation": h.get("label", "n/a"),
-            "components": {k: h[k] for k in ("growth", "margin", "cash_score", "efficiency") if k in h},
+            "components": {
+                k: h[k]
+                for k in ("growth", "margin", "cash_score", "efficiency")
+                if k in h
+            },
         }
     except Exception as e:
         log.exception("get_company_health failed: %s", e)
-        return {"score": 0.0, "interpretation": "error", "components": {}, "error": str(e)}
+        return {
+            "score": 0.0,
+            "interpretation": "error",
+            "components": {},
+            "error": str(e),
+        }
 
 
 async def detect_kpi_anomalies(
@@ -151,17 +171,33 @@ async def detect_kpi_anomalies(
 ) -> Dict[str, Any]:
     """Find anomalies in a domain's KPI history."""
     if not (_PG and _INSIGHTS):
-        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
+        raise RuntimeError(
+            "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
+        )
     try:
         df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
         if df is None or df.empty:
-            return {"anomalies": [], "total": 0, "threshold": threshold, "method": method}
+            return {
+                "anomalies": [],
+                "total": 0,
+                "threshold": threshold,
+                "method": method,
+            }
         out = detect_anomalies(df, z_threshold=threshold, method=method)
         if "is_anomaly" in out.columns:
             out = out[out["is_anomaly"] == True]  # noqa: E712
-        cols = [c for c in ("metric", "category", "period", "value", "z_score") if c in out.columns]
+        cols = [
+            c
+            for c in ("metric", "category", "period", "value", "z_score")
+            if c in out.columns
+        ]
         rows = _records(out[cols]) if not out.empty else []
-        return {"anomalies": rows, "total": len(rows), "threshold": threshold, "method": method}
+        return {
+            "anomalies": rows,
+            "total": len(rows),
+            "threshold": threshold,
+            "method": method,
+        }
     except Exception as e:
         log.exception("detect_kpi_anomalies failed: %s", e)
         return {"anomalies": [], "total": 0, "threshold": threshold, "error": str(e)}
@@ -174,7 +210,9 @@ async def forecast_metric(
 ) -> Dict[str, Any]:
     """Forecast `periods` periods ahead for a named metric (Monte Carlo CI bands)."""
     if not (_PG and _FORECAST):
-        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
+        raise RuntimeError(
+            "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
+        )
     try:
         df = await _run_db(get_kpi_metrics, metrics=[metric_name])
         if df is None or df.empty:
@@ -182,18 +220,46 @@ async def forecast_metric(
             alldf = await _run_db(get_kpi_metrics)
             if alldf is not None and not alldf.empty:
                 exact = alldf[alldf["metric"].str.lower() == metric_name.lower()]
-                df = exact if not exact.empty else alldf[alldf["metric"].str.contains(metric_name, case=False, na=False)]
+                df = (
+                    exact
+                    if not exact.empty
+                    else alldf[
+                        alldf["metric"].str.contains(metric_name, case=False, na=False)
+                    ]
+                )
         if df is None or df.empty:
-            return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "none", "note": "no_data"}
-        fdf = (df[["period", "value"]].rename(columns={"period": "month_tag", "value": "actual"})
-               .groupby("month_tag", as_index=False).agg({"actual": "mean"}).sort_values("month_tag"))
-        res = ForecastEngine().time_series_forecast(fdf, periods=periods, confidence_level=confidence_level)
+            return {
+                "forecast": [],
+                "upper_ci": [],
+                "lower_ci": [],
+                "method": "none",
+                "note": "no_data",
+            }
+        fdf = (
+            df[["period", "value"]]
+            .rename(columns={"period": "month_tag", "value": "actual"})
+            .groupby("month_tag", as_index=False)
+            .agg({"actual": "mean"})
+            .sort_values("month_tag")
+        )
+        res = ForecastEngine().time_series_forecast(
+            fdf, periods=periods, confidence_level=confidence_level
+        )
         if res is None or res.empty:
-            return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "none", "note": "insufficient_history"}
+            return {
+                "forecast": [],
+                "upper_ci": [],
+                "lower_ci": [],
+                "method": "none",
+                "note": "insufficient_history",
+            }
         recs = res.to_dict("records")
         return {
             "metric": metric_name,
-            "forecast": [{"period": r["month_tag"], "value": round(float(r["forecast"]), 2)} for r in recs],
+            "forecast": [
+                {"period": r["month_tag"], "value": round(float(r["forecast"]), 2)}
+                for r in recs
+            ],
             "lower_ci": [round(float(r["lower_bound"]), 2) for r in recs],
             "upper_ci": [round(float(r["upper_bound"]), 2) for r in recs],
             "confidence_level": confidence_level,
@@ -201,13 +267,21 @@ async def forecast_metric(
         }
     except Exception as e:
         log.exception("forecast_metric failed: %s", e)
-        return {"forecast": [], "upper_ci": [], "lower_ci": [], "method": "error", "error": str(e)}
+        return {
+            "forecast": [],
+            "upper_ci": [],
+            "lower_ci": [],
+            "method": "error",
+            "error": str(e),
+        }
 
 
 async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]:
     """Discovery tool: list metrics, categories, and periods (metrics scoped to domain if given)."""
     if not _PG:
-        raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
+        raise RuntimeError(
+            "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
+        )
     try:
         metrics = await _run_db(get_available_metrics) or []
         if domain:
@@ -228,7 +302,11 @@ async def get_executive_summary() -> Dict[str, Any]:
     """Synthesize health, KPIs, and anomalies into a one-shot executive summary."""
     health = await get_company_health()
     kpis = await query_kpis(limit=10)
-    anomalies = await detect_kpi_anomalies(domain="Finance") if _PG and _INSIGHTS else {"anomalies": []}
+    anomalies = (
+        await detect_kpi_anomalies(domain="Finance")
+        if _PG and _INSIGHTS
+        else {"anomalies": []}
+    )
     return {
         "summary": "Executive snapshot generated by AgentKit",
         "health_score": health.get("score", 0.0),
@@ -279,13 +357,16 @@ def _serve_sse(port: int) -> None:
     """Serve SSE behind bearer-auth + rate-limit (gated by MCP_AUTH_TOKEN), composed with the
     read-only web facade (REST /api + SPA). MCP paths (/sse, /messages, /demo) keep the exact
     same middleware, auth and rate limit as before; everything else goes to the FastAPI facade.
-    Falls back to the plain FastMCP runner if the ASGI app can't be wrapped on this version."""
+    Falls back to the plain FastMCP runner if the ASGI app can't be wrapped on this version.
+    """
     token = os.getenv("MCP_AUTH_TOKEN")
     if not token:
         raise RuntimeError("MCP_AUTH_TOKEN is strictly required for bearer token auth.")
     try:
         import uvicorn
+
         from agentkit_mcp.auth_middleware import BearerAuthRateLimit
+
         try:
             app = mcp.http_app(transport="sse")
         except TypeError:
@@ -294,6 +375,7 @@ def _serve_sse(port: int) -> None:
 
         try:
             from agentkit_mcp.web_app import build_app
+
             api_asgi = build_app()
         except Exception as e:  # facade is additive — never block the MCP server on it
             log.warning("web facade unavailable (%s) — serving MCP only", e)
@@ -316,7 +398,9 @@ def _serve_sse(port: int) -> None:
         log.info("Serving SSE (auth=%s) + web facade on :%s", bool(token), port)
         uvicorn.run(composite, host="0.0.0.0", port=port)
     except Exception as e:
-        log.warning("guarded SSE serve unavailable (%s) — falling back to mcp.run(sse)", e)
+        log.warning(
+            "guarded SSE serve unavailable (%s) — falling back to mcp.run(sse)", e
+        )
         mcp.run(transport="sse", host="0.0.0.0", port=port)
 
 
@@ -333,7 +417,11 @@ if __name__ == "__main__":
             mcp.run(transport="stdio", show_banner=False)
         else:
             port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
-            log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
+            log.info(
+                "Starting AgentKit MCP server (transport=%s port=%s)...",
+                transport,
+                port,
+            )
             _serve_sse(port)
     else:
         log.error("fastmcp not installed; cannot start MCP server. pip install fastmcp")

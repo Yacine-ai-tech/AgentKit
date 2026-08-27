@@ -11,24 +11,35 @@ Or from code: from src.data.seed import seed_agentkit_database; seed_agentkit_da
 """
 
 import random
-from datetime import datetime, timedelta
-from typing import Dict, List
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     from src.agentkit_mcp.services.pg_store import insert_kpi_metric
+
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
-    print("Warning: Database modules not available. This script can still generate data.")
+    print(
+        "Warning: Database modules not available. This script can still generate data."
+    )
 
 SEED = 42
 MONTHS = 24  # 2 years of historical data
-SCENARIOS = ["healthy", "declining_revenue", "high_churn", "forecast_uncertainty", "anomaly_spike", "seasonal_variance", "recovery_mode"]
+SCENARIOS = [
+    "healthy",
+    "declining_revenue",
+    "high_churn",
+    "forecast_uncertainty",
+    "anomaly_spike",
+    "seasonal_variance",
+    "recovery_mode",
+]
 
 # Business KPI definitions focused on AgentKit use cases
 BUSINESS_KPIS = {
@@ -56,11 +67,13 @@ BUSINESS_KPIS = {
         ("Unusual_Expense_Spike", "USD", 0, 0, "down"),
         ("Anomaly_Score", "score", 0, 0, "down"),
         ("Outlier_Detection_Flag", "boolean", 0, 0, "down"),
-    ]
+    ],
 }
 
 
-def generate_scenario_data(scenario: str, base_value: float, drift: float, direction: str, month: int) -> float:
+def generate_scenario_data(
+    scenario: str, base_value: float, drift: float, direction: str, month: int
+) -> float:
     """Generate scenario-specific data patterns"""
     random.seed(SEED + month + hash(scenario) % 1000)
 
@@ -128,7 +141,9 @@ def generate_time_series_data(scenario: str = "healthy") -> List[Dict]:
 
         for category, kpis in BUSINESS_KPIS.items():
             for metric, unit, base_value, drift, direction in kpis:
-                value = generate_scenario_data(scenario, base_value, drift, direction, month)
+                value = generate_scenario_data(
+                    scenario, base_value, drift, direction, month
+                )
 
                 # Add some randomness for anomaly detection
                 if category == "Anomalies" and scenario == "healthy":
@@ -136,14 +151,16 @@ def generate_time_series_data(scenario: str = "healthy") -> List[Dict]:
                     if random.random() < 0.05:  # 5% chance
                         value = base_value * random.uniform(0.5, 3.0)
 
-                data.append({
-                    "category": category,
-                    "metric": metric,
-                    "unit": unit,
-                    "value": value,
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "scenario": scenario
-                })
+                data.append(
+                    {
+                        "category": category,
+                        "metric": metric,
+                        "unit": unit,
+                        "value": value,
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        "scenario": scenario,
+                    }
+                )
 
     return data
 
@@ -170,7 +187,7 @@ def seed_database(data: List[Dict]) -> bool:
                     metric=record["metric"],
                     value=record["value"],
                     unit=record["unit"],
-                    date_str=record["date"]
+                    date_str=record["date"],
                 )
                 success_count += 1
             except Exception as e:
@@ -197,11 +214,15 @@ def generate_scenario_summary() -> Dict:
 
         summaries[scenario] = {
             "total_records": len(data),
-            "avg_revenue": sum(finance_revenue) / len(finance_revenue) if finance_revenue else 0,
+            "avg_revenue": (
+                sum(finance_revenue) / len(finance_revenue) if finance_revenue else 0
+            ),
             "final_revenue": finance_revenue[-1] if finance_revenue else 0,
-            "avg_headcount": sum(people_headcount) / len(people_headcount) if people_headcount else 0,
+            "avg_headcount": (
+                sum(people_headcount) / len(people_headcount) if people_headcount else 0
+            ),
             "final_headcount": people_headcount[-1] if people_headcount else 0,
-            "trend": "growing" if scenario == "healthy" else "varying"
+            "trend": "growing" if scenario == "healthy" else "varying",
         }
 
     return summaries

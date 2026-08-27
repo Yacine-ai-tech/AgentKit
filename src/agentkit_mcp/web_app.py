@@ -4,9 +4,15 @@ No business logic lives here: every /api endpoint delegates to the tool function
 mcp_server.py (which call services/pg_store, services/insights, services/forecasting).
 Data-layer failures surface as HTTP 503 with the real message — never fabricated data.
 """
+
 from __future__ import annotations
 
 import os
+import time as _time
+
+# Observability: in-memory request log (v1 "observability" ask) — real facade calls.
+from collections import deque as _deque
+from datetime import datetime as _dt
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Header, HTTPException
@@ -15,11 +21,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from agentkit_mcp import mcp_server as tools
-
-# Observability: in-memory request log (v1 "observability" ask) — real facade calls.
-from collections import deque as _deque
-from datetime import datetime as _dt
-import time as _time
 
 _OBS: "_deque[Dict[str, Any]]" = _deque(maxlen=200)
 
@@ -48,7 +49,12 @@ TOOL_META = [
         "description": "Find anomalies in a domain's KPI history (z-score).",
         "params": [
             {"name": "domain", "type": "string", "required": True},
-            {"name": "method", "type": "string", "required": False, "default": "zscore"},
+            {
+                "name": "method",
+                "type": "string",
+                "required": False,
+                "default": "zscore",
+            },
             {"name": "threshold", "type": "number", "required": False, "default": 2.5},
         ],
         "endpoint": "/api/anomalies",
@@ -59,7 +65,12 @@ TOOL_META = [
         "params": [
             {"name": "metric_name", "type": "string", "required": True},
             {"name": "periods", "type": "integer", "required": False, "default": 6},
-            {"name": "confidence_level", "type": "number", "required": False, "default": 0.95},
+            {
+                "name": "confidence_level",
+                "type": "number",
+                "required": False,
+                "default": 0.95,
+            },
         ],
         "endpoint": "/api/forecast",
     },
@@ -90,8 +101,11 @@ async def _call(fn, *args, **kwargs) -> Dict[str, Any]:
 
 
 def build_app() -> FastAPI:
-    app = FastAPI(title="AgentKit", version="0.1.0",
-                  description="AI Agent Intelligence Platform — read-only facade over the MCP tools.")
+    app = FastAPI(
+        title="AgentKit",
+        version="0.1.0",
+        description="AI Agent Intelligence Platform — read-only facade over the MCP tools.",
+    )
 
     # --- ETHICAL TELEMETRY ---
     # See TELEMETRY.md / .env.example. One anonymous startup ping per ~6h, sending only
@@ -146,15 +160,27 @@ def build_app() -> FastAPI:
 
         try:
             import httpx
+
             if "log" in globals():
-                globals()["log"].info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
+                globals()["log"].info(
+                    "Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).",
+                    telemetry_url,
+                )
             else:
                 import logging
-                logging.info("Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).", telemetry_url)
+
+                logging.info(
+                    "Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).",
+                    telemetry_url,
+                )
 
             httpx.post(
                 telemetry_url,
-                json={"service": "AgentKit", "event": "startup", "instance_id": _telemetry_instance_id()},
+                json={
+                    "service": "AgentKit",
+                    "event": "startup",
+                    "instance_id": _telemetry_instance_id(),
+                },
                 timeout=2,
             )
         except Exception:
@@ -163,14 +189,32 @@ def build_app() -> FastAPI:
     threading.Thread(target=_send_telemetry, daemon=True).start()
     # -------------------------
 
+    import os as _os
+
     from fastapi import Request
     from fastapi.responses import JSONResponse
-    import os as _os
 
     @app.middleware("http")
     async def verify_internal_token(request: Request, call_next):
         # Allow health checks, public auth routes, and frontend static assets
-        if request.method == "OPTIONS" or request.url.path in ["/", "/health", "/docs", "/openapi.json", "/api/redoc", "/favicon.png", "/favicon.ico", "/mark.png", "/logo.png"] or request.url.path.startswith("/api/v1/auth/") or request.url.path.startswith("/assets/") or request.url.path.startswith("/static/"):
+        if (
+            request.method == "OPTIONS"
+            or request.url.path
+            in [
+                "/",
+                "/health",
+                "/docs",
+                "/openapi.json",
+                "/api/redoc",
+                "/favicon.png",
+                "/favicon.ico",
+                "/mark.png",
+                "/logo.png",
+            ]
+            or request.url.path.startswith("/api/v1/auth/")
+            or request.url.path.startswith("/assets/")
+            or request.url.path.startswith("/static/")
+        ):
             return await call_next(request)
 
         if _os.environ.get("REQUIRE_INTERNAL_TOKEN", "false").lower() == "true":
@@ -178,21 +222,35 @@ def build_app() -> FastAPI:
                 request.headers.get("X-AgentKit-Internal-Token")
                 or request.headers.get("X-Internal-Token")
                 or request.headers.get("X-OmniIntel-Internal-Token")
-                or (request.headers.get("Authorization", "").replace("Bearer ", "") if request.headers.get("Authorization", "").startswith("Bearer ") else "")
+                or (
+                    request.headers.get("Authorization", "").replace("Bearer ", "")
+                    if request.headers.get("Authorization", "").startswith("Bearer ")
+                    else ""
+                )
             )
             expected_tokens = [
-                t for t in (
+                t
+                for t in (
                     _os.environ.get("AGENTKIT_INTERNAL_TOKEN"),
                     _os.environ.get("INTERNAL_TOKEN"),
                     _os.environ.get("OMNIINTEL_INTERNAL_TOKEN"),
-                ) if t
+                )
+                if t
             ]
             if not token or not any(token == exp for exp in expected_tokens):
-                return JSONResponse(status_code=403, content={"detail": "Missing or invalid X-AgentKit-Internal-Token"})
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Missing or invalid X-AgentKit-Internal-Token"},
+                )
 
         return await call_next(request)
 
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
 
     try:
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -201,6 +259,7 @@ def build_app() -> FastAPI:
             app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
     except Exception as e:
         import logging
+
         logging.warning("assets mount failed: %s", e)
 
     @app.middleware("http")
@@ -208,14 +267,16 @@ def build_app() -> FastAPI:
         t0 = _time.time()
         response = await call_next(request)
         if request.url.path.startswith("/api"):
-            _OBS.appendleft({
-                "ts": _dt.utcnow().isoformat() + "Z",
-                "method": request.method,
-                "path": request.url.path,
-                "query": str(request.url.query or ""),
-                "status": response.status_code,
-                "ms": round((_time.time() - t0) * 1000, 1),
-            })
+            _OBS.appendleft(
+                {
+                    "ts": _dt.utcnow().isoformat() + "Z",
+                    "method": request.method,
+                    "path": request.url.path,
+                    "query": str(request.url.query or ""),
+                    "status": response.status_code,
+                    "ms": round((_time.time() - t0) * 1000, 1),
+                }
+            )
         return response
 
     @app.get("/health", include_in_schema=False)
@@ -239,7 +300,7 @@ def build_app() -> FastAPI:
 
         # Discover live resources and prompts from the FastMCP server
         resources_out: list = []
-        prompts_out:   list = []
+        prompts_out: list = []
         try:
             # Optimize: Avoid full Client initialization on every request
             raw_resources = []
@@ -250,7 +311,11 @@ def build_app() -> FastAPI:
                 raw_prompts = list(_mcp_mod.mcp._prompts.values())
 
             resources_out = [
-                {"uri": str(r.uri), "name": r.name or str(r.uri), "description": r.description or ""}
+                {
+                    "uri": str(r.uri),
+                    "name": r.name or str(r.uri),
+                    "description": r.description or "",
+                }
                 for r in raw_resources
             ]
             prompts_out = [
@@ -258,7 +323,11 @@ def build_app() -> FastAPI:
                     "name": p.name,
                     "description": p.description or "",
                     "arguments": [
-                        {"name": a.name, "description": a.description or "", "required": a.required}
+                        {
+                            "name": a.name,
+                            "description": a.description or "",
+                            "required": a.required,
+                        }
                         for a in (p.arguments or [])
                     ],
                 }
@@ -266,12 +335,13 @@ def build_app() -> FastAPI:
             ]
         except Exception as _e:
             import logging as _logging
+
             _logging.getLogger(__name__).debug("resource/prompt listing failed: %s", _e)
 
         return {
-            "tools":     TOOL_META + dynamic_tools,
+            "tools": TOOL_META + dynamic_tools,
             "resources": resources_out,
-            "prompts":   prompts_out,
+            "prompts": prompts_out,
         }
 
     @app.get("/api/resources")
@@ -281,12 +351,14 @@ def build_app() -> FastAPI:
         Returns {"uri", "content", "mime_type"} or {"error": ...} on failure.
         """
         from agentkit_mcp import mcp_server as _mcp_mod
+
         try:
             # Bypass Client overhead
             func = _mcp_mod.mcp._resources.get(uri)
             if not func:
                 return {"error": "not found", "uri": uri}
             import inspect
+
             if inspect.iscoroutinefunction(func):
                 result = await func()
             else:
@@ -297,9 +369,15 @@ def build_app() -> FastAPI:
             if isinstance(result, str):
                 content_parts.append(result)
             else:
-                for part in (result or []):
-                    content_parts.append(part.text if hasattr(part, "text") else str(part))
-            return {"uri": uri, "content": "\n".join(content_parts), "mime_type": "text/plain"}
+                for part in result or []:
+                    content_parts.append(
+                        part.text if hasattr(part, "text") else str(part)
+                    )
+            return {
+                "uri": uri,
+                "content": "\n".join(content_parts),
+                "mime_type": "text/plain",
+            }
         except Exception as exc:
             return {"error": str(exc), "uri": uri}
 
@@ -309,6 +387,7 @@ def build_app() -> FastAPI:
         Returns {"name", "content"} where content is the rendered prompt string.
         """
         from agentkit_mcp import mcp_server as _mcp_mod
+
         args = {k: v for k, v in request.query_params.items()}
         try:
             func = _mcp_mod.mcp._prompts.get(name)
@@ -316,6 +395,7 @@ def build_app() -> FastAPI:
                 return {"error": "not found", "name": name}
 
             import inspect
+
             if inspect.iscoroutinefunction(func):
                 result = await func(**args)
             else:
@@ -326,7 +406,7 @@ def build_app() -> FastAPI:
             if isinstance(result, str):
                 parts.append(result)
             else:
-                for msg in (result or []):
+                for msg in result or []:
                     content = getattr(msg, "content", msg)
                     if hasattr(content, "text"):
                         parts.append(content.text)
@@ -337,24 +417,47 @@ def build_app() -> FastAPI:
             return {"error": str(exc), "name": name}
 
     @app.get("/api/kpis")
-    async def kpis(domain: Optional[str] = None, period_from: Optional[str] = None,
-                   period_to: Optional[str] = None, metric_filter: Optional[str] = None,
-                   limit: int = 100) -> Dict[str, Any]:
-        return await _call(tools.query_kpis, domain=domain, period_from=period_from,
-                           period_to=period_to, metric_filter=metric_filter, limit=limit)
+    async def kpis(
+        domain: Optional[str] = None,
+        period_from: Optional[str] = None,
+        period_to: Optional[str] = None,
+        metric_filter: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        return await _call(
+            tools.query_kpis,
+            domain=domain,
+            period_from=period_from,
+            period_to=period_to,
+            metric_filter=metric_filter,
+            limit=limit,
+        )
 
     @app.get("/api/health-score")
     async def health_score(domain: Optional[str] = None) -> Dict[str, Any]:
         return await _call(tools.get_company_health, domain=domain)
 
     @app.get("/api/anomalies")
-    async def anomalies(domain: str, method: str = "zscore", threshold: float = 2.5) -> Dict[str, Any]:
-        return await _call(tools.detect_kpi_anomalies, domain=domain, method=method, threshold=threshold)
+    async def anomalies(
+        domain: str, method: str = "zscore", threshold: float = 2.5
+    ) -> Dict[str, Any]:
+        return await _call(
+            tools.detect_kpi_anomalies,
+            domain=domain,
+            method=method,
+            threshold=threshold,
+        )
 
     @app.get("/api/forecast")
-    async def forecast(metric: str, periods: int = 6, confidence_level: float = 0.95) -> Dict[str, Any]:
-        return await _call(tools.forecast_metric, metric_name=metric, periods=periods,
-                           confidence_level=confidence_level)
+    async def forecast(
+        metric: str, periods: int = 6, confidence_level: float = 0.95
+    ) -> Dict[str, Any]:
+        return await _call(
+            tools.forecast_metric,
+            metric_name=metric,
+            periods=periods,
+            confidence_level=confidence_level,
+        )
 
     @app.get("/api/metrics")
     async def metrics(domain: Optional[str] = None) -> Dict[str, Any]:
@@ -374,15 +477,19 @@ def build_app() -> FastAPI:
     async def policy() -> Dict[str, Any]:
         """Declared capability envelope: every tool's effect class, required scopes,
         rate limit and approval requirement, plus the global switches. This is the
-        endpoint to read (or diff in CI) to answer "what can this agent actually do?"."""
+        endpoint to read (or diff in CI) to answer "what can this agent actually do?".
+        """
         from agentkit_mcp.core.policy import policy_engine
+
         return policy_engine.describe()
 
     @app.get("/api/audit")
     async def audit(
         limit: int = 100,
         effect: Optional[str] = None,
-        x_demo_session_id: Optional[str] = Header(default=None, alias="X-Demo-Session-Id"),
+        x_demo_session_id: Optional[str] = Header(
+            default=None, alias="X-Demo-Session-Id"
+        ),
     ) -> Dict[str, Any]:
         """Audit trail of tool invocations — allowed and denied, with the deny reason.
 
@@ -392,13 +499,19 @@ def build_app() -> FastAPI:
         visitor's — see PolicyEngine.audit_log.
         """
         from agentkit_mcp.core.policy import policy_engine
-        return {"entries": policy_engine.audit_log(limit=limit, effect=effect, session_id=x_demo_session_id)}
+
+        return {
+            "entries": policy_engine.audit_log(
+                limit=limit, effect=effect, session_id=x_demo_session_id
+            )
+        }
 
     @app.get("/api/llm-routing")
     async def llm_routing() -> Dict[str, Any]:
         """Which model each tier resolves to and whether inference is local or hosted.
         Never returns key material — only whether a key is present."""
         from agentkit_mcp.core.llm_router import describe_routing
+
         return describe_routing()
 
     @app.get("/api/packs")
@@ -422,7 +535,9 @@ def build_app() -> FastAPI:
         pack_name: str,
         tool_name: str,
         body: Dict[str, Any],
-        x_demo_session_id: Optional[str] = Header(default=None, alias="X-Demo-Session-Id"),
+        x_demo_session_id: Optional[str] = Header(
+            default=None, alias="X-Demo-Session-Id"
+        ),
     ) -> Dict[str, Any]:
         """Invoke a declarative pack tool through the same policy path the MCP tools use.
 
@@ -439,7 +554,9 @@ def build_app() -> FastAPI:
         if tool is None:
             raise HTTPException(status_code=404, detail=f"unknown tool: {tool_name}")
         try:
-            return await call_pack_tool(pack, tool, body or {}, caller="rest", session_id=x_demo_session_id)
+            return await call_pack_tool(
+                pack, tool, body or {}, caller="rest", session_id=x_demo_session_id
+            )
         except PolicyDenied as e:
             # 403 with the actual reason — a guardrail that blocks silently is not one.
             raise HTTPException(status_code=403, detail=str(e))
@@ -452,6 +569,7 @@ def build_app() -> FastAPI:
         if not question:
             raise HTTPException(status_code=400, detail="question required")
         import anyio
+
         try:
             from agentkit_mcp.workflow import analyze as run_workflow
         except Exception as e:

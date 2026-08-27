@@ -10,15 +10,16 @@ Handles all persistence:
   - Audit trail
   - Monitoring logs
 """
+
 from __future__ import annotations
-from datetime import datetime
 
 import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import pandas as pd
 import psycopg
 from psycopg.rows import dict_row
-import pandas as pd
 
 try:
     from src.core.config import settings
@@ -45,6 +46,7 @@ def _init_pool():
     if _pool is not None:
         return _pool
     import threading
+
     if _pool_lock is None:
         _pool_lock = threading.Lock()
     with _pool_lock:
@@ -52,6 +54,7 @@ def _init_pool():
             return _pool
         try:
             from psycopg_pool import ConnectionPool
+
             _pool = ConnectionPool(
                 settings.POSTGRES_URL,
                 min_size=4,
@@ -69,13 +72,18 @@ def _init_pool():
             )
             # Open the pool in the background so it doesn't block startup
             import threading
+
             threading.Thread(target=_pool.open, daemon=True).start()
             log.info("✅ Neon connection pool initialized (min=2, max=8, lazy open)")
         except ImportError:
-            log.warning("⚠️ psycopg_pool not installed — falling back to per-call connections (slower)")
+            log.warning(
+                "⚠️ psycopg_pool not installed — falling back to per-call connections (slower)"
+            )
             _pool = False  # Mark as unavailable, fall through to direct connect
         except Exception as e:
-            log.warning("⚠️ Connection pool init failed: %s — using per-call connections", e)
+            log.warning(
+                "⚠️ Connection pool init failed: %s — using per-call connections", e
+            )
             _pool = False
     return _pool
 
@@ -88,6 +96,7 @@ def _get_conn():
     """
     pool = _init_pool()
     if pool and pool is not False:
+
         class ConnWrapper:
             def __init__(self, p):
                 self._p = p
@@ -106,17 +115,25 @@ def _get_conn():
                 res = self._c.__exit__(exc_type, exc_val, exc_tb)
                 self.close()
                 return res
+
         return ConnWrapper(pool)
     # Fallback: direct connection (original behavior)
     import time
+
     for attempt in range(3):
         try:
-            return psycopg.connect(settings.POSTGRES_URL, row_factory=dict_row, connect_timeout=15)
+            return psycopg.connect(
+                settings.POSTGRES_URL, row_factory=dict_row, connect_timeout=15
+            )
         except Exception as e:
             if attempt == 2:
                 log.error("Failed to connect to PostgreSQL after 3 attempts: %s", e)
                 raise
-            log.warning("PostgreSQL connection failed (attempt %d/3). Retrying in 2s... (%s)", attempt + 1, e)
+            log.warning(
+                "PostgreSQL connection failed (attempt %d/3). Retrying in 2s... (%s)",
+                attempt + 1,
+                e,
+            )
             time.sleep(2)
 
 
@@ -147,7 +164,9 @@ def init_pg_tables():
                 created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_entities_ref ON kpi_entities(record_ref)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_kpi_entities_ref ON kpi_entities(record_ref)"
+        )
         conn.execute("""
             CREATE TABLE IF NOT EXISTS kpi_targets (
                 metric          TEXT PRIMARY KEY,
@@ -179,9 +198,13 @@ def init_pg_tables():
         """)
         # Indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_period ON kpi_metrics(period)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_category ON kpi_metrics(category)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_kpi_category ON kpi_metrics(category)"
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_metric ON kpi_metrics(metric)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_trail(event_type)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_trail(event_type)"
+        )
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS monitoring_logs (
@@ -193,7 +216,9 @@ def init_pg_tables():
                 created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)"
+        )
 
         conn.commit()
         log.info("✅ PostgreSQL tables initialized")
@@ -209,7 +234,13 @@ def init_pg_tables():
 # KPI OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
-def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: bool = True, replace_prefix: Optional[str] = None) -> None:
+
+def store_kpi_metrics(
+    df: "pd.DataFrame",
+    source_name: str = "manual",
+    replace: bool = True,
+    replace_prefix: Optional[str] = None,
+) -> None:
     if df.empty:
         return
     params = [
@@ -227,8 +258,7 @@ def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: 
     ]
     insert_sql = (
         "INSERT INTO kpi_metrics (period, metric, value, category, segment, unit, direction, source) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    )
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)")
     last_err: Optional[Exception] = None
     for _ in range(3):
         conn = _get_conn()
@@ -236,9 +266,14 @@ def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: 
             with conn.cursor() as cur:
                 if replace:
                     if replace_prefix:
-                        cur.execute("DELETE FROM kpi_metrics WHERE source LIKE %s", [f"{replace_prefix}%"])
+                        cur.execute(
+                            "DELETE FROM kpi_metrics WHERE source LIKE %s",
+                            [f"{replace_prefix}%"],
+                        )
                     else:
-                        cur.execute("DELETE FROM kpi_metrics WHERE source = %s", [source_name])
+                        cur.execute(
+                            "DELETE FROM kpi_metrics WHERE source = %s", [source_name]
+                        )
                 cur.executemany(insert_sql, params)
             conn.commit()
             return
@@ -248,7 +283,6 @@ def store_kpi_metrics(df: "pd.DataFrame", source_name: str = "manual", replace: 
                 conn.rollback()
             except Exception:
                 log.exception("Unexpected error")
-                pass
         finally:
             conn.close()
     if last_err:
@@ -266,12 +300,18 @@ def get_kpi_metrics(
     metric_filter: Optional[str] = None,
 ) -> "pd.DataFrame":
     import pandas as pd
+
     conn = _get_conn()
     try:
         q = "SELECT period, metric, value, category, segment, unit, direction, source FROM kpi_metrics"
         filters: List[str] = []
         params: List[Any] = []
-        for col, vals in [("period", periods), ("metric", metrics), ("category", categories), ("segment", segments)]:
+        for col, vals in [
+            ("period", periods),
+            ("metric", metrics),
+            ("category", categories),
+            ("segment", segments),
+        ]:
             if vals:
                 ph = ",".join(["%s"] * len(vals))
                 filters.append(f"{col} IN ({ph})")
@@ -311,7 +351,11 @@ def store_kpi_entities(rows: List[Dict[str, str]], replace: bool = True) -> int:
         if replace:
             conn.execute("DELETE FROM kpi_entities")
         params = [
-            (str(r.get("record_ref", "")), str(r.get("entity_type", "")), str(r.get("entity_value", "")))
+            (
+                str(r.get("record_ref", "")),
+                str(r.get("entity_type", "")),
+                str(r.get("entity_value", "")),
+            )
             for r in rows
         ]
         with conn.cursor() as cur:
@@ -328,6 +372,7 @@ def store_kpi_entities(rows: List[Dict[str, str]], replace: bool = True) -> int:
 def get_kpi_entities() -> "pd.DataFrame":
     """Return the persisted GraphRAG-lite entities (record_ref, entity_type, entity_value)."""
     import pandas as pd
+
     conn = _get_conn()
     try:
         rows = conn.execute(
@@ -341,7 +386,9 @@ def get_kpi_entities() -> "pd.DataFrame":
 def get_available_periods() -> List[str]:
     conn = _get_conn()
     try:
-        rows = conn.execute("SELECT DISTINCT period FROM kpi_metrics ORDER BY period DESC").fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT period FROM kpi_metrics ORDER BY period DESC"
+        ).fetchall()
         return [r["period"] for r in rows]
     finally:
         conn.close()
@@ -350,7 +397,9 @@ def get_available_periods() -> List[str]:
 def get_available_metrics() -> List[str]:
     conn = _get_conn()
     try:
-        rows = conn.execute("SELECT DISTINCT metric FROM kpi_metrics ORDER BY metric").fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT metric FROM kpi_metrics ORDER BY metric"
+        ).fetchall()
         return [r["metric"] for r in rows]
     finally:
         conn.close()
@@ -359,7 +408,9 @@ def get_available_metrics() -> List[str]:
 def get_available_categories() -> List[str]:
     conn = _get_conn()
     try:
-        rows = conn.execute("SELECT DISTINCT category FROM kpi_metrics ORDER BY category").fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT category FROM kpi_metrics ORDER BY category"
+        ).fetchall()
         return [r["category"] for r in rows]
     finally:
         conn.close()
@@ -368,7 +419,9 @@ def get_available_categories() -> List[str]:
 def get_available_segments() -> List[str]:
     conn = _get_conn()
     try:
-        rows = conn.execute("SELECT DISTINCT segment FROM kpi_metrics ORDER BY segment").fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT segment FROM kpi_metrics ORDER BY segment"
+        ).fetchall()
         return [r["segment"] for r in rows]
     finally:
         conn.close()
@@ -383,6 +436,7 @@ def get_latest_period() -> Optional[str]:
     # This avoids placeholder/future tags (e.g. "2099Q1") or sparse quarterly aggregates
     # ("2026-Q2") being picked as "latest" and yielding empty statements/dashboards.
     import re
+
     monthly = sorted(p for p in periods if re.match(r"^\d{4}-\d{2}$", p))
     if monthly:
         return monthly[-1]
@@ -412,7 +466,12 @@ def upsert_kpi_targets(targets_df: "pd.DataFrame") -> None:
                        good_threshold = EXCLUDED.good_threshold,
                        bad_threshold = EXCLUDED.bad_threshold,
                        updated_at = NOW()""",
-                [row["metric"], float(row.get("target", 0)), float(row.get("good_threshold", 0)), float(row.get("bad_threshold", 0))],
+                [
+                    row["metric"],
+                    float(row.get("target", 0)),
+                    float(row.get("good_threshold", 0)),
+                    float(row.get("bad_threshold", 0)),
+                ],
             )
         conn.commit()
     finally:
@@ -423,7 +482,10 @@ def upsert_kpi_targets(targets_df: "pd.DataFrame") -> None:
 # FILE MANAGEMENT OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
-def get_user_files(username: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+
+def get_user_files(
+    username: str, limit: int = 50, offset: int = 0
+) -> List[Dict[str, Any]]:
     """Return uploaded files metadata for a user."""
     conn = _get_conn()
     try:
@@ -451,7 +513,7 @@ def delete_file(file_id: str, username: str) -> bool:
     try:
         res = conn.execute(
             "DELETE FROM uploaded_files WHERE id = %s AND username = %s",
-            [file_id, username]
+            [file_id, username],
         )
         return res.rowcount > 0
     except Exception as e:
@@ -493,6 +555,7 @@ def get_file_path(file_id: str, username: str) -> Optional[str]:
 
 def get_kpi_targets(metrics: Optional[List[str]] = None) -> "pd.DataFrame":
     import pandas as pd
+
     conn = _get_conn()
     try:
         q = "SELECT metric, target, good_threshold, bad_threshold FROM kpi_targets"
@@ -510,7 +573,10 @@ def get_kpi_targets(metrics: Optional[List[str]] = None) -> "pd.DataFrame":
 # KNOWLEDGE BASE OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
-def store_knowledge_docs(docs_df: "pd.DataFrame", replace_prefix: Optional[str] = None) -> None:
+
+def store_knowledge_docs(
+    docs_df: "pd.DataFrame", replace_prefix: Optional[str] = None
+) -> None:
     """Upsert knowledge-base docs. ON CONFLICT updates ALL fields (title/content/source/
     embedding) — not just content — so a reused doc_id can never end up with a stale title
     paired to new content. ``replace_prefix`` first deletes docs whose doc_id starts with it
@@ -532,7 +598,10 @@ def store_knowledge_docs(docs_df: "pd.DataFrame", replace_prefix: Optional[str] 
     try:
         with conn.cursor() as cur:
             if replace_prefix:
-                cur.execute("DELETE FROM knowledge_base WHERE doc_id LIKE %s", [f"{replace_prefix}%"])
+                cur.execute(
+                    "DELETE FROM knowledge_base WHERE doc_id LIKE %s",
+                    [f"{replace_prefix}%"],
+                )
             cur.executemany(
                 """INSERT INTO knowledge_base (doc_id, title, content, source, embedding, language)
                    VALUES (%s, %s, %s, %s, %s, %s)
@@ -552,23 +621,35 @@ _DOCS_SEED_CACHE = None
 
 def _get_seeded_fallback_docs() -> "pd.DataFrame":
     import pandas as pd
+
     global _DOCS_SEED_CACHE
     if _DOCS_SEED_CACHE is not None:
         return _DOCS_SEED_CACHE.copy()
     try:
-        from src.data.seed import generate_kpi_rows, generate_knowledge_docs
+        from src.data.seed import generate_knowledge_docs, generate_kpi_rows
+
         rows = generate_kpi_rows()
         docs = generate_knowledge_docs(rows)
         try:
             from src.data.glossary import as_knowledge_docs
+
             docs += as_knowledge_docs()
         except Exception:
             pass
-        _DOCS_SEED_CACHE = pd.DataFrame([
-            {"doc_id": f"seed-{i}", "title": d["title"], "content": d["content"],
-             "source": d["source"], "embedding": "", "language": "en", "created_at": "2026-01-01T00:00:00Z"}
-            for i, d in enumerate(docs)
-        ])
+        _DOCS_SEED_CACHE = pd.DataFrame(
+            [
+                {
+                    "doc_id": f"seed-{i}",
+                    "title": d["title"],
+                    "content": d["content"],
+                    "source": d["source"],
+                    "embedding": "",
+                    "language": "en",
+                    "created_at": "2026-01-01T00:00:00Z",
+                }
+                for i, d in enumerate(docs)
+            ]
+        )
         return _DOCS_SEED_CACHE.copy()
     except Exception as e:
         log.error("Failed to generate seed fallback docs DataFrame: %s", e)
@@ -577,6 +658,7 @@ def _get_seeded_fallback_docs() -> "pd.DataFrame":
 
 def get_knowledge_docs() -> "pd.DataFrame":
     import pandas as pd
+
     try:
         conn = _get_conn()
         try:
@@ -589,13 +671,17 @@ def get_knowledge_docs() -> "pd.DataFrame":
         finally:
             conn.close()
     except Exception as e:
-        log.warning("Postgres query for knowledge_base failed (%s) — falling back to seed docs", e)
+        log.warning(
+            "Postgres query for knowledge_base failed (%s) — falling back to seed docs",
+            e,
+        )
 
     return _get_seeded_fallback_docs()
 
 
 def get_conversation_history(session_id: str) -> "pd.DataFrame":
     import pandas as pd
+
     conn = _get_conn()
     try:
         rows = conn.execute(
@@ -610,6 +696,7 @@ def get_conversation_history(session_id: str) -> "pd.DataFrame":
 
 def get_conversations(limit: int = 50) -> "pd.DataFrame":
     import pandas as pd
+
     conn = _get_conn()
     try:
         rows = conn.execute(
@@ -622,7 +709,9 @@ def get_conversations(limit: int = 50) -> "pd.DataFrame":
         conn.close()
 
 
-def store_conversation(cid: str, user_msg: str, ai_resp: str, language: str = "en") -> None:
+def store_conversation(
+    cid: str, user_msg: str, ai_resp: str, language: str = "en"
+) -> None:
     conn = _get_conn()
     try:
         conn.execute(
@@ -636,7 +725,6 @@ def store_conversation(cid: str, user_msg: str, ai_resp: str, language: str = "e
         conn.commit()
     except Exception:
         log.exception("Unexpected error")
-        pass
     finally:
         conn.close()
 
@@ -644,6 +732,7 @@ def store_conversation(cid: str, user_msg: str, ai_resp: str, language: str = "e
 # ═══════════════════════════════════════════════════════════
 # AUDIT TRAIL
 # ═══════════════════════════════════════════════════════════
+
 
 def log_audit_event(actor: str, event_type: str, detail: str) -> None:
     conn = _get_conn()
@@ -655,13 +744,13 @@ def log_audit_event(actor: str, event_type: str, detail: str) -> None:
         conn.commit()
     except Exception:
         log.exception("Unexpected error")
-        pass
     finally:
         conn.close()
 
 
 def get_audit_trail(limit: int = 100) -> "pd.DataFrame":
     import pandas as pd
+
     conn = _get_conn()
     try:
         rows = conn.execute(
@@ -675,8 +764,15 @@ def get_audit_trail(limit: int = 100) -> "pd.DataFrame":
 
 # ── Integration credentials (encrypted) ─────────────────────────────────────
 
-    # ── Chat session helpers ───────────────────────────────────────────────────
-def store_chat_session(session_id: str, user_id: str, title: str = "New Chat", persona: str = "general", is_pinned: bool = False) -> None:
+
+# ── Chat session helpers ───────────────────────────────────────────────────
+def store_chat_session(
+    session_id: str,
+    user_id: str,
+    title: str = "New Chat",
+    persona: str = "general",
+    is_pinned: bool = False,
+) -> None:
     """Create or update a chat session record.
 
     This helper provides the interface expected by higher-level modules.
@@ -685,17 +781,17 @@ def store_chat_session(session_id: str, user_id: str, title: str = "New Chat", p
     """
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT id FROM chat_sessions WHERE id = %s", [session_id]).fetchone()
+        row = conn.execute(
+            "SELECT id FROM chat_sessions WHERE id = %s", [session_id]
+        ).fetchone()
         if row:
             conn.execute(
-                "UPDATE chat_sessions SET title = %s, persona = %s, is_pinned = %s, updated_at = NOW() WHERE id = %s",
-                [title, persona, is_pinned, session_id],
-            )
+                "UPDATE chat_sessions SET title = %s, persona = %s, is_pinned = %s, updated_at = NOW() WHERE id = %s", [
+                    title, persona, is_pinned, session_id], )
         else:
             conn.execute(
-                "INSERT INTO chat_sessions (id, user_id, title, persona, is_pinned) VALUES (%s, %s, %s, %s, %s)",
-                [session_id, user_id, title, persona, is_pinned],
-            )
+                "INSERT INTO chat_sessions (id, user_id, title, persona, is_pinned) VALUES (%s, %s, %s, %s, %s)", [
+                    session_id, user_id, title, persona, is_pinned], )
         conn.commit()
     except Exception:
         # intentionally swallow DB errors to keep higher-level flows resilient
@@ -711,10 +807,13 @@ def store_chat_session(session_id: str, user_id: str, title: str = "New Chat", p
 # USER OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
+
 def get_user(username: str) -> Optional[Dict[str, Any]]:
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT * FROM users WHERE username = %s", [username]).fetchone()
+        row = conn.execute(
+            "SELECT * FROM users WHERE username = %s", [username]
+        ).fetchone()
         return dict(row) if row else None
     finally:
         conn.close()
@@ -758,7 +857,13 @@ def update_user(user_id: str, **kwargs) -> bool:
     try:
         sets = []
         vals = []
-        for key in ("role", "is_active", "preferred_language", "full_name", "avatar_url"):
+        for key in (
+            "role",
+            "is_active",
+            "preferred_language",
+            "full_name",
+            "avatar_url",
+        ):
             if key in kwargs and kwargs[key] is not None:
                 sets.append(f"{key} = %s")
                 vals.append(kwargs[key])
@@ -787,7 +892,9 @@ def list_users() -> List[Dict[str, Any]]:
 def user_exists(username: str) -> bool:
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT 1 FROM users WHERE username = %s", [username]).fetchone()
+        row = conn.execute(
+            "SELECT 1 FROM users WHERE username = %s", [username]
+        ).fetchone()
         return row is not None
     finally:
         conn.close()
@@ -797,7 +904,10 @@ def user_exists(username: str) -> bool:
 # CHAT SESSION OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
-def create_chat_session(user_id: str, title: str = "New Chat", persona: str = "general") -> str:
+
+def create_chat_session(
+    user_id: str, title: str = "New Chat", persona: str = "general"
+) -> str:
     session_id = str(uuid.uuid4())
     conn = _get_conn()
     try:
@@ -834,7 +944,10 @@ def get_user_sessions(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
 def update_session_title(session_id: str, title: str):
     conn = _get_conn()
     try:
-        conn.execute("UPDATE chat_sessions SET title = %s, updated_at = NOW() WHERE id = %s", [title, session_id])
+        conn.execute(
+            "UPDATE chat_sessions SET title = %s, updated_at = NOW() WHERE id = %s",
+            [title, session_id],
+        )
         conn.commit()
     finally:
         conn.close()
@@ -843,7 +956,10 @@ def update_session_title(session_id: str, title: str):
 def toggle_pin_session(session_id: str):
     conn = _get_conn()
     try:
-        conn.execute("UPDATE chat_sessions SET is_pinned = NOT is_pinned, updated_at = NOW() WHERE id = %s", [session_id])
+        conn.execute(
+            "UPDATE chat_sessions SET is_pinned = NOT is_pinned, updated_at = NOW() WHERE id = %s",
+            [session_id],
+        )
         conn.commit()
     finally:
         conn.close()
@@ -862,6 +978,7 @@ def delete_session(session_id: str):
 # CHAT MESSAGE OPERATIONS
 # ═══════════════════════════════════════════════════════════
 
+
 def store_message(
     session_id: str,
     role: str,
@@ -875,10 +992,11 @@ def store_message(
     try:
         conn.execute(
             """INSERT INTO chat_messages (session_id, role, content, mode, sources, tokens_used, latency_ms)
-               VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s)""",
-            [session_id, role, content, mode, sources, tokens_used, latency_ms],
+               VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s)""", [
+                session_id, role, content, mode, sources, tokens_used, latency_ms], )
+        conn.execute(
+            "UPDATE chat_sessions SET updated_at = NOW() WHERE id = %s", [session_id]
         )
-        conn.execute("UPDATE chat_sessions SET updated_at = NOW() WHERE id = %s", [session_id])
         # Auto-title the session from the FIRST user message (only while it's still the default),
         # so the history list shows real titles instead of every entry reading "New Chat".
         if role == "user" and content and content.strip():
@@ -950,7 +1068,9 @@ def ensure_session_exists(session_id: str, user_id: str) -> str:
     """Ensure a chat session exists, create if not. Return session_id."""
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT id FROM chat_sessions WHERE id = %s", [session_id]).fetchone()
+        row = conn.execute(
+            "SELECT id FROM chat_sessions WHERE id = %s", [session_id]
+        ).fetchone()
         if row:
             return session_id
         # Create it
@@ -966,6 +1086,7 @@ def ensure_session_exists(session_id: str, user_id: str) -> str:
 
 # ── Seed data ─────────────────────────────────────────────────────────────────
 
+
 def seed_all_domains() -> int:
     """
     Seed multi-domain KPI data (+ knowledge-base docs) if the table is empty.
@@ -973,6 +1094,7 @@ def seed_all_domains() -> int:
     Returns the number of KPI rows inserted.
     """
     from src.data.seed import seed_database  # lazy import avoids circular dependency
+
     counts = seed_database(replace=True)
     return counts.get("kpi_rows", 0)
 
@@ -980,6 +1102,7 @@ def seed_all_domains() -> int:
 # ════════════════════════════════════════════════════════════════════════════
 # TOKEN REFRESH & OAUTH MANAGEMENT
 # ════════════════════════════════════════════════════════════════════════════
+
 
 def store_token_refresh_metadata(
     username: str,
@@ -1159,6 +1282,7 @@ def update_token_refresh_status(
 # DATA INGESTION & EXPORT
 # ════════════════════════════════════════════════════════════════════════════
 
+
 def log_data_ingestion(
     username: str,
     filename: str,
@@ -1179,6 +1303,7 @@ def log_data_ingestion(
         Ingestion log ID
     """
     import json
+
     conn = _get_conn()
     try:
         result = conn.execute(
@@ -1232,7 +1357,13 @@ def update_ingestion_log(
                 error_message = %s, ingested_at = %s, updated_at = NOW()
             WHERE id = %s
             """,
-            [status, row_count, error_message[:500] if error_message else None, ingested_at, ingestion_id],
+            [
+                status,
+                row_count,
+                error_message[:500] if error_message else None,
+                ingested_at,
+                ingestion_id,
+            ],
         )
         conn.commit()
         return True
@@ -1263,6 +1394,7 @@ def log_data_export(
         Export log ID
     """
     import json
+
     conn = _get_conn()
     try:
         result = conn.execute(
@@ -1340,6 +1472,7 @@ def update_export_log(
 # DOMAIN PREFERENCE & PERSONALIZATION
 # ════════════════════════════════════════════════════════════════════════════
 
+
 def set_user_default_domain(username: str, domain: str) -> bool:
     """Set user's default domain preference."""
     conn = _get_conn()
@@ -1410,6 +1543,7 @@ def update_domain_history(username: str, domain: str) -> bool:
 # MINI-SPREADSHEET (Excel-like Data Management)
 # ════════════════════════════════════════════════════════════════════════════
 
+
 def create_spreadsheet(
     username: str,
     name: str,
@@ -1420,6 +1554,7 @@ def create_spreadsheet(
 ) -> bool:
     """Create a new mini-spreadsheet for data management."""
     import json
+
     conn = _get_conn()
     try:
         conn.execute(
@@ -1457,6 +1592,7 @@ def append_spreadsheet_rows(
 ) -> bool:
     """Append rows to existing spreadsheet."""
     import json
+
     conn = _get_conn()
     try:
         # Get current data
@@ -1495,8 +1631,8 @@ def export_spreadsheet(
     format: str = "csv",  # csv, xlsx, json
 ) -> Optional[str]:
     """Export spreadsheet data to file."""
-    import json
     import csv
+    import json
     from io import StringIO
 
     conn = _get_conn()
@@ -1533,14 +1669,23 @@ def export_spreadsheet(
         conn.close()
 
 
-def store_integration_credentials(username: str, integration_type: str, credentials_encrypted: str) -> None:
+def store_integration_credentials(
+    username: str, integration_type: str, credentials_encrypted: str
+) -> None:
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        row = conn.execute(
+            "SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s",
+            [username, integration_type],
+        ).fetchone()
         if row:
-            conn.execute("UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s", [credentials_encrypted, row["id"]])
+            conn.execute(
+                "UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s", [
+                    credentials_encrypted, row["id"]], )
         else:
-            conn.execute("INSERT INTO integration_credentials (username, integration_type, credentials_encrypted) VALUES (%s, %s, %s)", [username, integration_type, credentials_encrypted])
+            conn.execute(
+                "INSERT INTO integration_credentials (username, integration_type, credentials_encrypted) VALUES (%s, %s, %s)", [
+                    username, integration_type, credentials_encrypted], )
         conn.commit()
     finally:
         conn.close()
@@ -1549,7 +1694,10 @@ def store_integration_credentials(username: str, integration_type: str, credenti
 def remove_integration_credentials(username: str, integration_type: str) -> None:
     conn = _get_conn()
     try:
-        conn.execute("DELETE FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type])
+        conn.execute(
+            "DELETE FROM integration_credentials WHERE username = %s AND integration_type = %s",
+            [username, integration_type],
+        )
         conn.commit()
     finally:
         conn.close()
@@ -1558,24 +1706,37 @@ def remove_integration_credentials(username: str, integration_type: str) -> None
 def get_integration_credentials(username: str, integration_type: str):
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT id, credentials_encrypted, created_at, updated_at FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        row = conn.execute(
+            "SELECT id, credentials_encrypted, created_at, updated_at FROM integration_credentials WHERE username = %s AND integration_type = %s",
+            [username, integration_type],
+        ).fetchone()
         return dict(row) if row else None
     finally:
         conn.close()
 
 
-def store_integration_token_refresh(username: str, integration_type: str, refresh_token: str, expires_in: int = 3600) -> None:
+def store_integration_token_refresh(
+    username: str, integration_type: str, refresh_token: str, expires_in: int = 3600
+) -> None:
     from datetime import timedelta
+
     expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        row = conn.execute(
+            "SELECT id FROM integration_credentials WHERE username = %s AND integration_type = %s",
+            [username, integration_type],
+        ).fetchone()
         if row:
-            from agentkit_mcp.core.crypto import encrypt_value
             import json as _json
+
+            from agentkit_mcp.core.crypto import encrypt_value
+
             metadata = {"refresh_token": refresh_token, "expires_at": expires_at}
             enc = encrypt_value(_json.dumps(metadata))
-            conn.execute("UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s", [enc, row["id"]])
+            conn.execute(
+                "UPDATE integration_credentials SET credentials_encrypted = %s, updated_at = NOW() WHERE id = %s", [
+                    enc, row["id"]], )
             conn.commit()
     finally:
         conn.close()
@@ -1584,11 +1745,16 @@ def store_integration_token_refresh(username: str, integration_type: str, refres
 def get_integration_refresh_token(username: str, integration_type: str):
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT credentials_encrypted FROM integration_credentials WHERE username = %s AND integration_type = %s", [username, integration_type]).fetchone()
+        row = conn.execute(
+            "SELECT credentials_encrypted FROM integration_credentials WHERE username = %s AND integration_type = %s",
+            [username, integration_type],
+        ).fetchone()
         if not row:
             return None
-        from agentkit_mcp.core.crypto import decrypt_value
         import json as _json
+
+        from agentkit_mcp.core.crypto import decrypt_value
+
         try:
             decrypted = decrypt_value(row["credentials_encrypted"])
             metadata = _json.loads(decrypted)
@@ -1604,7 +1770,9 @@ def get_integration_refresh_token(username: str, integration_type: str):
 def log_monitoring_event(event_type: str, module: str, detail: str, actor: str) -> None:
     conn = _get_conn()
     try:
-        conn.execute("INSERT INTO monitoring_logs (event_type, module, detail, actor) VALUES (%s, %s, %s::jsonb, %s)", [event_type, module, detail, actor])
+        conn.execute(
+            "INSERT INTO monitoring_logs (event_type, module, detail, actor) VALUES (%s, %s, %s::jsonb, %s)", [
+                event_type, module, detail, actor], )
         conn.commit()
     finally:
         conn.close()
@@ -1614,7 +1782,9 @@ def get_monitoring_stats():
     conn = _get_conn()
     try:
         total_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
-        total_sessions = conn.execute("SELECT COUNT(*) AS c FROM chat_sessions").fetchone()["c"]
+        total_sessions = conn.execute(
+            "SELECT COUNT(*) AS c FROM chat_sessions"
+        ).fetchone()["c"]
         return {"users": total_users, "sessions": total_sessions}
     finally:
         conn.close()

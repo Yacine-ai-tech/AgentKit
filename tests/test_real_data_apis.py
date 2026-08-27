@@ -1,10 +1,11 @@
+import importlib
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import importlib
 import pytest
 from fastapi.testclient import TestClient
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def _get_client():
@@ -33,9 +34,9 @@ def test_agentkit_real_mcp_tool_execution():
         "method": "callTool",
         "params": {
             "name": "get_company_health",
-            "arguments": {"category": "Financial"}
+            "arguments": {"category": "Financial"},
         },
-        "id": "1"
+        "id": "1",
     }
     response = client.post("/messages", json=payload)
     assert response.status_code in (200, 202, 401, 403, 404, 405, 422)

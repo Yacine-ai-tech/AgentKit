@@ -3,6 +3,7 @@
 These assert *denials*, not just happy paths: a guardrail that has never been observed
 refusing anything is an assumption, not a control.
 """
+
 from __future__ import annotations
 
 import sys
@@ -12,8 +13,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from agentkit_mcp.core.policy import (  # noqa: E402
-    DESTRUCTIVE, READ, WRITE, PolicyEngine, ToolPolicy,
+from agentkit_mcp.core.policy import (
+    DESTRUCTIVE,
+    READ,
+    WRITE,  # noqa: E402
+    PolicyEngine,
+    ToolPolicy,
 )
 
 
@@ -25,8 +30,12 @@ def engine():
 @pytest.fixture
 def clean_env(monkeypatch):
     """Guardrail state comes from env; start every test from a known-empty baseline."""
-    for var in ("AGENTKIT_ALLOW_WRITES", "AGENTKIT_SCOPES",
-                "AGENTKIT_APPROVAL_TOKEN", "AGENTKIT_AUDIT_LOG"):
+    for var in (
+        "AGENTKIT_ALLOW_WRITES",
+        "AGENTKIT_SCOPES",
+        "AGENTKIT_APPROVAL_TOKEN",
+        "AGENTKIT_AUDIT_LOG",
+    ):
         monkeypatch.delenv(var, raising=False)
     return monkeypatch
 
@@ -82,8 +91,8 @@ def test_destructive_requires_approval_token(engine, clean_env):
     clean_env.setenv("AGENTKIT_APPROVAL_TOKEN", "human-held-secret")
     engine.register(ToolPolicy(name="d", effect=DESTRUCTIVE))
 
-    assert not engine.check("d").allowed                                  # none supplied
-    assert not engine.check("d", approval_token="guessed").allowed        # wrong one
+    assert not engine.check("d").allowed  # none supplied
+    assert not engine.check("d", approval_token="guessed").allowed  # wrong one
     assert engine.check("d", approval_token="human-held-secret").allowed  # correct
 
 
@@ -98,7 +107,8 @@ def test_destructive_denied_when_no_approval_token_configured(engine, clean_env)
 
 def test_dry_run_bypasses_approval_but_is_marked(engine, clean_env):
     """Previewing a destructive action is safe and must not need the human token —
-    but the decision has to carry dry_run so the executor simulates instead of commits."""
+    but the decision has to carry dry_run so the executor simulates instead of commits.
+    """
     clean_env.setenv("AGENTKIT_ALLOW_WRITES", "true")
     clean_env.setenv("AGENTKIT_SCOPES", "*")
     engine.register(ToolPolicy(name="d", effect=DESTRUCTIVE))
@@ -127,7 +137,9 @@ def test_audit_records_denials_with_reason(engine, clean_env):
 def test_audit_redacts_sensitive_arguments(engine, clean_env):
     engine.register(ToolPolicy(name="r", effect=READ))
     d = engine.check("r")
-    engine.record("r", d, args={"api_key": "sk-secret", "metric": "Revenue"}, caller="test")
+    engine.record(
+        "r", d, args={"api_key": "sk-secret", "metric": "Revenue"}, caller="test"
+    )
     digest = engine.audit_log()[0]["args_digest"]
     assert digest["api_key"] == "<redacted>"
     assert digest["metric"] == "Revenue"

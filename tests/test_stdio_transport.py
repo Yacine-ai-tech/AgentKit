@@ -9,6 +9,7 @@ stdout, which would have corrupted the JSON-RPC stream even after (1) was fixed.
 No Postgres needed — this only exercises protocol-level requests (initialize,
 tools/list), not tool execution against real data.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,9 @@ def _read_json_line(proc: subprocess.Popen, timeout: float = 15.0) -> dict:
     sel = selectors.DefaultSelector()
     sel.register(proc.stdout, selectors.EVENT_READ)
     if not sel.select(timeout=timeout):
-        raise TimeoutError(f"no stdout line within {timeout}s (transport likely broken)")
+        raise TimeoutError(
+            f"no stdout line within {timeout}s (transport likely broken)"
+        )
     line = proc.stdout.readline()
     assert line, "stdout closed with no data — process likely crashed, check stderr"
     return json.loads(line)
@@ -44,8 +47,13 @@ def stdio_server():
     env["PYTHONPATH"] = str(SRC_DIR)
     proc = subprocess.Popen(
         [sys.executable, "-u", "-m", "agentkit_mcp.mcp_server"],
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, bufsize=1, cwd=str(REPO_ROOT), env=env,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        cwd=str(REPO_ROOT),
+        env=env,
     )
     try:
         yield proc
@@ -59,9 +67,16 @@ def stdio_server():
 
 def test_stdio_initialize_handshake(stdio_server):
     proc = stdio_server
-    req = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-           "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                      "clientInfo": {"name": "pytest", "version": "1.0"}}}
+    req = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "pytest", "version": "1.0"},
+        },
+    }
     proc.stdin.write(json.dumps(req) + "\n")
     proc.stdin.flush()
 
@@ -73,15 +88,26 @@ def test_stdio_initialize_handshake(stdio_server):
 
 def test_stdio_tools_list_matches_real_registry(stdio_server):
     proc = stdio_server
-    init = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                       "clientInfo": {"name": "pytest", "version": "1.0"}}}
+    init = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "pytest", "version": "1.0"},
+        },
+    }
     proc.stdin.write(json.dumps(init) + "\n")
-    proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
+    proc.stdin.write(
+        json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+    )
     proc.stdin.flush()
     _read_json_line(proc)  # initialize response
 
-    proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}) + "\n")
+    proc.stdin.write(
+        json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}) + "\n"
+    )
     proc.stdin.flush()
     resp = _read_json_line(proc)
 
@@ -90,6 +116,10 @@ def test_stdio_tools_list_matches_real_registry(stdio_server):
     # the built-ins, so the exact set is deployment-dependent. The invariant that
     # matters here is that the six native tools are always advertised over stdio.
     assert {
-        "query_kpis", "get_company_health", "detect_kpi_anomalies",
-        "forecast_metric", "list_available_metrics", "get_executive_summary",
+        "query_kpis",
+        "get_company_health",
+        "detect_kpi_anomalies",
+        "forecast_metric",
+        "list_available_metrics",
+        "get_executive_summary",
     } <= names
