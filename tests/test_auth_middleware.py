@@ -1,4 +1,5 @@
 """Unit tests for the SSE bearer-auth + rate-limit ASGI middleware (pure, offline)."""
+
 import asyncio
 import sys
 from pathlib import Path
@@ -56,9 +57,9 @@ def test_rate_limit_429():
     mw = BearerAuthRateLimit(app, token="", rate=3, window=60)
     for _ in range(3):
         _run(mw, ip="9.9.9.9")
-    sent = _run(mw, ip="9.9.9.9")          # 4th request in window
+    sent = _run(mw, ip="9.9.9.9")  # 4th request in window
     assert sent[0]["status"] == 429
-    assert calls["n"] == 3                  # only the first 3 reached the app
+    assert calls["n"] == 3  # only the first 3 reached the app
 
 
 def test_health_bypasses_auth():
@@ -66,10 +67,17 @@ def test_health_bypasses_auth():
     mw = BearerAuthRateLimit(app, token="secret")
     scope = {"type": "http", "path": "/health", "headers": [], "client": ("1.2.3.4", 1)}
     sent = []
-    async def recv(): return {"type": "http.request", "body": b""}
-    async def send(m): sent.append(m)
+
+    async def recv():
+        return {"type": "http.request", "body": b""}
+
+    async def send(m):
+        sent.append(m)
+
     asyncio.run(mw(scope, recv, send))
-    assert sent[0]["status"] == 200 and calls["n"] == 0  # answered without auth, app not hit
+    assert (
+        sent[0]["status"] == 200 and calls["n"] == 0
+    )  # answered without auth, app not hit
 
 
 def test_lifespan_passthrough():
@@ -78,7 +86,12 @@ def test_lifespan_passthrough():
     mw = BearerAuthRateLimit(app, token="secret")
     scope = {"type": "lifespan"}
     sent = []
-    async def recv(): return {"type": "lifespan.startup"}
-    async def send(m): sent.append(m)
+
+    async def recv():
+        return {"type": "lifespan.startup"}
+
+    async def send(m):
+        sent.append(m)
+
     asyncio.run(mw(scope, recv, send))
-    assert calls["n"] == 1                  # forwarded despite token set
+    assert calls["n"] == 1  # forwarded despite token set

@@ -37,6 +37,7 @@ gateway will; a bare Ollama on localhost won't). Note the model prefix selects t
 wire protocol LiteLLM speaks: `ollama/<model>` calls `/api/generate`, while
 `ollama_chat/<model>` calls `/api/chat` — pick whichever your endpoint implements.
 """
+
 from __future__ import annotations
 
 import os
@@ -49,6 +50,7 @@ log = get_logger(__name__)
 
 try:
     from litellm import acompletion
+
     _LITELLM = True
 except ImportError:  # pragma: no cover - exercised only in minimal installs
     _LITELLM = False
@@ -76,7 +78,9 @@ def _tier_models() -> Dict[str, str]:
 
 
 def is_local_mode() -> bool:
-    return (os.getenv("INFERENCE_MODE", settings.INFERENCE_MODE) or "remote").lower() == "local"
+    return (
+        os.getenv("INFERENCE_MODE", settings.INFERENCE_MODE) or "remote"
+    ).lower() == "local"
 
 
 def fallback_enabled() -> bool:
@@ -103,7 +107,8 @@ def local_api_base() -> Optional[str]:
         log.warning(
             "local endpoint %r ends with '/api' — LiteLLM appends '/api/chat' itself, "
             "so this will request '%s/api/chat'. Use the base URL without '/api'.",
-            base, base,
+            base,
+            base,
         )
     return base
 
@@ -115,10 +120,12 @@ def local_api_key() -> Optional[str]:
     beyond your LAN will. Falls back to the global internal-service token so a
     deployment that already sets that doesn't need a second secret.
     """
-    return (os.getenv("LOCAL_LLM_TOKEN") or
-            os.getenv("INFERENCE_TOKEN") or
-            os.getenv("AGENTKIT_INTERNAL_TOKEN") or
-            None)
+    return (
+        os.getenv("LOCAL_LLM_TOKEN")
+        or os.getenv("INFERENCE_TOKEN")
+        or os.getenv("AGENTKIT_INTERNAL_TOKEN")
+        or None
+    )
 
 
 def resolve_model(tier: str = "default") -> str:
@@ -139,7 +146,8 @@ def describe_routing() -> Dict[str, Any]:
     return {
         "inference_mode": "local" if local else "remote",
         "fallback_to_local": fallback_enabled(),
-        "local_endpoint": local_api_base() or "litellm default (http://localhost:11434)",
+        "local_endpoint": local_api_base()
+        or "litellm default (http://localhost:11434)",
         "local_endpoint_authenticated": bool(local_api_key()),
         "effective_models": {t: resolve_model(t) for t in TIERS},
         "configured_models": _tier_models(),
@@ -167,7 +175,9 @@ async def _complete(model: str, messages: List[Dict[str, str]], **kwargs: Any):
     return await acompletion(**call)
 
 
-async def llm_call(messages: List[Dict[str, str]], *, tier: str = "default", **kwargs: Any):
+async def llm_call(
+    messages: List[Dict[str, str]], *, tier: str = "default", **kwargs: Any
+):
     """Route one chat completion through the configured tier.
 
     Raises LLMUnavailable (never returns a fabricated response) when the call cannot be
@@ -181,14 +191,21 @@ async def llm_call(messages: List[Dict[str, str]], *, tier: str = "default", **k
         return await _complete(model, messages, **kwargs)
     except Exception as primary_error:
         local_model = settings.LLM_LOCAL
-        should_fallback = (fallback_enabled() and
-                           not is_local_mode() and   # already local: nothing to fall back to
-                           model != local_model)
+        should_fallback = (
+            fallback_enabled()
+            and not is_local_mode()  # already local: nothing to fall back to
+            and model != local_model
+        )
         if not should_fallback:
             raise LLMUnavailable(f"{model} failed: {primary_error}") from primary_error
 
-        log.warning("tier=%s model=%s failed (%s) — falling back to local %s",
-                    tier, model, primary_error, local_model)
+        log.warning(
+            "tier=%s model=%s failed (%s) — falling back to local %s",
+            tier,
+            model,
+            primary_error,
+            local_model,
+        )
         try:
             return await _complete(local_model, messages, **kwargs)
         except Exception as local_error:
