@@ -1,9 +1,9 @@
 import os
 import sys
 
-from agentkit_mcp.mcp_server import _FASTMCP, _serve_sse, log, mcp
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+from agentkit_mcp.mcp_server import _FASTMCP, _serve_sse, log, mcp  # noqa: E402
 if __name__ == "__main__":
     if _FASTMCP:
         transport = os.getenv("MCP_TRANSPORT", "sse").lower()
