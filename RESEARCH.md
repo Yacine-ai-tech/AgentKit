@@ -84,16 +84,37 @@ Limitations explicitly documented:
 
 ## 3. DSPy Research Scaffold
 
-`research/dspy_experiment.py` frames the Planner → Analyst → Reporter pipeline as a DSPy `Module` with three signatures and evaluates compiled (BootstrapFewShot) vs. uncompiled performance on a small held-out training set.
+`research/dspy_experiment.py` frames the Planner → Analyst → Reporter pipeline as a DSPy `Module` with three signatures and evaluates compiled (BootstrapFewShot) vs. uncompiled performance on a held-out set of real, hand-authored business questions — 8 used only as BootstrapFewShot's candidate-demonstration pool (`TRAINSET`), 30 held out entirely from compilation and used only to score the two configurations (`EVALSET`), so the reported comparison reflects generalization rather than memorized training demos.
 
-**Findings (N=4 eval examples — small, not publication-grade):**
+**Findings, real run (N=30 held-out eval examples, up from an earlier N=4 pilot):**
 
-| Configuration | Eval score |
-|---|---|
-| Uncompiled (zero-shot) | 0.4 |
-| BootstrapFewShot compiled | 0.6 |
+| Configuration | Eval score | Examples actually scored |
+|---|---|---|
+| Uncompiled (zero-shot) | **0.680** | 30 / 30 |
+| BootstrapFewShot compiled | **0.673** | **11 / 30** |
 
-The 0.2-point gain is consistent with DSPy's reported improvements on few-shot compilation (Khattab et al., 2023), though the sample size is far too small to draw statistical conclusions. This scaffold is a starting point for a larger-scale study, not a reportable result in itself.
+**Read this plainly, not as "compiled loses":** the two numbers are not a clean apples-to-apples
+comparison. The uncompiled pass completed cleanly against the full 30-example eval set. The
+compiled pass hit a real Groq daily token-quota ceiling (200,000 TPD on the key this project now
+uses) partway through — BootstrapFewShot itself succeeded (2 full demonstration traces
+bootstrapped from the 8-example training pool, confirmed in the run log), but only 11 of the 30
+held-out eval examples got scored before the account's daily quota was exhausted for the day; the
+remaining 19 were skipped (not scored as failures) once the rate limit hit. The 0.673 vs 0.680
+gap is well within the noise you'd expect from an 11-example subset and cannot be read as "the
+compiled program is worse" — there isn't enough compiled-side data yet to make that comparison
+honestly. (One more reporting caveat: the run's own summary line labeled the compiled result
+`bootstrapped_0_demos` because the code only inspects `compiled.planner.demos` for the winner
+label, while the log shows the 2 real bootstrapped traces attached elsewhere in the pipeline —
+noted here rather than silently trusted, since the label undercounts what the run actually
+produced.)
+
+**What this does and doesn't establish:** N=30 with full uncompiled coverage is a meaningfully
+larger, more trustworthy result than the original N=4 pilot for the *uncompiled* baseline. The
+*compiled* side still isn't at a comparable N — closing that gap needs either a second Groq key
+with its own daily quota, or running the remaining ~19 eval examples on a later day once the
+quota resets, then merging results the same way `eval/reaggregate_action_item_benchmark.py`
+merges partial runs elsewhere in this workspace. Until then, this is a real, honestly-reported
+partial result, not a publication-grade compiled-vs-uncompiled conclusion.
 
 The implementation correctly wraps the AgentKit tool functions as DSPy-compatible modules, demonstrating that declarative MCP tools can be optimized programmatically — a composability property that is non-trivial when tool calls involve real database queries.
 
