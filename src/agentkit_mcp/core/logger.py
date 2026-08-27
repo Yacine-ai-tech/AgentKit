@@ -7,6 +7,7 @@ Usage::
     log = get_logger(__name__)
     log.info("Server started on port %d", port)
 """
+
 from __future__ import annotations
 
 import logging
