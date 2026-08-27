@@ -2,10 +2,11 @@
 AI forecasting — time-series, Monte-Carlo, cash runway, health scoring.
 CPU-friendly: uses scikit-learn LinearRegression (no GPU needed).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -43,20 +44,31 @@ class ForecastEngine:
         future_preds = model.predict(future_idx)
 
         z = stats.norm.ppf((1 + confidence_level) / 2)
-        margin = z * residual_std * np.sqrt(
-            1 + 1 / len(df) + (future_idx - X.mean()) ** 2 / np.sum((X - X.mean()) ** 2)
+        margin = (
+            z
+            * residual_std
+            * np.sqrt(
+                1
+                + 1 / len(df)
+                + (future_idx - X.mean()) ** 2 / np.sum((X - X.mean()) ** 2)
+            )
         )
 
         last_month = datetime.strptime(df["month_tag"].iloc[-1], "%Y-%m")
-        future_months = [(last_month + timedelta(days=30 * i)).strftime("%Y-%m") for i in range(1, periods + 1)]
+        future_months = [
+            (last_month + timedelta(days=30 * i)).strftime("%Y-%m")
+            for i in range(1, periods + 1)
+        ]
 
-        forecast_df = pd.DataFrame({
-            "month_tag": future_months,
-            "forecast": future_preds,
-            "lower_bound": future_preds - margin.flatten(),
-            "upper_bound": future_preds + margin.flatten(),
-            "confidence_level": confidence_level,
-        })
+        forecast_df = pd.DataFrame(
+            {
+                "month_tag": future_months,
+                "forecast": future_preds,
+                "lower_bound": future_preds - margin.flatten(),
+                "upper_bound": future_preds + margin.flatten(),
+                "confidence_level": confidence_level,
+            }
+        )
 
         return forecast_df
 
@@ -67,7 +79,11 @@ class ForecastEngine:
         df["time_index"] = range(len(df))
         X, y = df[["time_index"]].values, df["actual"].values
         model = LinearRegression().fit(X, y)
-        return {"r_squared": model.score(X, y), "slope": model.coef_[0], "intercept": model.intercept_}
+        return {
+            "r_squared": model.score(X, y),
+            "slope": model.coef_[0],
+            "intercept": model.intercept_,
+        }
 
 
 class ScenarioEngine:
@@ -97,7 +113,10 @@ class ScenarioEngine:
                 # Correlated random walk
                 if t > 0:
                     prev_shock = shocks[i, t - 1]
-                    current_shock = correlation * prev_shock + np.sqrt(1 - correlation**2) * shocks[i, t]
+                    current_shock = (
+                        correlation * prev_shock
+                        + np.sqrt(1 - correlation**2) * shocks[i, t]
+                    )
                 else:
                     current_shock = shocks[i, t]
 
@@ -145,7 +164,11 @@ class ScenarioEngine:
         - Applies shock at midpoint
         - Recovers gradually over recovery_months
         """
-        data = current_data.sort_values("period").copy() if "period" in current_data.columns else current_data.copy()
+        data = (
+            current_data.sort_values("period").copy()
+            if "period" in current_data.columns
+            else current_data.copy()
+        )
         data["scenario_value"] = data.get("value", data.get("actual", 1))
 
         shock_point = len(data) // 2
@@ -153,11 +176,17 @@ class ScenarioEngine:
             months_since_shock = idx - shock_point
             if months_since_shock == 0:
                 # Apply initial shock
-                data.iloc[idx, data.columns.get_loc("scenario_value")] *= (1 + event_impact)
+                data.iloc[idx, data.columns.get_loc("scenario_value")] *= (
+                    1 + event_impact
+                )
             else:
                 # Recover gradually (exponential recovery)
-                recovery_factor = 1 - (event_impact * np.exp(-months_since_shock / recovery_months))
-                data.iloc[idx, data.columns.get_loc("scenario_value")] *= recovery_factor
+                recovery_factor = 1 - (
+                    event_impact * np.exp(-months_since_shock / recovery_months)
+                )
+                data.iloc[
+                    idx, data.columns.get_loc("scenario_value")
+                ] *= recovery_factor
 
         return data
 
@@ -171,7 +200,9 @@ class ScenarioEngine:
         Tests ±10% change in each variable and measures impact.
         """
         sensitivity = {}
-        base_value = base_forecast["forecast"].iloc[-1] if not base_forecast.empty else 1
+        base_value = (
+            base_forecast["forecast"].iloc[-1] if not base_forecast.empty else 1
+        )
 
         for var, (min_val, max_val) in variables.items():
             mid = (min_val + max_val) / 2
@@ -183,13 +214,15 @@ class ScenarioEngine:
             sensitivity[var] = {
                 "impact_up_pct": float(impact_up),
                 "impact_down_pct": float(impact_down),
-                "elasticity": float((impact_up - impact_down) / 20),  # % output change / % input change
+                # % output change / % input change
+                "elasticity": float((impact_up - impact_down) / 20),
             }
 
         return sensitivity
 
 
 # ── Standalone helpers ────────────────────────────────────────────────────
+
 
 def calculate_cash_runway(
     current_cash: float,
@@ -210,12 +243,16 @@ def calculate_cash_runway(
         "monthly_revenue": monthly_revenue,
         "net_burn": net_burn,
         "runway_months": runway_months,
-        "runway_date": runway_date.strftime("%Y-%m-%d") if runway_date else "Indefinite",
+        "runway_date": (
+            runway_date.strftime("%Y-%m-%d") if runway_date else "Indefinite"
+        ),
         "is_healthy": runway_months > 12 or runway_months == float("inf"),
     }
 
 
-def calculate_financial_health_score(metrics: Dict[str, float], config: Optional[Dict[str, List[tuple]]] = None) -> Dict[str, Any]:
+def calculate_financial_health_score(
+    metrics: Dict[str, float], config: Optional[Dict[str, List[tuple]]] = None
+) -> Dict[str, Any]:
     score = 0
     max_score = 0
     details: Dict[str, int] = {}
@@ -225,7 +262,7 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
             "revenue_growth_pct": [(20, 25), (10, 20), (0, 15)],
             "profit_margin_pct": [(20, 25), (10, 20), (0, 15)],
             "cash_runway_months": [(18, 25), (12, 20), (6, 15), (3, 10)],
-            "variance_vs_plan_pct": [(-5, 25), (-10, 20), (-15, 15), (-25, 10)]
+            "variance_vs_plan_pct": [(-5, 25), (-10, 20), (-15, 15), (-25, 10)],
         }
 
     def _score_bucket(value: float, thresholds: List[tuple]) -> int:
@@ -235,7 +272,9 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
         return thresholds[-1][1] if thresholds else 0
 
     if "revenue_growth_pct" in metrics:
-        pts = _score_bucket(metrics["revenue_growth_pct"], config.get("revenue_growth_pct", []))
+        pts = _score_bucket(
+            metrics["revenue_growth_pct"], config.get("revenue_growth_pct", [])
+        )
         if metrics["revenue_growth_pct"] < 0:
             pts = max(0, int(15 + metrics["revenue_growth_pct"]))
         score += pts
@@ -243,7 +282,9 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
         details["revenue_growth"] = pts
 
     if "profit_margin_pct" in metrics:
-        pts = _score_bucket(metrics["profit_margin_pct"], config.get("profit_margin_pct", []))
+        pts = _score_bucket(
+            metrics["profit_margin_pct"], config.get("profit_margin_pct", [])
+        )
         if metrics["profit_margin_pct"] < 0:
             pts = max(0, int(15 + metrics["profit_margin_pct"]))
         score += pts
@@ -251,7 +292,9 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
         details["profitability"] = pts
 
     if "cash_runway_months" in metrics:
-        pts = _score_bucket(metrics["cash_runway_months"], config.get("cash_runway_months", []))
+        pts = _score_bucket(
+            metrics["cash_runway_months"], config.get("cash_runway_months", [])
+        )
         score += pts
         max_score += 25
         details["cash_position"] = pts
@@ -274,4 +317,10 @@ def calculate_financial_health_score(metrics: Dict[str, float], config: Optional
     else:
         rating, color = ("Poor", "🔴")
 
-    return {"score": final, "rating": rating, "color": color, "details": details, "max_score": max_score}
+    return {
+        "score": final,
+        "rating": rating,
+        "color": color,
+        "details": details,
+        "max_score": max_score,
+    }

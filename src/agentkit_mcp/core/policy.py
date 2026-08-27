@@ -30,6 +30,7 @@ Everything above is deliberately independent of *which* agent framework is calli
 policy lives with the tool, not the client, so LangGraph / Claude Agent SDK / CrewAI /
 a raw MCP client all get identical enforcement.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,17 +60,20 @@ def _env_true(name: str, default: str = "false") -> bool:
 @dataclass(frozen=True)
 class ToolPolicy:
     """Declared capability envelope for a single tool."""
+
     name: str
     effect: str = READ
-    scopes: tuple = ()             # caller must hold ALL of these
-    rate_limit: Optional[int] = None   # max calls per window
+    scopes: tuple = ()  # caller must hold ALL of these
+    rate_limit: Optional[int] = None  # max calls per window
     rate_window: int = 60
-    requires_approval: Optional[bool] = None   # default: True iff destructive
+    requires_approval: Optional[bool] = None  # default: True iff destructive
     description: str = ""
 
     def __post_init__(self):
         if self.effect not in EFFECTS:
-            raise ValueError(f"tool {self.name!r}: effect must be one of {EFFECTS}, got {self.effect!r}")
+            raise ValueError(
+                f"tool {self.name!r}: effect must be one of {EFFECTS}, got {self.effect!r}"
+            )
 
     @property
     def approval_required(self) -> bool:
@@ -172,7 +176,9 @@ class PolicyEngine:
         return self._policies.get(tool)
 
     def all_policies(self) -> List[Dict[str, Any]]:
-        return [p.to_dict() for p in sorted(self._policies.values(), key=lambda p: p.name)]
+        return [
+            p.to_dict() for p in sorted(self._policies.values(), key=lambda p: p.name)
+        ]
 
     # ── global switches (read live so tests/ops can flip without reimport) ──
     @staticmethod
@@ -284,22 +290,38 @@ class PolicyEngine:
         with self._lock:
             self._audit.appendleft(rec)
         if not decision.allowed:
-            log.warning("POLICY DENY tool=%s caller=%s reason=%s", tool, caller, decision.reason)
+            log.warning(
+                "POLICY DENY tool=%s caller=%s reason=%s", tool, caller, decision.reason
+            )
         elif effect != READ:
-            log.info("POLICY ALLOW tool=%s effect=%s dry_run=%s caller=%s",
-                     tool, effect, decision.dry_run, caller)
+            log.info(
+                "POLICY ALLOW tool=%s effect=%s dry_run=%s caller=%s",
+                tool,
+                effect,
+                decision.dry_run,
+                caller,
+            )
         _sink_write(rec)
         return rec
 
-    def complete(self, rec: AuditRecord, *, outcome: str,
-                 error: Optional[str] = None, duration_ms: Optional[float] = None) -> None:
+    def complete(
+        self,
+        rec: AuditRecord,
+        *,
+        outcome: str,
+        error: Optional[str] = None,
+        duration_ms: Optional[float] = None,
+    ) -> None:
         rec.outcome = outcome
         rec.error = error
         rec.duration_ms = duration_ms
         _sink_write(rec, update=True)
 
     def audit_log(
-        self, limit: int = 100, effect: Optional[str] = None, session_id: Optional[str] = None,
+        self,
+        limit: int = 100,
+        effect: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """session_id, when given, additionally scopes results to entries with no
         session_id of their own (MCP/CLI calls — global, not tied to any visitor) plus
@@ -309,7 +331,9 @@ class PolicyEngine:
         if effect:
             items = [r for r in items if r.effect == effect]
         if session_id is not None:
-            items = [r for r in items if r.session_id is None or r.session_id == session_id]
+            items = [
+                r for r in items if r.session_id is None or r.session_id == session_id
+            ]
         return [r.to_dict() for r in items[:limit]]
 
     def describe(self) -> Dict[str, Any]:

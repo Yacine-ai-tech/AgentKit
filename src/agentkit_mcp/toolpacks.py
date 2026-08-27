@@ -45,6 +45,7 @@ Design constraints that make this safe to expose to a model:
 Packs load from AGENTKIT_PACKS (a comma-separated list of .yaml files or directories),
 defaulting to the bundled `packs/` directory.
 """
+
 from __future__ import annotations
 
 import os
@@ -59,10 +60,13 @@ log = get_logger(__name__)
 
 try:
     import yaml
+
     _YAML = True
 except ImportError:  # pragma: no cover
     _YAML = False
-    log.warning("pyyaml not installed — declarative tool packs unavailable (pip install pyyaml)")
+    log.warning(
+        "pyyaml not installed — declarative tool packs unavailable (pip install pyyaml)"
+    )
 
 _TYPES = {"string": str, "integer": int, "number": float, "boolean": bool}
 DEFAULT_PACK_DIR = Path(__file__).resolve().parent.parent.parent / "packs"
@@ -85,7 +89,9 @@ class PackParam:
         try:
             return py(value)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"parameter {self.name!r} expects {self.type}, got {value!r}") from e
+            raise ValueError(
+                f"parameter {self.name!r} expects {self.type}, got {value!r}"
+            ) from e
 
     def to_meta(self) -> Dict[str, Any]:
         m = {"name": self.name, "type": self.type, "required": self.required}
@@ -103,9 +109,9 @@ class PackTool:
     effect: str = READ
     scopes: List[str] = field(default_factory=list)
     params: List[PackParam] = field(default_factory=list)
-    query: Optional[str] = None        # read
-    statement: Optional[str] = None    # write / destructive
-    request: Optional[Dict[str, Any]] = None   # http datasource
+    query: Optional[str] = None  # read
+    statement: Optional[str] = None  # write / destructive
+    request: Optional[Dict[str, Any]] = None  # http datasource
     rate_limit: Optional[int] = None
     requires_approval: Optional[bool] = None
     pack: str = ""
@@ -126,7 +132,11 @@ class PackTool:
                 raise ValueError(f"missing required parameter {p.name!r}")
             else:
                 out[p.name] = None
-        unknown = set(supplied or {}) - {p.name for p in self.params} - {"dry_run", "approval_token"}
+        unknown = (
+            set(supplied or {})
+            - {p.name for p in self.params}
+            - {"dry_run", "approval_token"}
+        )
         if unknown:
             raise ValueError(f"unknown parameter(s): {sorted(unknown)}")
         return out
@@ -168,7 +178,9 @@ class ToolPack:
             return url
         if ds.get("url"):
             return ds["url"]
-        raise RuntimeError(f"pack {self.name!r}: datasource needs url_env (preferred) or url")
+        raise RuntimeError(
+            f"pack {self.name!r}: datasource needs url_env (preferred) or url"
+        )
 
 
 def _parse_tool(raw: Dict[str, Any], pack_name: str) -> PackTool:
@@ -177,14 +189,21 @@ def _parse_tool(raw: Dict[str, Any], pack_name: str) -> PackTool:
         raise ValueError(f"pack {pack_name!r}: a tool is missing 'name'")
     effect = (raw.get("effect") or READ).lower()
     if effect not in (READ, WRITE, DESTRUCTIVE):
-        raise ValueError(f"tool {name!r}: effect must be read|write|destructive, got {effect!r}")
+        raise ValueError(
+            f"tool {name!r}: effect must be read|write|destructive, got {effect!r}"
+        )
     if effect == READ and raw.get("statement"):
-        raise ValueError(f"tool {name!r}: uses 'statement' but declares effect=read — "
-                         "use 'query' for reads, or declare a mutating effect")
+        raise ValueError(
+            f"tool {name!r}: uses 'statement' but declares effect=read — "
+            "use 'query' for reads, or declare a mutating effect"
+        )
     params = [
         PackParam(
-            name=p["name"], type=p.get("type", "string"), required=bool(p.get("required")),
-            default=p.get("default"), description=p.get("description", ""),
+            name=p["name"],
+            type=p.get("type", "string"),
+            required=bool(p.get("required")),
+            default=p.get("default"),
+            description=p.get("description", ""),
         )
         for p in raw.get("params", []) or []
     ]
@@ -202,7 +221,9 @@ def _parse_tool(raw: Dict[str, Any], pack_name: str) -> PackTool:
         pack=pack_name,
     )
     if not (tool.sql or tool.request):
-        raise ValueError(f"tool {name!r}: needs one of 'query', 'statement', or 'request'")
+        raise ValueError(
+            f"tool {name!r}: needs one of 'query', 'statement', or 'request'"
+        )
     return tool
 
 
@@ -224,7 +245,11 @@ def load_pack_file(path: Path) -> ToolPack:
 
 def discover_pack_files() -> List[Path]:
     spec = os.getenv("AGENTKIT_PACKS", "").strip()
-    roots = [Path(p.strip()) for p in spec.split(",") if p.strip()] if spec else [DEFAULT_PACK_DIR]
+    roots = (
+        [Path(p.strip()) for p in spec.split(",") if p.strip()]
+        if spec
+        else [DEFAULT_PACK_DIR]
+    )
     files: List[Path] = []
     for root in roots:
         if root.is_dir():
@@ -253,13 +278,20 @@ def load_packs() -> Dict[str, ToolPack]:
             continue
         packs[pack.name] = pack
         for tool in pack.tools:
-            policy_engine.register(ToolPolicy(
-                name=tool.name,
-                effect=tool.effect,
-                scopes=tuple(tool.scopes),
-                rate_limit=tool.rate_limit,
-                requires_approval=tool.requires_approval,
-                description=tool.description,
-            ))
-        log.info("loaded tool pack %r (%d tools) from %s", pack.name, len(pack.tools), path.name)
+            policy_engine.register(
+                ToolPolicy(
+                    name=tool.name,
+                    effect=tool.effect,
+                    scopes=tuple(tool.scopes),
+                    rate_limit=tool.rate_limit,
+                    requires_approval=tool.requires_approval,
+                    description=tool.description,
+                )
+            )
+        log.info(
+            "loaded tool pack %r (%d tools) from %s",
+            pack.name,
+            len(pack.tools),
+            path.name,
+        )
     return packs

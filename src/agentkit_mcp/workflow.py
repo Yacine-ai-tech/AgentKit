@@ -9,6 +9,7 @@ Public API:
     from agentkit_mcp.workflow import analyze
     result = analyze("What drove gross margin in Q1?")
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,6 +22,7 @@ log = get_logger(__name__)
 
 try:
     from langgraph.graph import END, StateGraph
+
     _LANGGRAPH = True
 except ImportError:
     _LANGGRAPH = False
@@ -30,18 +32,19 @@ from agentkit_mcp.core.llm_router import LLMUnavailable, llm_call  # noqa: E402
 
 try:
     import litellm  # noqa: F401  (routing goes through llm_router; this is a presence check)
+
     _LITELLM = True
 except ImportError:
     _LITELLM = False
 
 
-from agentkit_mcp.mcp_server import (  # noqa: E402
-    query_kpis,
-    get_company_health,
-    detect_kpi_anomalies,
+from agentkit_mcp.mcp_server import (
+    detect_kpi_anomalies,  # noqa: E402
     forecast_metric,
-    list_available_metrics,
+    get_company_health,
     get_executive_summary,
+    list_available_metrics,
+    query_kpis,
 )
 
 
@@ -64,11 +67,14 @@ async def planner_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         metrics = await list_available_metrics()
         resp = await llm_call(
             [
-                {"role": "system", "content": (
-                    "You are a planner. Produce a concise 3-4 step plan for answering "
-                    f"the question using available tools. Available metrics/categories: "
-                    f"{json.dumps(metrics)[:1000]}"
-                )},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a planner. Produce a concise 3-4 step plan for answering "
+                        f"the question using available tools. Available metrics/categories: "
+                        f"{json.dumps(metrics)[:1000]}"
+                    ),
+                },
                 {"role": "user", "content": state["question"]},
             ],
             tier="reasoning",
@@ -120,16 +126,22 @@ async def reporter_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     try:
         resp = await llm_call(
             [
-                {"role": "system", "content": (
-                    "You synthesize raw data into an executive report with these sections: "
-                    "KEY FINDING, EVIDENCE, ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. "
-                    "Be concrete. Cite numbers. Be brief."
-                )},
-                {"role": "user", "content": (
-                    f"Question: {state.get('question')}\n\n"
-                    f"Plan: {state.get('plan', '')}\n\n"
-                    f"Raw data: {json.dumps(state.get('raw_data', {}))[:6000]}"
-                )},
+                {
+                    "role": "system",
+                    "content": (
+                        "You synthesize raw data into an executive report with these sections: "
+                        "KEY FINDING, EVIDENCE, ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. "
+                        "Be concrete. Cite numbers. Be brief."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Question: {state.get('question')}\n\n"
+                        f"Plan: {state.get('plan', '')}\n\n"
+                        f"Raw data: {json.dumps(state.get('raw_data', {}))[:6000]}"
+                    ),
+                },
             ],
             tier="reasoning",
             temperature=0.2,
@@ -142,10 +154,20 @@ async def reporter_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         buffer: List[str] = []
         for line in text.splitlines():
             # tolerate markdown headers: "## KEY FINDING", "**KEY FINDING**", "KEY FINDING:"
-            upper = line.strip().strip("#*").strip().rstrip(":").strip("#*").strip().upper()
-            if upper in {"KEY FINDING", "EVIDENCE", "ROOT CAUSE", "RECOMMENDED ACTION", "RISK IF UNADDRESSED"}:
+            upper = (
+                line.strip().strip("#*").strip().rstrip(":").strip("#*").strip().upper()
+            )
+            if upper in {
+                "KEY FINDING",
+                "EVIDENCE",
+                "ROOT CAUSE",
+                "RECOMMENDED ACTION",
+                "RISK IF UNADDRESSED",
+            }:
                 if current:
-                    sections[current.lower().replace(" ", "_")] = "\n".join(buffer).strip()
+                    sections[current.lower().replace(" ", "_")] = "\n".join(
+                        buffer
+                    ).strip()
                 current = upper
                 buffer = []
             else:
@@ -194,6 +216,7 @@ def analyze(question: str) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     import sys
+
     q = " ".join(sys.argv[1:]) or "What's our company's overall health right now?"
     out = analyze(q)
     print(json.dumps(out, indent=2, default=str))
