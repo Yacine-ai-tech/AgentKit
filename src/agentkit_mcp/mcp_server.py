@@ -60,6 +60,7 @@ try:
     _INSIGHTS = True
 except Exception:
     _INSIGHTS = False
+    log.exception("insights module unavailable — health-score/anomalies disabled")
 
 try:
     from agentkit_mcp.services.forecasting import ForecastEngine
@@ -67,6 +68,7 @@ try:
     _FORECAST = True
 except Exception:
     _FORECAST = False
+    log.exception("forecasting module unavailable — forecast disabled")
 
 
 if _FASTMCP:
