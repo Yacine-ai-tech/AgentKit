@@ -262,12 +262,11 @@ def build_executive_summary(
         bullets.append(
             f"Indice de santé à {health.get('score', 0):.0f} ({health.get('label')})."
         )
+        risk_label = risk.get('label')
+        volatility = risk.get('volatility', 0)
         bullets.append(
-            f"Posture de risque : {
-                risk.get('label')} avec volatilité {
-                risk.get(
-                    'volatility',
-                    0):.1f} %.")
+            f"Posture de risque : {risk_label} avec volatilité {volatility:.1f} %."
+        )
         if not np.isnan(key_metrics.get("revenue", np.nan)):
             bullets.append(
                 f"Revenu actuel à {format_number(key_metrics.get('revenue'))}."
