@@ -66,6 +66,10 @@ export default function Workflow() {
         {busy && (
           <div className="mt-4">
             <ExecutionStages stages={["Planner — building the analysis plan", "Analyst — querying live data via tools", "Reporter — synthesizing the executive report"]} active={1} />
+            <div className="mt-2 text-[12px] text-muted">
+              This runs a real 3-agent pipeline against live data — typically 20-30s, longer if the
+              inference backend needs to wake from idle.
+            </div>
           </div>
         )}
         {err && <div className="mt-3 flex items-start gap-2 text-[13px] text-bad"><AlertTriangle size={14} className="mt-0.5" />{err}</div>}
