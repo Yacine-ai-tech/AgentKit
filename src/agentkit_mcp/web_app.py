@@ -15,7 +15,7 @@ from collections import deque as _deque
 from datetime import datetime as _dt
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
