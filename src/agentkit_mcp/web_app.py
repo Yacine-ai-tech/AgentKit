@@ -388,31 +388,23 @@ def build_app() -> FastAPI:
         """
         from agentkit_mcp import mcp_server as _mcp_mod
 
+        from fastmcp.exceptions import NotFoundError
+
         args = {k: v for k, v in request.query_params.items()}
         try:
-            func = _mcp_mod.mcp._prompts.get(name)
-            if not func:
-                return {"error": "not found", "name": name}
+            result = await _mcp_mod.mcp.render_prompt(name, args)
 
-            import inspect
-
-            if inspect.iscoroutinefunction(func):
-                result = await func(**args)
-            else:
-                result = func(**args)
-
-            # result is a string or list of PromptMessage; join text content
+            # result.messages is a list of Message; join text content
             parts = []
-            if isinstance(result, str):
-                parts.append(result)
-            else:
-                for msg in result or []:
-                    content = getattr(msg, "content", msg)
-                    if hasattr(content, "text"):
-                        parts.append(content.text)
-                    else:
-                        parts.append(str(content))
+            for msg in result.messages:
+                content = getattr(msg, "content", msg)
+                if hasattr(content, "text"):
+                    parts.append(content.text)
+                else:
+                    parts.append(str(content))
             return {"name": name, "content": "\n".join(parts)}
+        except NotFoundError:
+            return {"error": "not found", "name": name}
         except Exception as exc:
             return {"error": str(exc), "name": name}
 
