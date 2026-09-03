@@ -302,13 +302,8 @@ def build_app() -> FastAPI:
         resources_out: list = []
         prompts_out: list = []
         try:
-            # Optimize: Avoid full Client initialization on every request
-            raw_resources = []
-            if hasattr(_mcp_mod.mcp, "_resources"):
-                raw_resources = list(_mcp_mod.mcp._resources.values())
-            raw_prompts = []
-            if hasattr(_mcp_mod.mcp, "_prompts"):
-                raw_prompts = list(_mcp_mod.mcp._prompts.values())
+            raw_resources = await _mcp_mod.mcp.list_resources()
+            raw_prompts = await _mcp_mod.mcp.list_prompts()
 
             resources_out = [
                 {
@@ -353,30 +348,23 @@ def build_app() -> FastAPI:
         from agentkit_mcp import mcp_server as _mcp_mod
 
         try:
-            # Bypass Client overhead
-            func = _mcp_mod.mcp._resources.get(uri)
-            if not func:
-                return {"error": "not found", "uri": uri}
-            import inspect
+            result = await _mcp_mod.mcp.read_resource(uri)
 
-            if inspect.iscoroutinefunction(func):
-                result = await func()
-            else:
-                result = func()
-
-            # result is a list of content parts or single string; join text parts
             content_parts = []
-            if isinstance(result, str):
-                content_parts.append(result)
-            else:
-                for part in result or []:
-                    content_parts.append(
-                        part.text if hasattr(part, "text") else str(part)
-                    )
+            mime_type = "text/plain"
+            for part in result.contents:
+                text = (
+                    part.content
+                    if isinstance(part.content, str)
+                    else part.content.decode("utf-8", errors="replace")
+                )
+                content_parts.append(text)
+                if part.mime_type:
+                    mime_type = part.mime_type
             return {
                 "uri": uri,
                 "content": "\n".join(content_parts),
-                "mime_type": "text/plain",
+                "mime_type": mime_type,
             }
         except Exception as exc:
             return {"error": str(exc), "uri": uri}
