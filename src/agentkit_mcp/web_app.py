@@ -189,6 +189,7 @@ def build_app() -> FastAPI:
     threading.Thread(target=_send_telemetry, daemon=True).start()
     # -------------------------
 
+    import hmac as _hmac
     import os as _os
 
     from fastapi import Request
@@ -196,7 +197,7 @@ def build_app() -> FastAPI:
 
     @app.middleware("http")
     async def verify_internal_token(request: Request, call_next):
-        # Allow health checks, public auth routes, and frontend static assets
+        # Allow health checks, public auth routes, frontend static assets, and non-API SPA navigation
         if (
             request.method == "OPTIONS"
             or request.url.path
@@ -214,6 +215,7 @@ def build_app() -> FastAPI:
             or request.url.path.startswith("/api/v1/auth/")
             or request.url.path.startswith("/assets/")
             or request.url.path.startswith("/static/")
+            or not request.url.path.startswith("/api/")
         ):
             return await call_next(request)
 
@@ -237,7 +239,7 @@ def build_app() -> FastAPI:
                 )
                 if t
             ]
-            if not token or not any(token == exp for exp in expected_tokens):
+            if not token or not any(_hmac.compare_digest(token, exp) for exp in expected_tokens):
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "Missing or invalid X-AgentKit-Internal-Token"},
@@ -562,10 +564,17 @@ def build_app() -> FastAPI:
         result["_elapsed_ms"] = round((_time.time() - t0) * 1000, 1)
         return result
 
-    @app.get("/", include_in_schema=False)
-    async def root():
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        """Catch-all so direct navigation, refresh, or bookmarked links to
+        any frontend route serve the SPA index.html.
+        """
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        spa = os.path.join(root_dir, "frontend", "dist", "index.html")
+        dist = os.path.realpath(os.path.join(root_dir, "frontend", "dist"))
+        candidate = os.path.realpath(os.path.join(dist, full_path))
+        if candidate.startswith(dist + os.sep) and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        spa = os.path.join(dist, "index.html")
         if os.path.exists(spa):
             return FileResponse(spa)
         return {"service": "agentkit", "docs": "/docs", "mcp_sse": "/sse"}
