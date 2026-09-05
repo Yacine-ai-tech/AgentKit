@@ -81,11 +81,36 @@ export class ApiError extends Error {
 }
 
 const BASE = import.meta.env.VITE_API_BASE_URL || "";
+const INTERNAL_TOKEN = (
+  import.meta.env.VITE_AGENTKIT_INTERNAL_TOKEN ||
+  import.meta.env.VITE_INTERNAL_TOKEN ||
+  import.meta.env.VITE_OMNIINTEL_INTERNAL_TOKEN ||
+  ""
+).trim();
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export function demoSessionId(): string {
+  const key = "demo_session_id";
+  let id = typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+  if (!id) {
+    id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(key, id);
+    }
+  }
+  return id;
+}
 
 async function req<T>(path: string, init?: RequestInit, retryCount = 0): Promise<T> {
   try {
-    const res = await fetch(BASE + path, init);
+    const headers = new Headers(init?.headers);
+    headers.set("X-Demo-Session-Id", demoSessionId());
+    if (INTERNAL_TOKEN) {
+      headers.set("X-AgentKit-Internal-Token", INTERNAL_TOKEN);
+      headers.set("X-Internal-Token", INTERNAL_TOKEN);
+      headers.set("X-OmniIntel-Internal-Token", INTERNAL_TOKEN);
+    }
+    const res = await fetch(BASE + path, { ...init, headers });
     if (!res.ok) {
       if (res.status >= 500 && retryCount < 5) {
         await delay(2000 * (retryCount + 1));
