@@ -1,7 +1,8 @@
 """
 AgentKit MCP Server — a generic, policy-gated MCP server for Claude/Cursor agents.
 Tools, resources, and prompts are supplied by whatever packs are configured; the
-bundled reference pack exposes business-intelligence tools, but AgentKit itself is
+bundled reference pack exposes tools across Finance, People, Operations, Customer,
+and Engineering domains (not just business intelligence), but AgentKit itself is
 data-, resource-, prompt-, and tool-agnostic.
 
 The reference pack currently exposes 9 tools (read, write, and destructive

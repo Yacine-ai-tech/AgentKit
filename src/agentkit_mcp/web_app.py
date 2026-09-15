@@ -28,7 +28,7 @@ _OBS: "_deque[Dict[str, Any]]" = _deque(maxlen=200)
 TOOL_META = [
     {
         "name": "query_kpis",
-        "description": "Return KPI metrics for a domain and period window.",
+        "description": "Return KPI metrics for a domain (Finance, People, Operations, Customer, Engineering) and period window.",
         "params": [
             {"name": "domain", "type": "string", "required": False},
             {"name": "period_from", "type": "string", "required": False},
@@ -40,13 +40,13 @@ TOOL_META = [
     },
     {
         "name": "get_company_health",
-        "description": "Composite company health index for a domain (or all).",
+        "description": "Composite company health index for a domain (Finance, People, Operations, Customer, Engineering) (or all).",
         "params": [{"name": "domain", "type": "string", "required": False}],
         "endpoint": "/api/health-score",
     },
     {
         "name": "detect_kpi_anomalies",
-        "description": "Find anomalies in a domain's KPI history (z-score).",
+        "description": "Find anomalies in a domain's (Finance, People, Operations, Customer, Engineering) KPI history (z-score).",
         "params": [
             {"name": "domain", "type": "string", "required": True},
             {
@@ -61,7 +61,7 @@ TOOL_META = [
     },
     {
         "name": "forecast_metric",
-        "description": "Forecast N periods ahead for a named metric with CI bands.",
+        "description": "Forecast N periods ahead for a named metric across Finance, People, Operations, Customer, or Engineering with CI bands.",
         "params": [
             {"name": "metric_name", "type": "string", "required": True},
             {"name": "periods", "type": "integer", "required": False, "default": 6},
@@ -76,13 +76,13 @@ TOOL_META = [
     },
     {
         "name": "list_available_metrics",
-        "description": "Discovery: metrics, categories and periods available in the store.",
+        "description": "Discovery: metrics, categories (Finance, People, Operations, Customer, Engineering) and periods available in the store.",
         "params": [{"name": "domain", "type": "string", "required": False}],
         "endpoint": "/api/metrics",
     },
     {
         "name": "get_executive_summary",
-        "description": "One-shot synthesis of health, key KPIs and anomalies.",
+        "description": "One-shot synthesis of health, key KPIs and anomalies across all 5 domains.",
         "params": [],
         "endpoint": "/api/summary",
     },
