@@ -1,8 +1,11 @@
-"""AgentKit KPI data seed — business intelligence metrics for MCP tools.
+"""AgentKit KPI data seed for OmniSmart Corp — multi-domain metrics for MCP tools.
 
-Generates realistic business KPI data for AgentKit's MCP tools to serve:
+Generates realistic KPI data for OmniSmart Corp across 5 domains:
 - Finance KPIs (revenue, profit, margins, forecasting)
 - People KPIs (headcount, turnover, hiring, retention)
+- Operations KPIs (supply chain, warehouse, defects)
+- Customer KPIs (NPS, churn, LTV, support)
+- Engineering KPIs (deploy frequency, MTTR, sprint velocity)
 - Anomaly detection data (outliers, unusual patterns)
 - Forecasting data (projections, predictions)
 
@@ -41,7 +44,7 @@ SCENARIOS = [
     "recovery_mode",
 ]
 
-# Business KPI definitions focused on AgentKit use cases
+# Business KPI definitions for OmniSmart Corp
 BUSINESS_KPIS = {
     "Finance": [
         ("Monthly_Revenue", "USD", 500_000, 0.02, "up"),
@@ -56,6 +59,27 @@ BUSINESS_KPIS = {
         ("Hiring_Rate", "%", 8, 0.02, "up"),
         ("Remote_Work_Percentage", "%", 65, 0.005, "up"),
         ("Employee_Satisfaction_Score", "score", 7.5, 0.01, "up"),
+    ],
+    "Operations": [
+        ("Supply_Chain_Fulfillment_Rate", "%", 94, 0.005, "up"),
+        ("Average_Order_Processing_Time", "hours", 2.3, -0.02, "down"),
+        ("Warehouse_Utilization", "%", 78, 0.01, "up"),
+        ("Supplier_On_Time_Delivery", "%", 88, 0.01, "up"),
+        ("Production_Defect_Rate", "%", 1.2, -0.05, "down"),
+    ],
+    "Customer": [
+        ("NPS_Score", "score", 42, 0.02, "up"),
+        ("Customer_Churn_Rate", "%", 5.2, -0.02, "down"),
+        ("Support_Ticket_Resolution_Time", "hours", 4.1, -0.02, "down"),
+        ("Customer_Lifetime_Value", "USD", 2400, 0.03, "up"),
+        ("Product_Adoption_Rate", "%", 67, 0.01, "up"),
+    ],
+    "Engineering": [
+        ("Deployment_Frequency", "per_week", 3.2, 0.05, "up"),
+        ("MTTR", "hours", 1.8, -0.03, "down"),
+        ("Change_Failure_Rate", "%", 4.1, -0.02, "down"),
+        ("Sprint_Velocity", "points", 47, 0.02, "up"),
+        ("Code_Review_Turnaround", "hours", 6.2, -0.02, "down"),
     ],
     "Forecasting": [
         ("Revenue_Forecast_3mo", "USD", 550_000, 0.01, "up"),
@@ -91,9 +115,9 @@ def generate_scenario_data(
             return base_value * 0.4  # Stabilized at 40% of baseline
 
     elif scenario == "high_churn":
-        # High employee turnover
-        if "Turnover" in scenario or "Retention" in scenario:
-            return base_value * (1 + 0.2 * month)  # Increasing turnover
+        # High employee turnover/churn
+        if "Turnover" in scenario or "Retention" in scenario or "Churn" in scenario:
+            return base_value * (1 + 0.2 * month)  # Increasing turnover/churn
         return base_value  # Other metrics normal
 
     elif scenario == "forecast_uncertainty":
@@ -230,7 +254,7 @@ def generate_scenario_summary() -> Dict:
 
 def main():
     print("=== AgentKit KPI Data Seeder ===")
-    print("Generating business intelligence data for MCP tools\n")
+    print("Generating OmniSmart Corp data for MCP tools\n")
 
     # Generate data for each scenario
     all_data = {}
@@ -268,6 +292,9 @@ def main():
 
     return all_data
 
+def seed_agentkit_database():
+    """Alias for backwards compatibility."""
+    return main()
 
 if __name__ == "__main__":
     main()
