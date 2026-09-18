@@ -95,14 +95,21 @@ async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     q = (state.get("question") or "").lower()
     raw: Dict[str, Any] = {}
     try:
-        # Domain routing by keywords
+        # Domain routing by keywords — must match the 5 real domain categories
+        # seeded in src/data/seed.py (Finance/People/Operations/Customer/Engineering).
+        # "Growth" was never a seeded category; customer/mrr/arr questions were
+        # silently querying an empty domain and always returning zero KPIs.
         if any(k in q for k in ("finance", "revenue", "margin", "cost", "profit")):
             raw["finance_kpis"] = await query_kpis(domain="Finance")
             raw["finance_anomalies"] = await detect_kpi_anomalies(domain="Finance")
-        if any(k in q for k in ("people", "hr", "headcount", "hiring")):
+        if any(k in q for k in ("people", "hr", "headcount", "hiring", "turnover", "retention")):
             raw["people_kpis"] = await query_kpis(domain="People")
-        if any(k in q for k in ("growth", "customer", "mrr", "arr")):
-            raw["growth_kpis"] = await query_kpis(domain="Growth")
+        if any(k in q for k in ("operations", "supply chain", "warehouse", "defect", "logistics")):
+            raw["operations_kpis"] = await query_kpis(domain="Operations")
+        if any(k in q for k in ("customer", "churn", "nps", "ltv", "mrr", "arr", "support")):
+            raw["customer_kpis"] = await query_kpis(domain="Customer")
+        if any(k in q for k in ("engineering", "deploy", "mttr", "sprint", "velocity", "incident")):
+            raw["engineering_kpis"] = await query_kpis(domain="Engineering")
         if any(k in q for k in ("forecast", "projection", "predict")):
             raw["forecast_revenue"] = await forecast_metric("revenue", periods=6)
 

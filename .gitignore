@@ -3,6 +3,8 @@
 # Test artifacts
 frontend/playwright-report/
 frontend/test-results/
+# Benchmark resume caches (run-local, not committed)
+eval/cache/
 __pycache__/
 *.pyc
 *.pyo
