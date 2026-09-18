@@ -1,4 +1,6 @@
+import argparse
 import asyncio
+import json
 import os
 import time
 from pathlib import Path
@@ -7,10 +9,17 @@ from typing import Dict, List, Tuple
 import httpx
 import psutil
 
-# Base URL for AgentKit MCP server
+# Base URL for AgentKit's REST facade (web_app.py), not the raw MCP server.
 AGENTKIT_URL = os.environ.get("AGENTKIT_URL", "http://localhost:8005")
 
-# Test scenarios covering different tool categories
+DEFAULT_CACHE_FILE = Path(__file__).resolve().parent / "cache" / "mcp_tools_benchmark_cache.jsonl"
+
+# Test scenarios spanning all 5 real domain categories seeded in src/data/seed.py
+# (Finance/People/Operations/Customer/Engineering) plus forecasting/anomalies.
+# expected_tools checks against the raw_data dict keys analyst_agent() populates
+# in workflow.py — NOT literal MCP tool function names (query_kpis etc. are
+# reused generically across domains via a `domain=` parameter, so tool selection
+# here means "which domain(s) got queried", not "which Python function ran").
 TEST_SCENARIOS = [
     {
         "query": "What are the current revenue trends?",
@@ -19,16 +28,10 @@ TEST_SCENARIOS = [
         "expected_fields": ["revenue", "growth", "trend"],
     },
     {
-        "query": "Show me the headcount statistics",
-        "category": "People KPIs",
-        "expected_tools": ["people_kpis"],
-        "expected_fields": ["headcount", "employees", "staff"],
-    },
-    {
-        "query": "Forecast the revenue for next quarter",
-        "category": "Forecasting",
-        "expected_tools": ["forecast_revenue"],
-        "expected_fields": ["forecast", "prediction", "projected"],
+        "query": "What is the current profit margin?",
+        "category": "Finance KPIs",
+        "expected_tools": ["finance_kpis"],
+        "expected_fields": ["profit", "margin", "ratio"],
     },
     {
         "query": "Are there any anomalies in the financial data?",
@@ -37,46 +40,64 @@ TEST_SCENARIOS = [
         "expected_fields": ["anomaly", "outlier", "deviation"],
     },
     {
-        "query": "What is the current profit margin?",
-        "category": "Finance KPIs",
-        "expected_tools": ["finance_kpis"],
-        "expected_fields": ["profit", "margin", "ratio"],
-    },
-    {
-        "query": "How has the team size changed over time?",
+        "query": "Show me the headcount statistics",
         "category": "People KPIs",
         "expected_tools": ["people_kpis"],
-        "expected_fields": ["team", "size", "growth", "change"],
+        "expected_fields": ["headcount", "employees", "staff"],
     },
     {
-        "query": "Predict the headcount for next month",
-        "category": "Forecasting",
-        "expected_tools": ["forecast_headcount"],
-        "expected_fields": ["forecast", "prediction", "projected"],
-    },
-    {
-        "query": "Detect any unusual patterns in HR data",
-        "category": "Anomalies",
-        "expected_tools": ["hr_anomalies"],
-        "expected_fields": ["anomaly", "pattern", "unusual"],
-    },
-    {
-        "query": "What are the operating expenses?",
-        "category": "Finance KPIs",
-        "expected_tools": ["finance_kpis"],
-        "expected_fields": ["expenses", "operating", "cost"],
-    },
-    {
-        "query": "Show employee turnover metrics",
+        "query": "Show employee turnover and retention metrics",
         "category": "People KPIs",
         "expected_tools": ["people_kpis"],
         "expected_fields": ["turnover", "retention", "churn"],
+    },
+    {
+        "query": "How is our supply chain and warehouse performance?",
+        "category": "Operations KPIs",
+        "expected_tools": ["operations_kpis"],
+        "expected_fields": ["operations", "supply", "warehouse", "defect"],
+    },
+    {
+        "query": "What is our defect rate and logistics efficiency?",
+        "category": "Operations KPIs",
+        "expected_tools": ["operations_kpis"],
+        "expected_fields": ["defect", "logistics", "operations"],
+    },
+    {
+        "query": "What is our customer churn rate and NPS score?",
+        "category": "Customer KPIs",
+        "expected_tools": ["customer_kpis"],
+        "expected_fields": ["churn", "nps", "customer"],
+    },
+    {
+        "query": "What is our customer lifetime value and support volume?",
+        "category": "Customer KPIs",
+        "expected_tools": ["customer_kpis"],
+        "expected_fields": ["ltv", "customer", "support"],
+    },
+    {
+        "query": "How is engineering deploy frequency and sprint velocity trending?",
+        "category": "Engineering KPIs",
+        "expected_tools": ["engineering_kpis"],
+        "expected_fields": ["deploy", "sprint", "velocity", "engineering"],
+    },
+    {
+        "query": "What is our MTTR and incident count this quarter?",
+        "category": "Engineering KPIs",
+        "expected_tools": ["engineering_kpis"],
+        "expected_fields": ["mttr", "incident", "engineering"],
+    },
+    {
+        "query": "Forecast the revenue for next quarter",
+        "category": "Forecasting",
+        "expected_tools": ["forecast_revenue"],
+        "expected_fields": ["forecast", "prediction", "projected"],
     },
 ]
 
 
 class MCPToolsBenchmark:
-    def __init__(self):
+    def __init__(self, cache_file: Path = DEFAULT_CACHE_FILE):
         self.results = {
             "total_tests": 0,
             "successful": 0,
@@ -88,17 +109,47 @@ class MCPToolsBenchmark:
             "category_results": {},
         }
         self.process = psutil.Process(os.getpid())
+        self.cache_file = cache_file
+        self.cache: Dict[str, Dict] = {}
+        if self.cache_file.exists():
+            with open(self.cache_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    row = json.loads(line)
+                    self.cache[row["query"]] = row
 
-    async def invoke_mcp_tool(self, query: str) -> Tuple[float, Dict, bool]:
-        """Invoke MCP tool via AgentKit API and return (time, result, success)"""
+    def _cache_put(self, query: str, exec_time: float, result: Dict, success: bool, memory_delta: float) -> None:
+        row = {
+            "query": query,
+            "exec_time": exec_time,
+            "result": result,
+            "success": success,
+            "memory_delta": memory_delta,
+        }
+        self.cache[query] = row
+        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.cache_file, "a") as f:
+            f.write(json.dumps(row) + "\n")
+
+    async def invoke_mcp_tool(self, query: str) -> Tuple[float, Dict, bool, float]:
+        """Run the real 3-agent LangGraph workflow via AgentKit's REST facade
+        (POST /api/workflow/run) and return (time, result, success, memory_delta).
+        Spends LLM credits per call, so results are cached by query text —
+        a re-run after an interruption skips every already-scored query."""
+        cached = self.cache.get(query)
+        if cached is not None:
+            return cached["exec_time"], cached["result"], cached["success"], cached["memory_delta"]
+
         start_time = time.time()
         initial_memory = self.process.memory_info().rss / 1024 / 1024  # MB
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    f"{AGENTKIT_URL}/mcp/invoke",
-                    json={"query": query},
+                    f"{AGENTKIT_URL}/api/workflow/run",
+                    json={"question": query},
                     headers={"Content-Type": "application/json"},
                 )
 
@@ -108,7 +159,7 @@ class MCPToolsBenchmark:
 
                 if response.status_code == 200:
                     result = response.json()
-                    success = True
+                    success = "error" not in result
                 else:
                     result = {
                         "error": f"HTTP {response.status_code}",
@@ -116,21 +167,31 @@ class MCPToolsBenchmark:
                     }
                     success = False
 
+                self._cache_put(query, execution_time, result, success, memory_delta)
                 return execution_time, result, success, memory_delta
 
         except Exception as e:
             execution_time = time.time() - start_time
             final_memory = self.process.memory_info().rss / 1024 / 1024  # MB
             memory_delta = final_memory - initial_memory
-            return execution_time, {"error": str(e)}, False, memory_delta
+            result = {"error": str(e)}
+            self._cache_put(query, execution_time, result, False, memory_delta)
+            return execution_time, result, False, memory_delta
 
     def evaluate_tool_selection(self, result: Dict, expected_tools: List[str]) -> bool:
-        """Check if the expected tools were selected"""
+        """Check whether the expected domain(s) were queried.
+
+        analyst_agent() (workflow.py) keys its raw_data dict by domain, e.g.
+        "finance_kpis"/"people_kpis"/"operations_kpis"/"customer_kpis"/
+        "engineering_kpis"/"forecast_revenue" — that dict's keys ARE the tool
+        selection signal here (not a literal MCP function name, since query_kpis
+        etc. are shared across all 5 domains via a `domain=` parameter).
+        """
         if "error" in result:
             return False
 
-        invoked_tools = result.get("invoked_tools", [])
-        return any(tool in invoked_tools for tool in expected_tools)
+        raw_data = result.get("raw_data", {}) or {}
+        return any(tool in raw_data for tool in expected_tools)
 
     def evaluate_report_quality(self, result: Dict, expected_fields: List[str]) -> bool:
         """Check if the report contains expected information"""
@@ -143,7 +204,8 @@ class MCPToolsBenchmark:
     async def run_benchmark(self) -> Dict:
         """Run comprehensive MCP tools benchmark"""
         print("=== AgentKit MCP Tools Performance Benchmark ===")
-        print(f"Testing {len(TEST_SCENARIOS)} scenarios across 4 tool categories")
+        n_categories = len({s["category"] for s in TEST_SCENARIOS})
+        print(f"Testing {len(TEST_SCENARIOS)} scenarios across {n_categories} tool categories")
 
         # Initialize category results
         for scenario in TEST_SCENARIOS:
@@ -277,29 +339,30 @@ def update_benchmark_markdown(results: Dict):
     """Update the benchmark markdown with new results"""
     md_path = Path(__file__).resolve().parent / "MCP_TOOLS_BENCHMARK.md"
 
+    from datetime import date
+
     content = f"""# AgentKit — MCP Tools Performance Benchmark
 
-A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools performance, accuracy, and resource utilization. Reproducible:
+A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools performance, accuracy, and resource utilization, run against the real 3-agent LangGraph workflow (`POST /api/workflow/run`). Reproducible:
 `python eval/run_mcp_tools_benchmark.py`
 
 ## Setup
-- Test Suite: 20 standardized tool invocation scenarios
-- Tool Categories: Finance KPIs, People KPIs, Forecasting, Anomalies
-- Metrics: Tool selection accuracy, execution time, memory usage, success rate
-- LLM Engine: Claude 3.5 Sonnet (via Anthropic API)
+- Test Suite: {len(TEST_SCENARIOS)} standardized queries spanning all 5 seeded domains
+- Tool Categories: Finance KPIs, People KPIs, Operations KPIs, Customer KPIs, Engineering KPIs, Forecasting, Anomalies
+- Metrics: Domain-selection accuracy, execution time, memory usage, success rate
+- Engine: Real 3-agent LangGraph workflow (Planner → Analyst → Reporter) via AgentKit's REST facade
 - Database: PostgreSQL
 
-## Results (real run, 2026-07-28, N=20)
+## Results (real run, {date.today().isoformat()}, N={len(TEST_SCENARIOS)})
 
-| Metric | Result | Target | Status |
-|--------|--------|--------|--------|
-| **Tool Selection Accuracy** | **{results['tool_selection_accuracy']:.1f}%** | > 90% | ✅ Passed |
-| **Tool Execution Success Rate** | **{results['execution_success_rate']:.1f}%** | > 95% | ✅ Passed |
-| **Avg Tool Execution Time** | **{results['avg_execution_time']:.1f}s** | < 3s | ✅ Passed |
-| **P95 Tool Execution Time** | **{results['p95_execution_time']:.1f}s** | < 5s | ✅ Passed |
-| **Report Generation Quality** | **{results['report_quality_rate']:.1f}%** | > 85% | ✅ Passed |
-| **Memory Peak per Tool** | **{results['max_memory']:.0f}MB** | < 100MB | ✅ Passed |
-| **Context Window Usage** | **72% avg** | < 80% | ✅ Passed |
+| Metric | Result |
+|--------|--------|
+| **Tool/Domain Selection Accuracy** | **{results['tool_selection_accuracy']:.1f}%** |
+| **Tool Execution Success Rate** | **{results['execution_success_rate']:.1f}%** |
+| **Avg Tool Execution Time** | **{results['avg_execution_time']:.1f}s** |
+| **P95 Tool Execution Time** | **{results['p95_execution_time']:.1f}s** |
+| **Report Generation Quality** | **{results['report_quality_rate']:.1f}%** |
+| **Memory Peak per Tool** | **{results['max_memory']:.0f}MB** |
 
 **Tool Breakdown:**
 
@@ -310,28 +373,6 @@ A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools perfo
     for category, metrics in results["category_summary"].items():
         content += f"| {category} | {metrics['success_rate']:.0f}% | {metrics['avg_time']:.1f}s | {metrics['selection_accuracy']:.0f}% |\n"
 
-    content += """
-**Analysis:**
-- AgentKit demonstrates excellent tool selection accuracy ({tool_selection_accuracy:.1f}%) with {execution_success_rate:.1f}% execution success
-- All tool categories perform within acceptable time limits (< {p95_time:.1f}s P95)
-- Memory usage per tool is efficient ({max_memory:.0f}MB peak)
-- Context window usage is well-managed (72% average)
-- Forecasting and anomaly detection show slightly lower accuracy due to complex query interpretation
-
-**MCP Protocol Performance:**
-- Tool discovery: 100% success rate
-- Parameter marshaling: 100% success rate
-- Response parsing: 100% success rate
-- Error handling: 100% success rate
-
-**Recommendation:** AgentKit's MCP tool orchestration is production-ready with excellent performance characteristics. Consider adding specialized tools for complex forecasting queries to improve accuracy in that category.
-""".format(
-        tool_selection_accuracy=results["tool_selection_accuracy"],
-        execution_success_rate=results["execution_success_rate"],
-        p95_time=results["p95_execution_time"],
-        max_memory=results["max_memory"],
-    )
-
     with open(md_path, "w") as f:
         f.write(content)
 
@@ -339,6 +380,17 @@ A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools perfo
 
 
 async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_FILE),
+                         help="JSONL cache of scored queries — reruns skip anything already cached")
+    parser.add_argument("--reset", action="store_true", help="ignore/clear the existing cache and start fresh")
+    parser.add_argument("--domains", default="all", help="kept for CLI compatibility; scenarios always cover all 5 domains")
+    args = parser.parse_args()
+
+    cache_path = Path(args.cache_file)
+    if args.reset and cache_path.exists():
+        cache_path.unlink()
+
     # Check if AgentKit server is running
     try:
         async with httpx.AsyncClient() as client:
@@ -350,7 +402,7 @@ async def main():
         print("Make sure AgentKit is running before benchmarking")
         return
 
-    benchmark = MCPToolsBenchmark()
+    benchmark = MCPToolsBenchmark(cache_file=cache_path)
     results = await benchmark.run_benchmark()
     update_benchmark_markdown(results)
 
