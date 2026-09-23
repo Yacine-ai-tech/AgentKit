@@ -1,13 +1,23 @@
 """AgentKit KPI data seed for OmniSmart Corp — multi-domain metrics for MCP tools.
 
-Generates realistic KPI data for OmniSmart Corp across 5 domains:
+Generates realistic KPI data for OmniSmart Corp across 10 domains:
 - Finance KPIs (revenue, profit, margins, forecasting)
 - People KPIs (headcount, turnover, hiring, retention)
 - Operations KPIs (supply chain, warehouse, defects)
 - Customer KPIs (NPS, churn, LTV, support)
 - Engineering KPIs (deploy frequency, MTTR, sprint velocity)
+- Growth KPIs (MRR/ARR, expansion, net revenue retention)
+- Logistics KPIs (freight, shipment timing, inventory turnover)
+- ESG KPIs (emissions, renewable energy, board diversity, ethics audits)
+- IT KPIs (uptime, SLA compliance, infrastructure cost, patch compliance)
+- Security KPIs (vulnerabilities, incident response, phishing resilience)
 - Anomaly detection data (outliers, unusual patterns)
 - Forecasting data (projections, predictions)
+
+The first 5 domains were the original set; Growth/Logistics/ESG/IT mirror IntelAI's
+own 7-domain taxonomy for cross-portfolio consistency, and Security is a domain neither
+project covered before — chosen deliberately so AgentKit's own KPI surface goes beyond
+IntelAI's rather than just duplicating it.
 
 Run standalone: python -m src.data.seed
 Or from code: from src.data.seed import seed_agentkit_database; seed_agentkit_database()
@@ -80,6 +90,41 @@ BUSINESS_KPIS = {
         ("Change_Failure_Rate", "%", 4.1, -0.02, "down"),
         ("Sprint_Velocity", "points", 47, 0.02, "up"),
         ("Code_Review_Turnaround", "hours", 6.2, -0.02, "down"),
+    ],
+    "Growth": [
+        ("Monthly_Recurring_Revenue", "USD", 180_000, 0.03, "up"),
+        ("Annual_Recurring_Revenue", "USD", 2_200_000, 0.03, "up"),
+        ("New_Customer_Growth_Rate", "%", 8, 0.01, "up"),
+        ("Expansion_Revenue", "USD", 45_000, 0.02, "up"),
+        ("Net_Revenue_Retention", "%", 108, 0.005, "up"),
+    ],
+    "Logistics": [
+        ("Freight_Cost_Per_Unit", "USD", 4.2, -0.01, "down"),
+        ("On_Time_Shipment_Rate", "%", 91, 0.005, "up"),
+        ("Inventory_Turnover_Ratio", "ratio", 6.5, 0.01, "up"),
+        ("Last_Mile_Delivery_Time", "hours", 18, -0.02, "down"),
+        ("Carrier_Damage_Rate", "%", 0.8, -0.03, "down"),
+    ],
+    "ESG": [
+        ("Carbon_Emissions_Per_Unit", "kg_co2", 2.1, -0.02, "down"),
+        ("Renewable_Energy_Percentage", "%", 42, 0.02, "up"),
+        ("Board_Diversity_Ratio", "%", 38, 0.01, "up"),
+        ("Waste_Recycling_Rate", "%", 55, 0.015, "up"),
+        ("Supplier_Ethics_Audit_Score", "score", 8.1, 0.005, "up"),
+    ],
+    "IT": [
+        ("System_Uptime", "%", 99.7, 0.001, "up"),
+        ("Ticket_Resolution_SLA_Compliance", "%", 92, 0.01, "up"),
+        ("Infrastructure_Cost_Per_User", "USD", 18, -0.01, "down"),
+        ("Patch_Compliance_Rate", "%", 87, 0.01, "up"),
+        ("Network_Latency_P95", "ms", 45, -0.02, "down"),
+    ],
+    "Security": [
+        ("Critical_Vulnerabilities_Open", "count", 12, -0.05, "down"),
+        ("Mean_Time_To_Remediate", "hours", 36, -0.03, "down"),
+        ("Phishing_Test_Failure_Rate", "%", 9, -0.02, "down"),
+        ("Security_Incident_Count", "count", 3, -0.04, "down"),
+        ("Access_Review_Completion_Rate", "%", 84, 0.015, "up"),
     ],
     "Forecasting": [
         ("Revenue_Forecast_3mo", "USD", 550_000, 0.01, "up"),

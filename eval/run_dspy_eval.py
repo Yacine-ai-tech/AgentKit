@@ -1,7 +1,8 @@
 """AgentKit multi-domain DSPy-style benchmark.
 
-Evaluates the AgentKit LangGraph workflow across 15 scenarios spanning all
-5 KPI domains: Finance, People, Operations, Customer, Engineering.
+Evaluates the AgentKit LangGraph workflow across scenarios spanning all 10 KPI domains:
+Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security
+(see eval/multi_domain_scenarios.json for the current scenario count).
 
 Resumption: results are appended atomically to a .jsonl cache file.
 Any already-evaluated scenario ID is skipped on restart — zero duplicate
