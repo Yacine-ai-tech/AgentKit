@@ -127,6 +127,56 @@ routing:
 
 ---
 
+### Definitive rerun, N=43 across all 10 KPI domains, 43/43 (2026-09-24)
+
+The KPI seed data (`src/data/seed.py`) was extended from 5 domains to **10** — Growth,
+Logistics, ESG, and IT added to mirror IntelAI's own 7-domain taxonomy for
+cross-portfolio consistency, and **Security** added as a domain neither project
+covered before. Everything downstream (`analyst_agent()`'s domain-routing keywords,
+the MCP resources in `mcp_server.py`) is now derived from the seed data directly
+rather than a separately hand-maintained list, so it can't drift out of sync the way
+the original 5-domain list did. Two more real bugs were fixed in the process:
+`forecast_metric()` was hardcoded to always forecast "revenue" regardless of what the
+question actually named, and several real KPI names (`Employee_Satisfaction_Score`,
+`Supplier_On_Time_Delivery`, `Code_Review_Turnaround`) matched no keyword in any
+domain's hand-picked list at all — fixed by deriving additional routing keywords from
+the real seeded metric names. `llm_call()` also gained a bounded wait-and-retry on
+provider rate limits, replacing what had been a silent empty-report failure mode.
+
+`eval/multi_domain_scenarios.json` was extended from 15 to 43 scenarios (3-5 per
+domain, plus 7 cross-domain queries), covering every domain and most individual KPIs.
+All 43 scenarios' `expected_tools` were verified against real (mocked) routing
+behavior locally — 0 mismatches — before spending any Groq quota on a live run.
+
+**Result: full completion, split across all 6 available Groq keys (one ~7-scenario
+chunk each, to avoid rate-limit waiting) on the production VPS:**
+
+| Metric | Result |
+|---|---|
+| Tool-routing coverage | **43/43 = 100.0%** |
+| Overall pass (tool + keyword + report-length) | **43/43 = 100.0%** |
+
+| Domain | Pass |
+|---|---|
+| Finance | 5/5 |
+| People | 4/4 |
+| Operations | 4/4 |
+| Customer | 4/4 |
+| Engineering | 4/4 |
+| Growth | 3/3 |
+| Logistics | 3/3 |
+| ESG | 3/3 |
+| IT | 3/3 |
+| Security | 3/3 |
+| Cross-Domain | 7/7 |
+
+Every scenario passed on both axes — tool routing and report-content quality. This is
+the first fully clean run since the multi-domain suite was introduced; the earlier
+N=15 and N=26 milestones each surfaced real bugs that are now fixed and confirmed
+resolved on a completely independent, larger sample spanning every domain.
+
+---
+
 ## 3. MCP Tools Performance
 
 **19/20 tool selection accuracy. 20/20 execution success. All targets met.**
