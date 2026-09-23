@@ -34,6 +34,10 @@ class Settings:
     LLM_REASONING = os.getenv("LLM_REASONING", "anthropic/claude-sonnet-4-6")
     LLM_JUDGE = os.getenv("LLM_JUDGE", "anthropic/claude-haiku-4-5")
     LLM_LOCAL = os.getenv("LLM_LOCAL", "ollama/llama3.3")
+    # A provider rate limit is transient, not an outage — retrying honors the provider's
+    # own stated wait time instead of giving up immediately (which was silently producing
+    # empty reports under real load; found via eval/run_dspy_eval.py's multi-domain suite).
+    LLM_RATE_LIMIT_RETRIES = int(os.getenv("LLM_RATE_LIMIT_RETRIES", "3"))
 
     INFERENCE_MODE = os.getenv("INFERENCE_MODE", "remote")
     LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "")

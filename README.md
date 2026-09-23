@@ -26,13 +26,22 @@ demonstrates all of this — not the limit of what the server does.
 ## What It Does
 
 **Reference BI pack (built in):**
-- **6 MCP Tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary`
-- **6 MCP Resources**: `kpi://Finance/latest` and similar for Growth, Operations, People, ESG, IT_Ops
-- **1 Reusable Prompt**: `monthly_executive_briefing`
+- **6 core MCP tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary` — plus any tools loaded from declarative YAML packs (`packs/`), so the real tool count at runtime is 6 or more, not a fixed number. The bundled `annotations` pack adds 3 more (`list_annotations`, `annotate_metric`, `retract_annotation`) demonstrating a guarded write/destructive path — see below.
+- **5 MCP resources**: `kpi://{domain}/latest` for each of this project's real seeded domains — Finance, People, Operations, Customer, Engineering (`src/data/seed.py`).
+- **1 reusable prompt**: `monthly_executive_briefing`
 
-> These come from the **reference pack** — the core server ships with no hardcoded resources or prompts.
-> You can add your own `@mcp.resource` / `@mcp.prompt` decorators, or load them from a tool pack.
-> See [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
+> These are dynamic, not hardcoded: the domain list, tool-pack set, and resource/prompt
+> registration all read from the same data this server actually serves (`src/data/seed.py`,
+> `packs/*.yaml`) — check those files, not this README, for the current live count.
+> You can add your own `@mcp.resource` / `@mcp.prompt` decorators, or load more from a
+> tool pack. See [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
+
+**Write and destructive actions are real, not aspirational.** The `annotations` pack
+lets an agent record a durable note on a metric (`annotate_metric`, effect `write`) and
+soft-delete one it got wrong (`retract_annotation`, effect `destructive` — requires a
+human-held `AGENTKIT_APPROVAL_TOKEN` the model never sees). Both are off by default
+(`AGENTKIT_ALLOW_WRITES=false`) — see [SECURITY.md](SECURITY.md#capability-guardrails)
+and [RESEARCH.md](RESEARCH.md) §2 for the full policy-engine model.
 
 
 **Platform capabilities:**
@@ -125,18 +134,21 @@ print(result["report"])
         Claude Desktop / Cursor / LangGraph
                       │
                       ▼ MCP
-              ┌──────────────────┐
-              │  mcp_server.py   │
-              │   6 tools        │
-              │   6 resources    │
-              │   1 prompt       │
-              └────────┬─────────┘
-                       │
-        ┌──────────────┼──────────────┐
-        ▼              ▼              ▼
-   pg_store      insights      forecasting
-   (KPIs)        (health,      (LinearReg
-                 anomalies)    + Monte Carlo)
+              ┌────────────────────────┐
+              │     mcp_server.py      │
+              │  6 core tools (read)   │
+              │  + N pack tools        │
+              │    (read/write/        │
+              │     destructive)       │
+              │  5 resources, 1 prompt │
+              └────────────┬───────────┘
+                            │
+        ┌───────────────────┼──────────────────┐
+        ▼                   ▼                  ▼
+   pg_store            insights          forecasting
+   (KPIs, real         (health,          (scikit-learn
+   domains + write-    anomalies)        LinearRegression
+   back annotations)                     + Monte Carlo CI)
 ```
 
 ## Research Novelty & Scientific Contributions

@@ -361,6 +361,39 @@ if _FASTMCP:
         log.error("tool pack loading failed: %s", e)
         PACKS = {}
 
+    # MCP resources — one per real seeded domain (README previously advertised these
+    # under domain names ("Growth", "ESG", "IT_Ops") that don't exist anywhere in this
+    # project's own seed data (src/data/seed.py's BUSINESS_KPIS has Finance/People/
+    # Operations/Customer/Engineering) — copied from a different project's domain list
+    # and never actually implemented. Fixed on both ends: real domains, real resources.
+    _RESOURCE_DOMAINS = ("Finance", "People", "Operations", "Customer", "Engineering")
+
+    def _make_kpi_resource(domain: str):
+        async def _read() -> Dict[str, Any]:
+            return await query_kpis(domain=domain)
+        return _read
+
+    for _domain in _RESOURCE_DOMAINS:
+        mcp.resource(
+            f"kpi://{_domain}/latest",
+            name=f"kpi_{_domain.lower()}_latest",
+            description=f"Latest {_domain} KPI snapshot.",
+            mime_type="application/json",
+        )(_make_kpi_resource(_domain))
+
+    @mcp.prompt(
+        name="monthly_executive_briefing",
+        description="Reusable prompt template for a monthly cross-domain executive briefing.",
+    )
+    def monthly_executive_briefing(month: str = "") -> str:
+        period_clause = f" for {month}" if month else " for the most recent completed month"
+        return (
+            f"Produce a monthly executive briefing{period_clause}, covering every KPI domain "
+            f"({', '.join(_RESOURCE_DOMAINS)}). For each domain: current value, trend vs. the "
+            "prior period, and whether it crossed an anomaly threshold. Close with an overall "
+            "company health score and the single most urgent issue to act on."
+        )
+
 
 def _serve_sse(port: int) -> None:
     """Serve SSE behind bearer-auth + rate-limit (gated by MCP_AUTH_TOKEN), composed with the
