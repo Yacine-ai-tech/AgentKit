@@ -3,7 +3,7 @@
     "id": "fin_001",
     "domain": "Finance",
     "query": "What drove our Monthly_Revenue growth over the last 6 months?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["finance_kpis"],
     "expected_keywords": ["revenue", "growth", "monthly"],
     "min_report_length": 50
   },
@@ -11,7 +11,7 @@
     "id": "fin_002",
     "domain": "Finance",
     "query": "Are there any anomalies in our Profit_Margin or Cash_Burn_Rate?",
-    "expected_tools": ["detect_kpi_anomalies"],
+    "expected_tools": ["finance_anomalies"],
     "expected_keywords": ["anomaly", "margin", "burn"],
     "min_report_length": 50
   },
@@ -19,7 +19,7 @@
     "id": "fin_003",
     "domain": "Finance",
     "query": "Forecast our Operating_Expenses for the next 3 months.",
-    "expected_tools": ["forecast_metric"],
+    "expected_tools": ["forecast_revenue"],
     "expected_keywords": ["forecast", "expenses", "projection"],
     "min_report_length": 50
   },
@@ -27,7 +27,7 @@
     "id": "ppl_001",
     "domain": "People",
     "query": "What is our current Headcount and how has it changed in the last quarter?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["people_kpis"],
     "expected_keywords": ["headcount", "quarter", "people"],
     "min_report_length": 50
   },
@@ -35,7 +35,7 @@
     "id": "ppl_002",
     "domain": "People",
     "query": "Is our Employee_Turnover_Rate trending up or down?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["people_kpis"],
     "expected_keywords": ["turnover", "trend", "employee"],
     "min_report_length": 50
   },
@@ -43,7 +43,7 @@
     "id": "ops_001",
     "domain": "Operations",
     "query": "How is our Supply_Chain_Fulfillment_Rate performing this quarter?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["operations_kpis"],
     "expected_keywords": ["supply chain", "fulfillment", "operations"],
     "min_report_length": 50
   },
@@ -51,15 +51,16 @@
     "id": "ops_002",
     "domain": "Operations",
     "query": "Are there anomalies in our Warehouse_Utilization or Production_Defect_Rate?",
-    "expected_tools": ["detect_kpi_anomalies"],
+    "expected_tools": ["operations_anomalies"],
     "expected_keywords": ["warehouse", "defect", "utilization"],
-    "min_report_length": 50
+    "min_report_length": 50,
+    "_note": "Left as a genuine gap check, not a naming fix: analyst_agent() (workflow.py) only calls detect_kpi_anomalies() for the Finance domain today — no operations_anomalies key is ever populated, so this scenario is expected to keep failing on tool_coverage until that's implemented for Operations too."
   },
   {
     "id": "cust_001",
     "domain": "Customer",
     "query": "What is our NPS_Score trend over the last year?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["customer_kpis"],
     "expected_keywords": ["nps", "score", "customer"],
     "min_report_length": 50
   },
@@ -67,7 +68,7 @@
     "id": "cust_002",
     "domain": "Customer",
     "query": "Is Customer_Churn_Rate increasing? Forecast it for next quarter.",
-    "expected_tools": ["query_kpis", "forecast_metric"],
+    "expected_tools": ["customer_kpis", "forecast_revenue"],
     "expected_keywords": ["churn", "forecast", "customer"],
     "min_report_length": 50
   },
@@ -75,7 +76,7 @@
     "id": "cust_003",
     "domain": "Customer",
     "query": "How does Customer_Lifetime_Value compare to Customer_Acquisition_Cost?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["customer_kpis"],
     "expected_keywords": ["lifetime value", "acquisition", "customer"],
     "min_report_length": 50
   },
@@ -83,7 +84,7 @@
     "id": "eng_001",
     "domain": "Engineering",
     "query": "What is our current Deployment_Frequency and MTTR?",
-    "expected_tools": ["query_kpis"],
+    "expected_tools": ["engineering_kpis"],
     "expected_keywords": ["deployment", "mttr", "engineering"],
     "min_report_length": 50
   },
@@ -91,15 +92,16 @@
     "id": "eng_002",
     "domain": "Engineering",
     "query": "Are there any anomalies in our Change_Failure_Rate or Sprint_Velocity?",
-    "expected_tools": ["detect_kpi_anomalies"],
+    "expected_tools": ["engineering_anomalies"],
     "expected_keywords": ["failure rate", "velocity", "sprint"],
-    "min_report_length": 50
+    "min_report_length": 50,
+    "_note": "Left as a genuine gap check, not a naming fix: analyst_agent() (workflow.py) only calls detect_kpi_anomalies() for the Finance domain today — no engineering_anomalies key is ever populated, so this scenario is expected to keep failing on tool_coverage until that's implemented for Engineering too."
   },
   {
     "id": "cross_001",
     "domain": "Cross-Domain",
     "query": "Give me an executive summary of overall company health across all domains.",
-    "expected_tools": ["get_executive_summary", "get_company_health"],
+    "expected_tools": ["executive_summary", "company_health"],
     "expected_keywords": ["finance", "people", "operations", "customer", "engineering"],
     "min_report_length": 100
   },
@@ -109,13 +111,14 @@
     "query": "What metrics are available across Finance and Engineering?",
     "expected_tools": ["list_available_metrics"],
     "expected_keywords": ["metrics", "available", "finance"],
-    "min_report_length": 30
+    "min_report_length": 30,
+    "_note": "Left unchanged, no naming fix applies: analyst_agent() (workflow.py) never calls a list_available_metrics tool at all — this capability isn't wired into the LangGraph workflow's keyword-routing today, so this scenario is expected to keep failing on tool_coverage until that's implemented."
   },
   {
     "id": "cross_003",
     "domain": "Cross-Domain",
     "query": "Score the overall company health and highlight the weakest domain.",
-    "expected_tools": ["get_company_health"],
+    "expected_tools": ["company_health"],
     "expected_keywords": ["health", "score", "domain"],
     "min_report_length": 80
   }

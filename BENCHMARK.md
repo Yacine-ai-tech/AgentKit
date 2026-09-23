@@ -49,9 +49,45 @@ Reproducible: `python eval/run_agent_eval.py` (requires `ANTHROPIC_API_KEY` + `P
 | Final Answer Groundedness | 4/4 |
 | Overall Workflow Completion | 4/4 |
 
-**Caveat:** N=4 is a small sample. These results confirm the workflow functions correctly
-end-to-end; they do not constitute a statistically valid accuracy estimate. A larger
-adversarial eval set is identified as future work.
+**Caveat (original N=4 run):** a small sample. These results confirm the workflow
+functions correctly end-to-end; they do not constitute a statistically valid accuracy
+estimate.
+
+### Rerun attempt, N=15 multi-domain suite (2026-09-23, partial — 3/15 completed)
+
+A larger, 15-scenario suite spanning all 5 KPI domains plus cross-domain queries
+(`eval/multi_domain_scenarios.json`, `eval/run_dspy_eval.py`) was run on Groq
+(`LLM_REASONING` overridden from the default Lightning-routed Claude Sonnet, since this
+rerun's purpose was to avoid Lightning credits). Two real issues were found and one was
+fixed along the way:
+
+1. **Stale test data (fixed).** The scenario file's `expected_tools` used literal MCP
+   function names (`query_kpis`, `detect_kpi_anomalies`) that no longer match what
+   `analyst_agent()` (`workflow.py`) actually populates (`finance_kpis`, `people_kpis`,
+   etc. — domain-suffixed keys). This made every scenario's tool-selection check fail
+   regardless of whether the agent worked correctly. Fixed 12 of 15 scenarios'
+   `expected_tools` to match the current, real key names.
+2. **A genuine functional gap (left unfixed, deliberately).** Three scenarios
+   (`ops_002`, `eng_002`, `cross_002`) were *not* naming-fixed, because they reveal a
+   real limitation rather than stale test data: `analyst_agent()` only ever calls
+   `detect_kpi_anomalies()` for the **Finance** domain — Operations and Engineering
+   never get anomaly detection invoked at all, regardless of the question asked — and no
+   `list_available_metrics`-equivalent tool is wired into the keyword-routing at all.
+   These three scenarios are documented (via an `_note` field in the scenario JSON) to
+   be *expected* to keep failing until that coverage gap is closed.
+3. **Real infrastructure friction, unrelated to (1)/(2).** The rerun hit repeated
+   `psycopg.pool: rolling back returned connection [INTRANS]` warnings against the Neon
+   Postgres backend, adding significant per-scenario latency (each scenario took
+   2-4 minutes instead of the expected seconds) — likely network-latency-driven from
+   this development machine rather than a code defect; moving the rerun to the
+   production VPS (same infrastructure the deployed app runs on) is the planned fix.
+
+**Partial result (3/15 scenarios completed before time ran out):** all 3 completed
+scenarios passed (`fin_001`, `fin_002`, `fin_003` — 100%), each with `tool_coverage=1.0`,
+confirming the naming fix in (1) is correct. The run did not reach `ops_002`/`eng_002`/
+`cross_002` in this attempt, so the gap in (2) is confirmed by code review, not yet by a
+live test result — that confirmation, plus the full 15-scenario pass rate, is pending
+the VPS rerun.
 
 ---
 
@@ -73,6 +109,14 @@ Reproducible: `python eval/run_mcp_tools_benchmark.py` (requires `ANTHROPIC_API_
 | Answer Quality | 18/20 | ≥ 17/20 | ✅ |
 | Memory Peak per Tool | ~45 MB | < 100 MB | ✅ |
 | MCP Protocol (discovery, marshaling, parsing, errors) | 20/20 | 20/20 | ✅ |
+
+**Note on Lightning-credit dependence (2026-09-23):** confirmed via code review that Tool
+Selection itself is **deterministic keyword matching** (`analyst_agent()` in
+`workflow.py` — domain routing by keyword, no LLM call at all), so this specific metric
+was never actually gated on Lightning AI credits or any provider quota. It already clears
+this project's own target (≥18/20). A fresh confirmation run needs the local REST facade
+(`web_app.py`) running — deferred as lower priority since the number itself isn't in
+question, only whether a fresh sample would confirm 19/20 exactly or land nearby.
 
 Full details: [`eval/MCP_TOOLS_BENCHMARK.md`](eval/MCP_TOOLS_BENCHMARK.md)
 
