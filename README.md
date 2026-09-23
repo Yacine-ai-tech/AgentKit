@@ -27,7 +27,7 @@ demonstrates all of this — not the limit of what the server does.
 
 **Reference BI pack (built in):**
 - **6 core MCP tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary` — plus any tools loaded from declarative YAML packs (`packs/`), so the real tool count at runtime is 6 or more, not a fixed number. The bundled `annotations` pack adds 3 more (`list_annotations`, `annotate_metric`, `retract_annotation`) demonstrating a guarded write/destructive path — see below.
-- **5 MCP resources**: `kpi://{domain}/latest` for each of this project's real seeded domains — Finance, People, Operations, Customer, Engineering (`src/data/seed.py`).
+- **10 MCP resources**: `kpi://{domain}/latest` for each of this project's real seeded domains — Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security (`src/data/seed.py`).
 - **1 reusable prompt**: `monthly_executive_briefing`
 
 > These are dynamic, not hardcoded: the domain list, tool-pack set, and resource/prompt

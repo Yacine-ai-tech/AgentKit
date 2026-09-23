@@ -211,5 +211,142 @@
     "expected_tools": ["operations_anomalies", "engineering_anomalies"],
     "expected_keywords": ["anomaly", "operations", "engineering"],
     "min_report_length": 80
+  },
+  {
+    "id": "grw_001",
+    "domain": "Growth",
+    "query": "What is our current Monthly_Recurring_Revenue and Annual_Recurring_Revenue?",
+    "expected_tools": ["growth_kpis"],
+    "expected_keywords": ["recurring revenue", "monthly", "annual"],
+    "min_report_length": 50
+  },
+  {
+    "id": "grw_002",
+    "domain": "Growth",
+    "query": "Is our Net_Revenue_Retention trending in the right direction?",
+    "expected_tools": ["growth_kpis"],
+    "expected_keywords": ["net revenue", "retention", "trend"],
+    "min_report_length": 50
+  },
+  {
+    "id": "grw_003",
+    "domain": "Growth",
+    "query": "Forecast our Monthly_Recurring_Revenue for the next 6 months.",
+    "expected_tools": ["forecast_monthly_recurring_revenue"],
+    "expected_keywords": ["forecast", "recurring revenue", "months"],
+    "min_report_length": 50
+  },
+  {
+    "id": "log_001",
+    "domain": "Logistics",
+    "query": "How is our On_Time_Shipment_Rate and Last_Mile_Delivery_Time performing?",
+    "expected_tools": ["logistics_kpis"],
+    "expected_keywords": ["shipment", "delivery", "time"],
+    "min_report_length": 50
+  },
+  {
+    "id": "log_002",
+    "domain": "Logistics",
+    "query": "Are there anomalies in our Carrier_Damage_Rate?",
+    "expected_tools": ["logistics_anomalies"],
+    "expected_keywords": ["carrier", "damage", "anomaly"],
+    "min_report_length": 50
+  },
+  {
+    "id": "log_003",
+    "domain": "Logistics",
+    "query": "What is our current Inventory_Turnover_Ratio?",
+    "expected_tools": ["logistics_kpis"],
+    "expected_keywords": ["inventory", "turnover", "ratio"],
+    "min_report_length": 50
+  },
+  {
+    "id": "esg_001",
+    "domain": "ESG",
+    "query": "What is our Carbon_Emissions_Per_Unit and Renewable_Energy_Percentage this year?",
+    "expected_tools": ["esg_kpis"],
+    "expected_keywords": ["carbon", "renewable", "energy"],
+    "min_report_length": 50
+  },
+  {
+    "id": "esg_002",
+    "domain": "ESG",
+    "query": "How is our Board_Diversity_Ratio trending?",
+    "expected_tools": ["esg_kpis"],
+    "expected_keywords": ["board", "diversity", "trend"],
+    "min_report_length": 50
+  },
+  {
+    "id": "esg_003",
+    "domain": "ESG",
+    "query": "Are there any anomalies in our Waste_Recycling_Rate?",
+    "expected_tools": ["esg_anomalies"],
+    "expected_keywords": ["waste", "recycling", "anomaly"],
+    "min_report_length": 50
+  },
+  {
+    "id": "it_001",
+    "domain": "IT",
+    "query": "What is our current System_Uptime and Network_Latency_P95?",
+    "expected_tools": ["it_kpis"],
+    "expected_keywords": ["uptime", "latency", "network"],
+    "min_report_length": 50
+  },
+  {
+    "id": "it_002",
+    "domain": "IT",
+    "query": "Is our Patch_Compliance_Rate meeting SLA targets?",
+    "expected_tools": ["it_kpis"],
+    "expected_keywords": ["patch", "compliance", "sla"],
+    "min_report_length": 50
+  },
+  {
+    "id": "it_003",
+    "domain": "IT",
+    "query": "Forecast our Infrastructure_Cost_Per_User for next quarter.",
+    "expected_tools": ["forecast_infrastructure_cost_per_user"],
+    "expected_keywords": ["forecast", "infrastructure", "cost"],
+    "min_report_length": 50
+  },
+  {
+    "id": "sec_001",
+    "domain": "Security",
+    "query": "How many Critical_Vulnerabilities_Open do we have right now?",
+    "expected_tools": ["security_kpis"],
+    "expected_keywords": ["vulnerabilit", "critical", "open"],
+    "min_report_length": 50
+  },
+  {
+    "id": "sec_002",
+    "domain": "Security",
+    "query": "Are there anomalies in our Security_Incident_Count?",
+    "expected_tools": ["security_anomalies"],
+    "expected_keywords": ["incident", "security", "anomaly"],
+    "min_report_length": 50
+  },
+  {
+    "id": "sec_003",
+    "domain": "Security",
+    "query": "What is our Phishing_Test_Failure_Rate and Access_Review_Completion_Rate?",
+    "expected_tools": ["security_kpis"],
+    "expected_keywords": ["phishing", "access review", "rate"],
+    "min_report_length": 50
+  },
+  {
+    "id": "cross_006",
+    "domain": "Cross-Domain",
+    "query": "Compare our Growth and Security posture — are we scaling responsibly?",
+    "expected_tools": ["growth_kpis", "security_kpis"],
+    "expected_keywords": ["growth", "security", "scaling"],
+    "min_report_length": 80
+  },
+  {
+    "id": "cross_007",
+    "domain": "Cross-Domain",
+    "query": "Give me an ESG summary alongside our System_Uptime and SLA compliance for the board meeting.",
+    "expected_tools": ["esg_kpis", "it_kpis"],
+    "expected_keywords": ["esg", "uptime", "board"],
+    "min_report_length": 80,
+    "_note": "Query intentionally names a real IT-domain metric (System_Uptime) rather than the bare word 'IT' — a 2-letter substring keyword would false-positive inside many unrelated words (profit, quit, written, ...), so IT-domain routing deliberately keys off real IT vocabulary (uptime, SLA, patch, etc.), not the domain's own short name."
   }
 ]

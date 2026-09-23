@@ -14,10 +14,12 @@ AGENTKIT_URL = os.environ.get("AGENTKIT_URL", "http://localhost:8005")
 
 DEFAULT_CACHE_FILE = Path(__file__).resolve().parent / "cache" / "mcp_tools_benchmark_cache.jsonl"
 
-# Test scenarios spanning all 5 real domain categories seeded in src/data/seed.py
-# (Finance/People/Operations/Customer/Engineering) plus forecasting/anomalies.
-# expected_tools checks against the raw_data dict keys analyst_agent() populates
-# in workflow.py — NOT literal MCP tool function names (query_kpis etc. are
+# Test scenarios spanning 5 of the 10 real domain categories seeded in
+# src/data/seed.py (Finance/People/Operations/Customer/Engineering — the original 5;
+# Growth/Logistics/ESG/IT/Security were added later and are not yet covered by this
+# specific benchmark, unlike eval/multi_domain_scenarios.json which covers all 10)
+# plus forecasting/anomalies. expected_tools checks against the raw_data dict keys
+# analyst_agent() populates in workflow.py — NOT literal MCP tool function names (query_kpis etc. are
 # reused generically across domains via a `domain=` parameter, so tool selection
 # here means "which domain(s) got queried", not "which Python function ran").
 TEST_SCENARIOS = [
@@ -185,7 +187,8 @@ class MCPToolsBenchmark:
         "finance_kpis"/"people_kpis"/"operations_kpis"/"customer_kpis"/
         "engineering_kpis"/"forecast_revenue" — that dict's keys ARE the tool
         selection signal here (not a literal MCP function name, since query_kpis
-        etc. are shared across all 5 domains via a `domain=` parameter).
+        etc. are shared across all 10 domains via a `domain=` parameter — this
+        benchmark's own TEST_SCENARIOS just happen to only exercise 5 of them).
         """
         if "error" in result:
             return False
@@ -384,7 +387,7 @@ async def main():
     parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_FILE),
                          help="JSONL cache of scored queries — reruns skip anything already cached")
     parser.add_argument("--reset", action="store_true", help="ignore/clear the existing cache and start fresh")
-    parser.add_argument("--domains", default="all", help="kept for CLI compatibility; scenarios always cover all 5 domains")
+    parser.add_argument("--domains", default="all", help="kept for CLI compatibility; TEST_SCENARIOS currently cover 5 of the 10 real domains")
     args = parser.parse_args()
 
     cache_path = Path(args.cache_file)

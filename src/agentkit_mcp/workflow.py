@@ -122,7 +122,10 @@ def _metric_derived_keywords() -> Dict[str, tuple]:
         return {}
     derived: Dict[str, tuple] = {}
     for domain, metrics in BUSINESS_KPIS.items():
-        if domain not in ("Finance", "People", "Operations", "Customer", "Engineering"):
+        if domain not in (
+            "Finance", "People", "Operations", "Customer", "Engineering",
+            "Growth", "Logistics", "ESG", "IT", "Security",
+        ):
             continue
         words = set()
         for metric_name, *_ in metrics:
@@ -153,16 +156,23 @@ async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     # keyword is checked once, then applied to every domain actually matched below,
     # instead of being hardcoded to one domain.
     wants_anomalies = any(k in q for k in ("anomal", "unusual", "outlier"))
-    # Domain routing by keywords — must match the 5 real domain categories
-    # seeded in src/data/seed.py (Finance/People/Operations/Customer/Engineering).
-    # "Growth" was never a seeded category; customer/mrr/arr questions were
-    # silently querying an empty domain and always returning zero KPIs.
+    # Domain routing by keywords — must match the real domain categories seeded in
+    # src/data/seed.py's BUSINESS_KPIS (10 domains: the original 5 plus Growth/
+    # Logistics/ESG/IT, mirroring IntelAI's taxonomy for cross-portfolio consistency,
+    # plus Security). "mrr"/"arr" and "logistics" used to sit under Customer/Operations
+    # respectively because Growth and Logistics didn't exist as domains yet — moved to
+    # their own domains now that they do, rather than left as a stale workaround.
     domain_keywords = {
         "Finance": ("finance", "revenue", "margin", "cost", "profit"),
         "People": ("people", "hr", "headcount", "hiring", "turnover", "retention"),
-        "Operations": ("operations", "supply chain", "warehouse", "defect", "logistics"),
-        "Customer": ("customer", "churn", "nps", "ltv", "mrr", "arr", "support"),
+        "Operations": ("operations", "supply chain", "warehouse", "defect"),
+        "Customer": ("customer", "churn", "nps", "ltv", "support"),
         "Engineering": ("engineering", "deploy", "mttr", "sprint", "velocity", "incident"),
+        "Growth": ("growth", "mrr", "arr", "recurring revenue", "expansion", "net revenue retention"),
+        "Logistics": ("logistics", "freight", "shipment", "carrier", "last mile"),
+        "ESG": ("esg", "emissions", "carbon", "renewable", "diversity", "sustainab"),
+        "IT": ("uptime", "sla", "infrastructure cost", "patch", "network latency", "it ops"),
+        "Security": ("security", "vulnerabilit", "phishing", "incident", "breach", "remediat"),
     }
     # Curated keywords cover general-language phrasing; metric-derived keywords cover a
     # question that names an exact KPI whose vocabulary the curated list never

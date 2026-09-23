@@ -362,11 +362,20 @@ if _FASTMCP:
         PACKS = {}
 
     # MCP resources — one per real seeded domain (README previously advertised these
-    # under domain names ("Growth", "ESG", "IT_Ops") that don't exist anywhere in this
-    # project's own seed data (src/data/seed.py's BUSINESS_KPIS has Finance/People/
-    # Operations/Customer/Engineering) — copied from a different project's domain list
-    # and never actually implemented. Fixed on both ends: real domains, real resources.
-    _RESOURCE_DOMAINS = ("Finance", "People", "Operations", "Customer", "Engineering")
+    # under domain names ("Growth", "ESG", "IT_Ops") that, at the time, didn't exist
+    # anywhere in this project's own seed data — copied from a different project's
+    # domain list and never actually implemented. Fixed on both ends, and derived from
+    # the seed data directly rather than hardcoded a second time here, so this list
+    # can't drift out of sync with src/data/seed.py's BUSINESS_KPIS again as domains
+    # are added — "Forecasting"/"Anomalies" are cross-cutting categories there, not
+    # real business domains, so they're excluded.
+    try:
+        from src.data.seed import BUSINESS_KPIS as _BUSINESS_KPIS
+        _RESOURCE_DOMAINS = tuple(
+            d for d in _BUSINESS_KPIS if d not in ("Forecasting", "Anomalies")
+        )
+    except Exception:
+        _RESOURCE_DOMAINS = ("Finance", "People", "Operations", "Customer", "Engineering")
 
     def _make_kpi_resource(domain: str):
         async def _read() -> Dict[str, Any]:

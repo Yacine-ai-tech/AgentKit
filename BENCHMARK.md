@@ -55,7 +55,13 @@ estimate.
 
 ### Rerun, N=15 multi-domain suite, all 15 completed (2026-09-23)
 
-A larger, 15-scenario suite spanning all 5 KPI domains plus cross-domain queries
+> **Superseded below** by an N=43 rerun spanning all 10 KPI domains (the seed data was
+> extended from 5 domains to 10 — Growth/Logistics/ESG/IT/Security added — after this
+> milestone). Kept here as the historical record of the 3 routing bugs this rerun found
+> and fixed; the domain-coverage numbers below are specific to the 5-domain snapshot at
+> the time.
+
+A larger, 15-scenario suite spanning what were then all 5 KPI domains plus cross-domain queries
 (`eval/multi_domain_scenarios.json`, `eval/run_dspy_eval.py`) was run on Groq
 (`LLM_REASONING` overridden from the default Lightning-routed Claude Sonnet, since this
 rerun's purpose was to avoid Lightning credits). The first attempt (on a dev laptop) hit
