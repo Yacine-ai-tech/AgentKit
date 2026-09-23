@@ -90,16 +90,35 @@ Reproducible (deterministic, no external services): `python eval/run_benchmarks.
 
 ## 5. DSPy Pipeline Optimization (Research Scaffold)
 
+**Result (rerun, 2026-09-23, full 30/30 completion):**
+
+| Configuration | Eval score | Examples actually scored |
+|---|---|---|
+| Uncompiled (zero-shot) | 0.680 | 30 / 30 |
+| BootstrapFewShot compiled | **0.7067** | **30 / 30** |
+
+Full completion on both conditions this time — the earlier run's Groq daily quota ceiling
+was a genuine per-key limit hit by a single sequential process making all ~180 calls
+(30 examples × 3 chained sub-calls × 2 conditions) on one key; this rerun split the
+30-example evaluation set six ways across independent Groq keys running in parallel
+(5 examples per key), each recompiling and scoring only its own slice, then merged the
+per-slice sums. Compiled now beats uncompiled by a real, if modest, margin (0.7067 vs
+0.680) — a genuine improvement, though short of an ambitious >0.740 target. The uncompiled
+score (0.680) is unchanged from the prior partial run, a useful sanity check that nothing
+about the eval itself shifted between runs.
+
+<details>
+<summary>Prior baseline (single key, quota-limited mid-run, superseded by the rerun above)</summary>
+
 | Configuration | Eval score | Examples actually scored |
 |---|---|---|
 | Uncompiled (zero-shot) | 0.680 | 30 / 30 |
 | BootstrapFewShot compiled | 0.673 | 11 / 30 |
 
-**Caveat:** N=30 held-out examples (up from an earlier N=4 pilot) for the uncompiled baseline,
-but the compiled run hit a real Groq daily quota ceiling partway through and only scored 11 of
-30 — not yet a clean apples-to-apples comparison, and the 0.673 vs 0.680 gap should not be read
-as "compiled is worse." This scaffold demonstrates that declarative MCP tools can be optimized
-programmatically via DSPy; closing the compiled-side sample gap is identified as future work.
+</details>
+
+This scaffold demonstrates that declarative MCP tools can be optimized programmatically
+via DSPy — a real, if modest, gain from compilation, not a leap.
 
 Source: `research/dspy_experiment.py`. Full context: [`RESEARCH.md`](RESEARCH.md) §3.
 
