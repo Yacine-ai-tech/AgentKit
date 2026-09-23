@@ -50,10 +50,12 @@ log = get_logger(__name__)
 
 try:
     from litellm import acompletion
+    from litellm.exceptions import RateLimitError
 
     _LITELLM = True
 except ImportError:  # pragma: no cover - exercised only in minimal installs
     _LITELLM = False
+    RateLimitError = Exception  # placeholder so isinstance() checks below don't NameError
     log.warning("litellm not installed — LLM routing unavailable (pip install litellm)")
 
 
@@ -175,6 +177,39 @@ async def _complete(model: str, messages: List[Dict[str, str]], **kwargs: Any):
     return await acompletion(**call)
 
 
+def _rate_limit_wait_s(exc: Exception, default: float = 10.0) -> float:
+    """Providers (Groq in particular) put the real wait time in the error body, e.g.
+    "...Please try again in 8.5s..." — honor that instead of guessing a fixed backoff,
+    which either under-waits (retry fails again immediately) or over-waits (wastes time
+    a shorter, provider-told wait would have avoided)."""
+    import re
+
+    m = re.search(r"try again in ([\d.]+)s", str(exc))
+    return float(m.group(1)) if m else default
+
+
+async def _complete_with_rate_limit_retry(model: str, messages: List[Dict[str, str]], **kwargs: Any):
+    """`_complete()` wrapped with a bounded wait-and-retry on RateLimitError specifically
+    — a transient, expected condition under real load, not the same class of failure as
+    a missing key or a genuine outage, so it shouldn't immediately fall back to a
+    different (lower-quality) model or give up with an empty result."""
+    import asyncio
+
+    last_error: Optional[Exception] = None
+    for attempt in range(settings.LLM_RATE_LIMIT_RETRIES + 1):
+        try:
+            return await _complete(model, messages, **kwargs)
+        except RateLimitError as e:
+            last_error = e
+            if attempt >= settings.LLM_RATE_LIMIT_RETRIES:
+                break
+            wait_s = _rate_limit_wait_s(e)
+            log.info("model=%s rate-limited (retry %d/%d), waiting %.1fs",
+                     model, attempt + 1, settings.LLM_RATE_LIMIT_RETRIES, wait_s)
+            await asyncio.sleep(wait_s)
+    raise last_error
+
+
 async def llm_call(
     messages: List[Dict[str, str]], *, tier: str = "default", **kwargs: Any
 ):
@@ -188,7 +223,7 @@ async def llm_call(
 
     model = resolve_model(tier)
     try:
-        return await _complete(model, messages, **kwargs)
+        return await _complete_with_rate_limit_retry(model, messages, **kwargs)
     except Exception as primary_error:
         local_model = settings.LLM_LOCAL
         should_fallback = (

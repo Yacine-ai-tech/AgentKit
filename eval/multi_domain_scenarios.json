@@ -19,9 +19,10 @@
     "id": "fin_003",
     "domain": "Finance",
     "query": "Forecast our Operating_Expenses for the next 3 months.",
-    "expected_tools": ["forecast_revenue"],
+    "expected_tools": ["forecast_operating_expenses"],
     "expected_keywords": ["forecast", "expenses", "projection"],
-    "min_report_length": 50
+    "min_report_length": 50,
+    "_note": "Fixed 2026-09-23: forecast_metric() was always called with a hardcoded 'revenue' target regardless of which metric the question actually named — this question asked to forecast Operating_Expenses but always got a revenue forecast instead. Fixed to extract the real metric name from the question; raw_data key is now forecast_{metric} rather than always forecast_revenue."
   },
   {
     "id": "ppl_001",
@@ -68,9 +69,10 @@
     "id": "cust_002",
     "domain": "Customer",
     "query": "Is Customer_Churn_Rate increasing? Forecast it for next quarter.",
-    "expected_tools": ["customer_kpis", "forecast_revenue"],
+    "expected_tools": ["customer_kpis", "forecast_customer_churn_rate"],
     "expected_keywords": ["churn", "forecast", "customer"],
-    "min_report_length": 50
+    "min_report_length": 50,
+    "_note": "Fixed 2026-09-23: forecast_metric() was always called with a hardcoded 'revenue' target regardless of which metric the question actually named — this question asked to forecast Customer_Churn_Rate but always got a revenue forecast instead. Fixed to extract the real metric name from the question; raw_data key is now forecast_{metric} rather than always forecast_revenue."
   },
   {
     "id": "cust_003",
@@ -120,6 +122,94 @@
     "query": "Score the overall company health and highlight the weakest domain.",
     "expected_tools": ["company_health"],
     "expected_keywords": ["health", "score", "domain"],
+    "min_report_length": 80
+  },
+  {
+    "id": "fin_004",
+    "domain": "Finance",
+    "query": "Is our Cash_Burn_Rate sustainable given the current Customer_Acquisition_Cost?",
+    "expected_tools": ["finance_kpis"],
+    "expected_keywords": ["burn", "acquisition", "cash"],
+    "min_report_length": 50
+  },
+  {
+    "id": "fin_005",
+    "domain": "Finance",
+    "query": "Forecast our Monthly_Revenue for the next 6 months.",
+    "expected_tools": ["forecast_monthly_revenue"],
+    "expected_keywords": ["forecast", "revenue", "months"],
+    "min_report_length": 50
+  },
+  {
+    "id": "ppl_003",
+    "domain": "People",
+    "query": "How does our Hiring_Rate compare to Remote_Work_Percentage this year?",
+    "expected_tools": ["people_kpis"],
+    "expected_keywords": ["hiring", "remote", "rate"],
+    "min_report_length": 50
+  },
+  {
+    "id": "ppl_004",
+    "domain": "People",
+    "query": "Are there any anomalies in our Employee_Satisfaction_Score?",
+    "expected_tools": ["people_anomalies"],
+    "expected_keywords": ["satisfaction", "anomaly", "score"],
+    "min_report_length": 50
+  },
+  {
+    "id": "ops_003",
+    "domain": "Operations",
+    "query": "What is our Average_Order_Processing_Time and Supplier_On_Time_Delivery rate?",
+    "expected_tools": ["operations_kpis"],
+    "expected_keywords": ["processing", "delivery", "time"],
+    "min_report_length": 50
+  },
+  {
+    "id": "ops_004",
+    "domain": "Operations",
+    "query": "Forecast our Warehouse_Utilization for the next quarter.",
+    "expected_tools": ["forecast_warehouse_utilization"],
+    "expected_keywords": ["forecast", "warehouse", "quarter"],
+    "min_report_length": 50
+  },
+  {
+    "id": "cust_004",
+    "domain": "Customer",
+    "query": "How is our Support_Ticket_Resolution_Time affecting Product_Adoption_Rate?",
+    "expected_tools": ["customer_kpis"],
+    "expected_keywords": ["resolution", "adoption", "ticket"],
+    "min_report_length": 50
+  },
+  {
+    "id": "eng_003",
+    "domain": "Engineering",
+    "query": "What is our current Code_Review_Turnaround time?",
+    "expected_tools": ["engineering_kpis"],
+    "expected_keywords": ["code review", "turnaround", "engineering"],
+    "min_report_length": 50
+  },
+  {
+    "id": "eng_004",
+    "domain": "Engineering",
+    "query": "Forecast our Sprint_Velocity for the next 3 sprints.",
+    "expected_tools": ["forecast_sprint_velocity"],
+    "expected_keywords": ["forecast", "sprint", "velocity"],
+    "min_report_length": 50
+  },
+  {
+    "id": "cross_004",
+    "domain": "Cross-Domain",
+    "query": "Compare Finance and Customer performance this quarter — where's the biggest risk?",
+    "expected_tools": ["finance_kpis", "customer_kpis"],
+    "expected_keywords": ["finance", "customer", "risk"],
+    "min_report_length": 80
+  },
+  {
+    "id": "cross_005",
+    "domain": "Cross-Domain",
+    "query": "Are there anomalies across our Operations and Engineering KPIs this month?",
+    "expected_tools": ["operations_anomalies", "engineering_anomalies"],
+    "expected_keywords": ["anomaly", "operations", "engineering"],
     "min_report_length": 80
   }
 ]

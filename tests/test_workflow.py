@@ -115,3 +115,46 @@ def test_analyst_agent_routes_to_list_available_metrics(monkeypatch):
     state = {"question": "What metrics are available across Finance and Engineering?"}
     asyncio.run(wf.analyst_agent(state))
     assert ("list_available_metrics", None) in calls
+
+
+def test_analyst_agent_forecasts_the_metric_actually_asked_about(monkeypatch):
+    """Real bug: forecast_metric() was always called with a hardcoded 'revenue' target
+    regardless of which metric the question actually named."""
+    calls = []
+    _mock_tools(monkeypatch, calls)
+    state = {"question": "Forecast our Operating_Expenses for the next 3 months."}
+    asyncio.run(wf.analyst_agent(state))
+    assert ("forecast_metric", "Operating_Expenses") in calls
+    assert not any(c == ("forecast_metric", "revenue") for c in calls)
+
+
+def test_analyst_agent_forecast_falls_back_to_revenue_without_a_named_metric(monkeypatch):
+    calls = []
+    _mock_tools(monkeypatch, calls)
+    state = {"question": "Forecast our numbers for next quarter."}
+    asyncio.run(wf.analyst_agent(state))
+    assert ("forecast_metric", "revenue") in calls
+
+
+def test_analyst_agent_routes_on_metric_derived_keywords(monkeypatch):
+    """Real gaps found extending eval/multi_domain_scenarios.json: several real KPI
+    names never matched the curated (hand-picked) keyword lists at all, e.g.
+    Employee_Satisfaction_Score (People), Supplier_On_Time_Delivery (Operations),
+    Code_Review_Turnaround (Engineering). Fixed by deriving extra keywords from the
+    real seeded metric names (src/data/seed.py) rather than patching the hand-picked
+    list one miss at a time."""
+    calls = []
+    _mock_tools(monkeypatch, calls)
+    state = {"question": "Are there any anomalies in our Employee_Satisfaction_Score?"}
+    asyncio.run(wf.analyst_agent(state))
+    assert ("query_kpis", "People") in calls
+
+    calls.clear()
+    state = {"question": "What is our Supplier_On_Time_Delivery rate?"}
+    asyncio.run(wf.analyst_agent(state))
+    assert ("query_kpis", "Operations") in calls
+
+    calls.clear()
+    state = {"question": "What is our current Code_Review_Turnaround time?"}
+    asyncio.run(wf.analyst_agent(state))
+    assert ("query_kpis", "Engineering") in calls

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Any, Dict, List, Optional, TypedDict
 
 from agentkit_mcp.core.logger import get_logger
@@ -90,6 +91,51 @@ async def planner_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     return state
 
 
+_METRIC_NAME_RE = re.compile(r"\b[A-Z][a-zA-Z]*(?:_[A-Z][a-zA-Z]*)+\b")
+
+
+def _forecast_target(raw_question: str) -> str:
+    """Pick which metric to forecast from the question itself, instead of always
+    forecasting revenue regardless of what was actually asked (e.g. a question about
+    forecasting Customer_Churn_Rate or Operating_Expenses silently got a revenue
+    forecast instead — found while extending eval/multi_domain_scenarios.json).
+    KPI names in this project's questions are always written TitleCase_With_Underscores
+    (see src/data/seed.py's BUSINESS_KPIS), so that's what we look for; forecast_metric()
+    already does case-insensitive exact/substring matching against the real metric table,
+    so passing the literal name through is enough. Falls back to "revenue" only when the
+    question doesn't name a specific metric at all."""
+    m = _METRIC_NAME_RE.search(raw_question)
+    return m.group(0) if m else "revenue"
+
+
+def _metric_derived_keywords() -> Dict[str, tuple]:
+    """Keyword fragments derived from the real seeded KPI names themselves
+    (src/data/seed.py's BUSINESS_KPIS), so the router's vocabulary can't silently drift
+    out of sync with what metrics actually exist — found via eval/multi_domain_scenarios.json
+    coverage: hand-picked keyword lists missed real KPIs like Employee_Satisfaction_Score
+    (People), Supplier_On_Time_Delivery (Operations), and Code_Review_Turnaround
+    (Engineering) entirely. Falls back to an empty dict (curated keywords still apply)
+    if the seed module isn't importable in this context."""
+    try:
+        from src.data.seed import BUSINESS_KPIS
+    except Exception:
+        return {}
+    derived: Dict[str, tuple] = {}
+    for domain, metrics in BUSINESS_KPIS.items():
+        if domain not in ("Finance", "People", "Operations", "Customer", "Engineering"):
+            continue
+        words = set()
+        for metric_name, *_ in metrics:
+            for word in metric_name.lower().split("_"):
+                if len(word) > 3:  # skip short/generic fragments ("of", "on", "the")
+                    words.add(word)
+        derived[domain] = tuple(words)
+    return derived
+
+
+_METRIC_KEYWORDS = _metric_derived_keywords()
+
+
 async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     """Invoke MCP tools based on keywords in the question."""
     raw_q = (state.get("question") or "").lower()
@@ -118,16 +164,21 @@ async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
         "Customer": ("customer", "churn", "nps", "ltv", "mrr", "arr", "support"),
         "Engineering": ("engineering", "deploy", "mttr", "sprint", "velocity", "incident"),
     }
+    # Curated keywords cover general-language phrasing; metric-derived keywords cover a
+    # question that names an exact KPI whose vocabulary the curated list never
+    # anticipated (both checked — neither replaces the other).
     try:
         for domain, keywords in domain_keywords.items():
-            if not any(k in q for k in keywords):
+            all_keywords = keywords + _METRIC_KEYWORDS.get(domain, ())
+            if not any(k in q for k in all_keywords):
                 continue
             key = f"{domain.lower()}_kpis"
             raw[key] = await query_kpis(domain=domain)
             if wants_anomalies:
                 raw[f"{domain.lower()}_anomalies"] = await detect_kpi_anomalies(domain=domain)
         if any(k in q for k in ("forecast", "projection", "predict")):
-            raw["forecast_revenue"] = await forecast_metric("revenue", periods=6)
+            target = _forecast_target(state.get("question") or "")
+            raw[f"forecast_{target.lower()}"] = await forecast_metric(target, periods=6)
         if any(k in q for k in ("available metric", "what metric", "list metric", "which metric")):
             raw["available_metrics"] = await list_available_metrics()
 
