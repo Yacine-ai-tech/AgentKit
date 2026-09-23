@@ -213,8 +213,14 @@ async def forecast_metric(
 ) -> Dict[str, Any]:
     """Forecast `periods` periods ahead for a named metric (Monte Carlo CI bands)."""
     if not (_PG and _FORECAST):
+        # These are two distinct failure modes conflated into one message before —
+        # found the hard way debugging a real run where the actual cause (a missing
+        # scipy install) got reported as a database configuration problem instead.
+        if not _PG:
+            raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
         raise RuntimeError(
-            "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
+            "Forecasting module failed to import (see startup logs for the real cause — "
+            "commonly a missing 'scipy' install, since services/forecasting.py imports it)"
         )
     try:
         df = await _run_db(get_kpi_metrics, metrics=[metric_name])
