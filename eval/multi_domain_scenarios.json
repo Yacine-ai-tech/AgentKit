@@ -54,7 +54,7 @@
     "expected_tools": ["operations_anomalies"],
     "expected_keywords": ["warehouse", "defect", "utilization"],
     "min_report_length": 50,
-    "_note": "Left as a genuine gap check, not a naming fix: analyst_agent() (workflow.py) only calls detect_kpi_anomalies() for the Finance domain today — no operations_anomalies key is ever populated, so this scenario is expected to keep failing on tool_coverage until that's implemented for Operations too."
+    "_note": "Fixed 2026-09-23: detect_kpi_anomalies() was hardcoded to the Finance domain only — extended to whichever domain(s) the question actually matches, gated on an anomaly keyword (commit e7e5b8e). Confirmed live: operations_anomalies is now populated for this exact question."
   },
   {
     "id": "cust_001",
@@ -95,7 +95,7 @@
     "expected_tools": ["engineering_anomalies"],
     "expected_keywords": ["failure rate", "velocity", "sprint"],
     "min_report_length": 50,
-    "_note": "Left as a genuine gap check, not a naming fix: analyst_agent() (workflow.py) only calls detect_kpi_anomalies() for the Finance domain today — no engineering_anomalies key is ever populated, so this scenario is expected to keep failing on tool_coverage until that's implemented for Engineering too."
+    "_note": "Fixed 2026-09-23: detect_kpi_anomalies() was hardcoded to the Finance domain only — extended to whichever domain(s) the question actually matches, gated on an anomaly keyword (commit e7e5b8e). Confirmed live: engineering_anomalies is now populated for this exact question."
   },
   {
     "id": "cross_001",
@@ -109,10 +109,10 @@
     "id": "cross_002",
     "domain": "Cross-Domain",
     "query": "What metrics are available across Finance and Engineering?",
-    "expected_tools": ["list_available_metrics"],
+    "expected_tools": ["available_metrics"],
     "expected_keywords": ["metrics", "available", "finance"],
     "min_report_length": 30,
-    "_note": "Left unchanged, no naming fix applies: analyst_agent() (workflow.py) never calls a list_available_metrics tool at all — this capability isn't wired into the LangGraph workflow's keyword-routing today, so this scenario is expected to keep failing on tool_coverage until that's implemented."
+    "_note": "Fixed 2026-09-23: list_available_metrics was a real, existing MCP tool that analyst_agent() (workflow.py) simply never called — wired in for 'what/which metrics are available' style questions (commit e7e5b8e), and its raw_data key is available_metrics (matching this project's domain_kpis-style naming, not the literal MCP function name)."
   },
   {
     "id": "cross_003",
