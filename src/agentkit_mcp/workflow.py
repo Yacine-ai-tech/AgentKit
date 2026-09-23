@@ -92,26 +92,44 @@ async def planner_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
 
 async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     """Invoke MCP tools based on keywords in the question."""
-    q = (state.get("question") or "").lower()
+    raw_q = (state.get("question") or "").lower()
+    # Natural-language questions often embed a literal KPI/metric name in snake_case
+    # (e.g. "How is our Supply_Chain_Fulfillment_Rate performing?"), which never matches
+    # a keyword list written with spaces ("supply chain") — a real routing miss, found
+    # via eval/run_dspy_eval.py's multi-domain suite (ops_001 silently querying nothing).
+    # Normalizing underscores to spaces before matching keeps both phrasings working.
+    q = raw_q.replace("_", " ")
     raw: Dict[str, Any] = {}
+    # Anomaly detection was previously wired to the Finance branch only — an
+    # "anomalies in Warehouse_Utilization" (Operations) or "anomalies in
+    # Change_Failure_Rate" (Engineering) question silently got no anomaly check at
+    # all, even though detect_kpi_anomalies() itself is already domain-generic. This
+    # keyword is checked once, then applied to every domain actually matched below,
+    # instead of being hardcoded to one domain.
+    wants_anomalies = any(k in q for k in ("anomal", "unusual", "outlier"))
+    # Domain routing by keywords — must match the 5 real domain categories
+    # seeded in src/data/seed.py (Finance/People/Operations/Customer/Engineering).
+    # "Growth" was never a seeded category; customer/mrr/arr questions were
+    # silently querying an empty domain and always returning zero KPIs.
+    domain_keywords = {
+        "Finance": ("finance", "revenue", "margin", "cost", "profit"),
+        "People": ("people", "hr", "headcount", "hiring", "turnover", "retention"),
+        "Operations": ("operations", "supply chain", "warehouse", "defect", "logistics"),
+        "Customer": ("customer", "churn", "nps", "ltv", "mrr", "arr", "support"),
+        "Engineering": ("engineering", "deploy", "mttr", "sprint", "velocity", "incident"),
+    }
     try:
-        # Domain routing by keywords — must match the 5 real domain categories
-        # seeded in src/data/seed.py (Finance/People/Operations/Customer/Engineering).
-        # "Growth" was never a seeded category; customer/mrr/arr questions were
-        # silently querying an empty domain and always returning zero KPIs.
-        if any(k in q for k in ("finance", "revenue", "margin", "cost", "profit")):
-            raw["finance_kpis"] = await query_kpis(domain="Finance")
-            raw["finance_anomalies"] = await detect_kpi_anomalies(domain="Finance")
-        if any(k in q for k in ("people", "hr", "headcount", "hiring", "turnover", "retention")):
-            raw["people_kpis"] = await query_kpis(domain="People")
-        if any(k in q for k in ("operations", "supply chain", "warehouse", "defect", "logistics")):
-            raw["operations_kpis"] = await query_kpis(domain="Operations")
-        if any(k in q for k in ("customer", "churn", "nps", "ltv", "mrr", "arr", "support")):
-            raw["customer_kpis"] = await query_kpis(domain="Customer")
-        if any(k in q for k in ("engineering", "deploy", "mttr", "sprint", "velocity", "incident")):
-            raw["engineering_kpis"] = await query_kpis(domain="Engineering")
+        for domain, keywords in domain_keywords.items():
+            if not any(k in q for k in keywords):
+                continue
+            key = f"{domain.lower()}_kpis"
+            raw[key] = await query_kpis(domain=domain)
+            if wants_anomalies:
+                raw[f"{domain.lower()}_anomalies"] = await detect_kpi_anomalies(domain=domain)
         if any(k in q for k in ("forecast", "projection", "predict")):
             raw["forecast_revenue"] = await forecast_metric("revenue", periods=6)
+        if any(k in q for k in ("available metric", "what metric", "list metric", "which metric")):
+            raw["available_metrics"] = await list_available_metrics()
 
         # Always include
         raw["company_health"] = await get_company_health()
