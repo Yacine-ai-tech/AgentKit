@@ -163,7 +163,7 @@ async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     # respectively because Growth and Logistics didn't exist as domains yet — moved to
     # their own domains now that they do, rather than left as a stale workaround.
     domain_keywords = {
-        "Finance": ("finance", "revenue", "margin", "cost", "profit"),
+        "Finance": ("financ", "revenue", "margin", "cost", "profit"),
         "People": ("people", "hr", "headcount", "hiring", "turnover", "retention"),
         "Operations": ("operations", "supply chain", "warehouse", "defect"),
         "Customer": ("customer", "churn", "nps", "ltv", "support"),
