@@ -179,30 +179,49 @@ resolved on a completely independent, larger sample spanning every domain.
 
 ## 3. MCP Tools Performance
 
-**19/20 tool selection accuracy. 20/20 execution success. All targets met.**
+**Rerun against a live server, 2026-09-24 — 11/12 execution success, 11/12 tool
+selection accuracy.**
 
-20 standardised tool invocation scenarios across the reference BI pack, measuring
-execution time, memory, and protocol success rates.
+The scenario suite (`eval/run_mcp_tools_benchmark.py`) currently defines **12**
+standardised tool invocation scenarios across the reference BI pack (an earlier
+version of this document cited "20 scenarios / 19-20 accuracy," which no longer
+matched the code — corrected here, not carried forward). Measured against a live
+AgentKit instance (Groq-backed; see the note below on the intended production model),
+covering execution time, memory, and protocol success rates.
 
-Reproducible: `python eval/run_mcp_tools_benchmark.py` (requires `ANTHROPIC_API_KEY` + `POSTGRES_URL`)
+Reproducible: `python eval/run_mcp_tools_benchmark.py` (requires `GROQ_API_KEY` or
+`ANTHROPIC_API_KEY` + `POSTGRES_URL`, and a running AgentKit instance at `AGENTKIT_URL`)
 
-| Metric | Result | Target | Status |
-|---|---|---|---|
-| Tool Selection Accuracy | 19/20 | ≥ 18/20 | ✅ |
-| Tool Execution Success Rate | 20/20 | ≥ 19/20 | ✅ |
-| Avg Tool Execution Time | ~1.8 s | < 3 s | ✅ |
-| P95 Tool Execution Time | ~3.2 s | < 5 s | ✅ |
-| Answer Quality | 18/20 | ≥ 17/20 | ✅ |
-| Memory Peak per Tool | ~45 MB | < 100 MB | ✅ |
-| MCP Protocol (discovery, marshaling, parsing, errors) | 20/20 | 20/20 | ✅ |
+| Metric | Result |
+|---|---|
+| Tool Selection Accuracy | 11/12 |
+| Tool Execution Success Rate | 11/12 |
+| Avg Tool Execution Time | 26.87 s |
+| P95 Tool Execution Time | 39.86 s |
+| Report Quality | 11/12 |
 
-**Note on Lightning-credit dependence (2026-09-23):** confirmed via code review that Tool
-Selection itself is **deterministic keyword matching** (`analyst_agent()` in
-`workflow.py` — domain routing by keyword, no LLM call at all), so this specific metric
-was never actually gated on Lightning AI credits or any provider quota. It already clears
-this project's own target (≥18/20). A fresh confirmation run needs the local REST facade
-(`web_app.py`) running — deferred as lower priority since the number itself isn't in
-question, only whether a fresh sample would confirm 19/20 exactly or land nearby.
+**A real routing bug was found and fixed in the process.** The one scenario that had
+been failing before this rerun — "Are there any anomalies in the financial data?" —
+failed because the keyword `finance` is not a substring of `financial` (they diverge
+at the seventh letter): the question never matched any Finance-domain keyword and
+silently queried nothing. Fixed by matching on the shorter stem `financ`
+(finance/financial/financing alike); confirmed passing in two independent live reruns
+after the fix.
+
+**The one remaining failure in this run is a different, transient issue, not a
+routing defect:** "How is our supply chain and warehouse performance?" hit a genuine
+Groq per-minute token-rate limit mid-call (the provider's own error stated a 465ms
+wait would have sufficed) and exhausted this run's retry budget before recovering —
+an infrastructure/quota timing issue on this specific run, not a reproducible code
+bug. A rerun with more retry headroom or a less recently-used key would be expected to
+clear it.
+
+**Note on the LLM model used.** This rerun used Groq (`LLM_REASONING` overridden) to
+avoid spending Lightning AI credits, per this project's current operating constraint —
+not the production-default Claude Sonnet. Tool selection itself is deterministic
+keyword matching with no LLM call at all, so that specific metric is model-independent;
+report quality and execution timing on the actual production model remain unverified
+until Lightning AI credits are available for a like-for-like rerun.
 
 Full details: [`eval/MCP_TOOLS_BENCHMARK.md`](eval/MCP_TOOLS_BENCHMARK.md)
 
