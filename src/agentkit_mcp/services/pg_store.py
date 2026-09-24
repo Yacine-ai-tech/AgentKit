@@ -626,12 +626,12 @@ def _get_seeded_fallback_docs() -> "pd.DataFrame":
     if _DOCS_SEED_CACHE is not None:
         return _DOCS_SEED_CACHE.copy()
     try:
-        from src.data.seed import generate_knowledge_docs, generate_kpi_rows
+        from agentkit_mcp.data.seed import generate_knowledge_docs, generate_kpi_rows
 
         rows = generate_kpi_rows()
         docs = generate_knowledge_docs(rows)
         try:
-            from src.data.glossary import as_knowledge_docs
+            from agentkit_mcp.data.glossary import as_knowledge_docs
 
             docs += as_knowledge_docs()
         except Exception:
@@ -1090,10 +1090,10 @@ def ensure_session_exists(session_id: str, user_id: str) -> str:
 def seed_all_domains() -> int:
     """
     Seed multi-domain KPI data (+ knowledge-base docs) if the table is empty.
-    Delegates to the robust, deterministic seed in ``src.data.seed``.
+    Delegates to the robust, deterministic seed in ``agentkit_mcp.data.seed``.
     Returns the number of KPI rows inserted.
     """
-    from src.data.seed import seed_database  # lazy import avoids circular dependency
+    from agentkit_mcp.data.seed import seed_database  # lazy import avoids circular dependency
 
     counts = seed_database(replace=True)
     return counts.get("kpi_rows", 0)

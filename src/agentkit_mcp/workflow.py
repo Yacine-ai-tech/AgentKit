@@ -100,7 +100,7 @@ def _forecast_target(raw_question: str) -> str:
     forecasting Customer_Churn_Rate or Operating_Expenses silently got a revenue
     forecast instead — found while extending eval/multi_domain_scenarios.json).
     KPI names in this project's questions are always written TitleCase_With_Underscores
-    (see src/data/seed.py's BUSINESS_KPIS), so that's what we look for; forecast_metric()
+    (see src/agentkit_mcp/data/seed.py's BUSINESS_KPIS), so that's what we look for; forecast_metric()
     already does case-insensitive exact/substring matching against the real metric table,
     so passing the literal name through is enough. Falls back to "revenue" only when the
     question doesn't name a specific metric at all."""
@@ -110,14 +110,14 @@ def _forecast_target(raw_question: str) -> str:
 
 def _metric_derived_keywords() -> Dict[str, tuple]:
     """Keyword fragments derived from the real seeded KPI names themselves
-    (src/data/seed.py's BUSINESS_KPIS), so the router's vocabulary can't silently drift
+    (src/agentkit_mcp/data/seed.py's BUSINESS_KPIS), so the router's vocabulary can't silently drift
     out of sync with what metrics actually exist — found via eval/multi_domain_scenarios.json
     coverage: hand-picked keyword lists missed real KPIs like Employee_Satisfaction_Score
     (People), Supplier_On_Time_Delivery (Operations), and Code_Review_Turnaround
     (Engineering) entirely. Falls back to an empty dict (curated keywords still apply)
     if the seed module isn't importable in this context."""
     try:
-        from src.data.seed import BUSINESS_KPIS
+        from agentkit_mcp.data.seed import BUSINESS_KPIS
     except Exception:
         return {}
     derived: Dict[str, tuple] = {}
@@ -157,7 +157,7 @@ async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     # instead of being hardcoded to one domain.
     wants_anomalies = any(k in q for k in ("anomal", "unusual", "outlier"))
     # Domain routing by keywords — must match the real domain categories seeded in
-    # src/data/seed.py's BUSINESS_KPIS (10 domains: the original 5 plus Growth/
+    # src/agentkit_mcp/data/seed.py's BUSINESS_KPIS (10 domains: the original 5 plus Growth/
     # Logistics/ESG/IT, mirroring IntelAI's taxonomy for cross-portfolio consistency,
     # plus Security). "mrr"/"arr" and "logistics" used to sit under Customer/Operations
     # respectively because Growth and Logistics didn't exist as domains yet — moved to

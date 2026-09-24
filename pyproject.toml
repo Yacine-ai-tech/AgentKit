@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentkit-mcp"
-version = "0.1.14"
+version = "0.1.15"
 description = "AgentKit MCP Server — a generic, policy-gated MCP server for Claude/Cursor agents; ships with a multi-domain enterprise reference pack."
 readme = "README.md"
 license = { text = "AGPL-3.0" }
@@ -15,11 +15,20 @@ classifiers = [
 ]
 dependencies = [
     "fastmcp",
-    "psycopg2-binary",
+    "psycopg[binary]",
     "uvicorn",
     "python-dotenv",
-    "pyyaml"
+    "pyyaml",
+    "fastapi",
+    "pandas",
+    "numpy",
+    "scipy",
+    "scikit-learn"
 ]
+
+[project.optional-dependencies]
+llm = ["litellm"]
+langgraph = ["langgraph", "langchain"]
 
 [tool.setuptools]
 

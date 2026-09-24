@@ -366,11 +366,11 @@ if _FASTMCP:
     # anywhere in this project's own seed data — copied from a different project's
     # domain list and never actually implemented. Fixed on both ends, and derived from
     # the seed data directly rather than hardcoded a second time here, so this list
-    # can't drift out of sync with src/data/seed.py's BUSINESS_KPIS again as domains
+    # can't drift out of sync with src/agentkit_mcp/data/seed.py's BUSINESS_KPIS again as domains
     # are added — "Forecasting"/"Anomalies" are cross-cutting categories there, not
     # real business domains, so they're excluded.
     try:
-        from src.data.seed import BUSINESS_KPIS as _BUSINESS_KPIS
+        from agentkit_mcp.data.seed import BUSINESS_KPIS as _BUSINESS_KPIS
         _RESOURCE_DOMAINS = tuple(
             d for d in _BUSINESS_KPIS if d not in ("Forecasting", "Anomalies")
         )

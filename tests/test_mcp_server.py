@@ -9,7 +9,7 @@ os.environ.setdefault("POSTGRES_URL", "postgresql://fake:fake@localhost/fake")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agentkit_mcp import mcp_server as ms  # noqa: E402
-from src.data.seed import BUSINESS_KPIS  # noqa: E402
+from agentkit_mcp.data.seed import BUSINESS_KPIS  # noqa: E402
 
 
 @pytest.mark.skipif(not ms._FASTMCP, reason="fastmcp not installed")
