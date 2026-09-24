@@ -53,7 +53,7 @@ and [RESEARCH.md](RESEARCH.md) §2 for the full policy-engine model.
 - **Claude Agent SDK demo** in `demos/claude_agent_sdk_demo.py`
 - **CrewAI demo** in `demos/crewai_demo.py`
 - **DSPy research scaffold** in `research/dspy_experiment.py`
-- **34 tests** across smoke, API, integration, and LangGraph workflow
+- **67 tests** across smoke, API, integration, MCP protocol, policy guardrails, and LangGraph workflow
 
 ## PyPI Package
 
