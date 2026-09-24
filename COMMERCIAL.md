@@ -12,4 +12,9 @@ If your corporate legal policies forbid you from open-sourcing your proprietary 
 - Deploy the software for internal business operations without publishing your modifications.
 - Offer the software as part of a managed or hosted service.
 
-**To obtain a Commercial License, contact:** Open a GitHub issue tagged `[commercial]` or reach out via the repository's contact page.
+**To obtain a Commercial License, contact:** contact@ysiddo-ai-projects.app
+
+Commercial licensing is offered through OmniIntelOS, the unified platform this project's
+capability is also offered as part of (full-platform SaaS, per-module SaaS, or self-hosted/
+hybrid deployment) — the same contact handles a standalone commercial license for this
+repository or a broader OmniIntelOS engagement.
