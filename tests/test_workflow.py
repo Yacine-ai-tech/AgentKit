@@ -141,7 +141,7 @@ def test_analyst_agent_routes_on_metric_derived_keywords(monkeypatch):
     names never matched the curated (hand-picked) keyword lists at all, e.g.
     Employee_Satisfaction_Score (People), Supplier_On_Time_Delivery (Operations),
     Code_Review_Turnaround (Engineering). Fixed by deriving extra keywords from the
-    real seeded metric names (src/data/seed.py) rather than patching the hand-picked
+    real seeded metric names (src/agentkit_mcp/data/seed.py) rather than patching the hand-picked
     list one miss at a time."""
     calls = []
     _mock_tools(monkeypatch, calls)

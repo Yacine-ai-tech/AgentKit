@@ -15,7 +15,7 @@ AGENTKIT_URL = os.environ.get("AGENTKIT_URL", "http://localhost:8005")
 DEFAULT_CACHE_FILE = Path(__file__).resolve().parent / "cache" / "mcp_tools_benchmark_cache.jsonl"
 
 # Test scenarios spanning 5 of the 10 real domain categories seeded in
-# src/data/seed.py (Finance/People/Operations/Customer/Engineering — the original 5;
+# src/agentkit_mcp/data/seed.py (Finance/People/Operations/Customer/Engineering — the original 5;
 # Growth/Logistics/ESG/IT/Security were added later and are not yet covered by this
 # specific benchmark, unlike eval/multi_domain_scenarios.json which covers all 10)
 # plus forecasting/anomalies. expected_tools checks against the raw_data dict keys

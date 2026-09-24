@@ -27,11 +27,11 @@ demonstrates all of this — not the limit of what the server does.
 
 **Reference BI pack (built in):**
 - **6 core MCP tools**: `query_kpis`, `get_company_health`, `detect_kpi_anomalies`, `forecast_metric`, `list_available_metrics`, `get_executive_summary` — plus any tools loaded from declarative YAML packs (`packs/`), so the real tool count at runtime is 6 or more, not a fixed number. The bundled `annotations` pack adds 3 more (`list_annotations`, `annotate_metric`, `retract_annotation`) demonstrating a guarded write/destructive path — see below.
-- **10 MCP resources**: `kpi://{domain}/latest` for each of this project's real seeded domains — Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security (`src/data/seed.py`).
+- **10 MCP resources**: `kpi://{domain}/latest` for each of this project's real seeded domains — Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security (`src/agentkit_mcp/data/seed.py`).
 - **1 reusable prompt**: `monthly_executive_briefing`
 
 > These are dynamic, not hardcoded: the domain list, tool-pack set, and resource/prompt
-> registration all read from the same data this server actually serves (`src/data/seed.py`,
+> registration all read from the same data this server actually serves (`src/agentkit_mcp/data/seed.py`,
 > `packs/*.yaml`) — check those files, not this README, for the current live count.
 > You can add your own `@mcp.resource` / `@mcp.prompt` decorators, or load more from a
 > tool pack. See [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
@@ -58,7 +58,7 @@ and [RESEARCH.md](RESEARCH.md) §2 for the full policy-engine model.
 ## PyPI Package
 
 ```bash
-pip install agentkit-mcp   # v0.1.12
+pip install agentkit-mcp   # v0.1.15
 agentkit-mcp               # CLI entrypoint
 ```
 
@@ -142,7 +142,7 @@ print(result["report"])
               │  + N pack tools        │
               │    (read/write/        │
               │     destructive)       │
-              │  5 resources, 1 prompt │
+              │ 10 resources, 1 prompt │
               └────────────┬───────────┘
                             │
         ┌───────────────────┼──────────────────┐

@@ -19,8 +19,8 @@ own 7-domain taxonomy for cross-portfolio consistency, and Security is a domain 
 project covered before — chosen deliberately so AgentKit's own KPI surface goes beyond
 IntelAI's rather than just duplicating it.
 
-Run standalone: python -m src.data.seed
-Or from code: from src.data.seed import seed_agentkit_database; seed_agentkit_database()
+Run standalone: python -m agentkit_mcp.data.seed
+Or from code: from agentkit_mcp.data.seed import seed_agentkit_database; seed_agentkit_database()
 """
 
 import random
