@@ -108,7 +108,7 @@ def build_app() -> FastAPI:
     )
 
     # --- ETHICAL TELEMETRY ---
-    # See TELEMETRY.md / .env.example. One anonymous startup ping per ~6h, sending only
+    # See README.md's Telemetry section / .env.example. One anonymous startup ping per ~6h, sending only
     # {service, event, instance_id} — no document content, filenames, IPs, or other
     # request data. Fully controllable: TELEMETRY_OPT_OUT=true disables it outright, and
     # leaving TELEMETRY_URL blank (the default) disables it too, since there's nowhere to
