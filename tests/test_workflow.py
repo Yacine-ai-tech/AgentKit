@@ -158,3 +158,17 @@ def test_analyst_agent_routes_on_metric_derived_keywords(monkeypatch):
     state = {"question": "What is our current Code_Review_Turnaround time?"}
     asyncio.run(wf.analyst_agent(state))
     assert ("query_kpis", "Engineering") in calls
+
+
+def test_analyst_agent_matches_financial_adjective_form(monkeypatch):
+    """Real bug found via eval/run_mcp_tools_benchmark.py's live run: the keyword
+    'finance' is not a substring of 'financial' (they diverge at the 7th letter), so
+    'Are there any anomalies in the financial data?' matched no Finance keyword at all
+    and silently queried nothing. Fixed by using the shorter stem 'financ', which
+    matches finance/financial/financing alike."""
+    calls = []
+    _mock_tools(monkeypatch, calls)
+    state = {"question": "Are there any anomalies in the financial data?"}
+    asyncio.run(wf.analyst_agent(state))
+    assert ("query_kpis", "Finance") in calls
+    assert ("detect_kpi_anomalies", "Finance") in calls
