@@ -38,8 +38,9 @@ const ENDPOINTS = [
     /* + get_company_health, detect_kpi_anomalies, forecast_metric,
          list_available_metrics, get_executive_summary */
   ],
-  "resources": ["kpi://Finance/latest","kpi://Growth/latest","kpi://Operations/latest",
-                "kpi://People/latest","kpi://ESG/latest","kpi://IT_Ops/latest"],
+  "resources": ["kpi://Finance/latest","kpi://People/latest","kpi://Operations/latest",
+                "kpi://Customer/latest","kpi://Engineering/latest","kpi://Growth/latest",
+                "kpi://Logistics/latest","kpi://ESG/latest","kpi://IT/latest","kpi://Security/latest"],
   "prompts": ["monthly_executive_briefing"]
 }`,
   },
@@ -71,7 +72,7 @@ const ENDPOINTS = [
     group: "Core facade", method: "GET", path: "/api/metrics?domain=Finance",
     desc: "list_available_metrics — discovery: metric names (scoped to domain if given), all categories, and all periods present in the store.",
     body: null,
-    response: `{"metrics":["revenue","gross_margin","opex"],"categories":["Finance","Growth","Operations","People","ESG","IT_Ops"],"periods":["2025-01","2025-02","2025-03"]}`,
+    response: `{"metrics":["revenue","gross_margin","opex"],"categories":["Finance","People","Operations","Customer","Engineering","Growth","Logistics","ESG","IT","Security"],"periods":["2025-01","2025-02","2025-03"]}`,
   },
   {
     group: "Core facade", method: "GET", path: "/api/summary",
@@ -103,54 +104,6 @@ const ENDPOINTS = [
     desc: "Serves the built SPA (frontend/dist/index.html) when present — this is how the deployed frontend is actually served. Falls back to a small JSON pointer when no build exists.",
     body: null,
     response: `{"service":"agentkit","docs":"/docs","mcp_sse":"/sse"}`,
-  },
-  {
-    group: "Admin API", method: "GET", path: "/api/scenario",
-    desc: "Currently active in-memory demo data scenario.",
-    body: null,
-    response: `{"current_scenario":"healthy"}`,
-  },
-  {
-    group: "Admin API", method: "POST", path: "/api/scenario",
-    desc: "Switch the active demo scenario — one of: healthy, declining_revenue, high_churn, forecast_uncertainty, anomaly_spike, seasonal_variance, recovery_mode. 400 on an unknown id. Appends an audit-log entry.",
-    body: JSON.stringify({ scenario: "declining_revenue" }, null, 2),
-    response: `{"status":"success","current_scenario":"declining_revenue"}`,
-  },
-  {
-    group: "Admin API", method: "GET", path: "/api/database/info",
-    desc: "Connection status plus coverage stats for the KPI store (record/category/metric counts, date range, per-domain data-availability flags).",
-    body: null,
-    response: `{"connected":true,"total_records":1240,"categories":6,"metric_types":38,"date_range":"2024-01 to 2025-06","finance_available":true,"people_available":true,"forecast_available":false,"anomaly_available":false}`,
-  },
-  {
-    group: "Admin API", method: "GET", path: "/api/users",
-    desc: "List demo users held in the in-memory store. Empty until /api/register is called; the list resets whenever the process restarts.",
-    body: null,
-    response: `{"users":[]}`,
-  },
-  {
-    group: "Admin API", method: "POST", path: "/api/register",
-    desc: "Register a demo user in the in-memory store (not the production auth system). role is one of admin/executive/manager/analyst/viewer, defaults to viewer. 400 if username/password missing or the username is already taken.",
-    body: JSON.stringify({ username: "amina", password: "<choose-a-password>", role: "analyst", full_name: "Amina K." }, null, 2),
-    response: `{"status":"success","user":{"id":1,"username":"amina","role":"analyst"}}`,
-  },
-  {
-    group: "Admin API", method: "PATCH", path: "/api/users/{user_id}",
-    desc: "Partially update an in-memory demo user's fields. 404 if the id doesn't exist. Logged to the audit trail.",
-    body: JSON.stringify({ role: "manager", is_active: false }, null, 2),
-    response: `{"status":"success","user":{"id":1,"username":"amina","role":"manager","is_active":false}}`,
-  },
-  {
-    group: "Admin API", method: "GET", path: "/api/audit-log?limit=150",
-    desc: "Recent admin actions (scenario switches, user creates/updates) recorded in-memory.",
-    body: null,
-    response: `{"logs":[{"timestamp":"2026-08-08T12:00:00","action":"scenario_switch","details":"Switched to scenario: declining_revenue","username":"admin"}]}`,
-  },
-  {
-    group: "Admin API", method: "GET", path: "/api/roles",
-    desc: "The 5 static role definitions and their permission sets used by the demo user system.",
-    body: null,
-    response: `{"roles":{"admin":{"description":"Full system access including user management","permissions":["read","write","delete","admin"]},"executive":{"description":"High-level business intelligence access","permissions":["read","write"]},"manager":{"description":"Team-level analytics and reporting","permissions":["read","write"]},"analyst":{"description":"Data analysis and reporting tools","permissions":["read","write"]},"viewer":{"description":"Read-only access to dashboards","permissions":["read"]}}}`,
   },
 ];
 
@@ -208,7 +161,7 @@ const MCP_TOOLS = [
     desc: "Discovery tool: list metric names (scoped to a domain if given), categories, and periods available in the store.",
     sig: "list_available_metrics(domain?: str)",
     args: { domain: "Finance" },
-    response: `{"metrics":["revenue","gross_margin","opex"],"categories":["Finance","Growth","Operations","People","ESG","IT_Ops"],"periods":["2025-01","2025-02"]}`,
+    response: `{"metrics":["revenue","gross_margin","opex"],"categories":["Finance","People","Operations","Customer","Engineering","Growth","Logistics","ESG","IT","Security"],"periods":["2025-01","2025-02"]}`,
   },
   {
     name: "get_executive_summary",
@@ -219,7 +172,7 @@ const MCP_TOOLS = [
   },
 ];
 
-const MCP_RESOURCES = ["Finance", "Growth", "Operations", "People", "ESG", "IT_Ops"];
+const MCP_RESOURCES = ["Finance", "People", "Operations", "Customer", "Engineering", "Growth", "Logistics", "ESG", "IT", "Security"];
 
 const MCP_PROMPT = {
   name: "monthly_executive_briefing",
