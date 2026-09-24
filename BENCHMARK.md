@@ -63,8 +63,8 @@ estimate.
 
 A larger, 15-scenario suite spanning what were then all 5 KPI domains plus cross-domain queries
 (`eval/multi_domain_scenarios.json`, `eval/run_dspy_eval.py`) was run on Groq
-(`LLM_REASONING` overridden from the default Lightning-routed Claude Sonnet, since this
-rerun's purpose was to avoid Lightning credits). The first attempt (on a dev laptop) hit
+(`LLM_REASONING` overridden from the production-default Claude Sonnet as a like-for-like
+stand-in for this rerun). The first attempt (on a dev laptop) hit
 repeated `psycopg.pool: rolling back returned connection [INTRANS]` warnings against the
 Neon Postgres backend, adding 2-4 minutes of latency per scenario — moving the rerun to
 the production VPS (same infrastructure the deployed app runs on) resolved it, cutting
@@ -216,12 +216,11 @@ an infrastructure/quota timing issue on this specific run, not a reproducible co
 bug. A rerun with more retry headroom or a less recently-used key would be expected to
 clear it.
 
-**Note on the LLM model used.** This rerun used Groq (`LLM_REASONING` overridden) to
-avoid spending Lightning AI credits, per this project's current operating constraint —
-not the production-default Claude Sonnet. Tool selection itself is deterministic
-keyword matching with no LLM call at all, so that specific metric is model-independent;
-report quality and execution timing on the actual production model remain unverified
-until Lightning AI credits are available for a like-for-like rerun.
+**Note on the LLM model used.** This rerun used Groq (`LLM_REASONING` overridden)
+as a stand-in for the production-default Claude Sonnet. Tool selection itself is
+deterministic keyword matching with no LLM call at all, so that specific metric is
+model-independent; report quality and execution timing on the production reasoning
+model remain to be reconfirmed in a follow-up rerun on that model.
 
 Full details: [`eval/MCP_TOOLS_BENCHMARK.md`](eval/MCP_TOOLS_BENCHMARK.md)
 
