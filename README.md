@@ -30,11 +30,11 @@ demonstrates all of this — not the limit of what the server does.
 - **10 MCP resources**: `kpi://{domain}/latest` for each of this project's real seeded domains — Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security (`src/agentkit_mcp/data/seed.py`).
 - **1 reusable prompt**: `monthly_executive_briefing`
 
-> These are dynamic, not hardcoded: the domain list, tool-pack set, and resource/prompt
-> registration all read from the same data this server actually serves (`src/agentkit_mcp/data/seed.py`,
-> `packs/*.yaml`) — check those files, not this README, for the current live count.
-> You can add your own `@mcp.resource` / `@mcp.prompt` decorators, or load more from a
-> tool pack. See [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
+> The domain list, tool-pack set, and resource/prompt registration are all derived from the
+> same data this server serves (`src/agentkit_mcp/data/seed.py`, `packs/*.yaml`), not
+> hardcoded, so adding a domain or tool pack extends this list automatically. You can also add
+> your own `@mcp.resource` / `@mcp.prompt` decorators. See
+> [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
 
 **Write and destructive actions are real, not aspirational.** The `annotations` pack
 lets an agent record a durable note on a metric (`annotate_metric`, effect `write`) and
@@ -153,14 +153,13 @@ print(result["report"])
    back annotations)                     + Monte Carlo CI)
 ```
 
-## Research Novelty & Scientific Contributions
+## Research Contribution
 
-AgentKit is an industry-proof intelligence engine:
-- **Standardized Model Context Protocol (MCP) Middleware**: Unified stdio and SSE transport for hot-swappable agent tools.
-- **Capability Policy Engine**: Formal effect separation (read/write/destructive) and prompt-independent guardrails.
-- **Multi-Agent Interoperability**: Tested and verified across **Claude Desktop**, **Cursor IDE**, and **Devin AI**.
+- **Standardized MCP middleware** — unified stdio and SSE transport for hot-swappable agent tools.
+- **Capability policy engine** — formal effect separation (read/write/destructive) and prompt-independent guardrails.
+- **Multi-agent interoperability** — verified across Claude Desktop, Cursor IDE, and Devin AI.
 
-For full theoretical formulation, math bounds, and citation details, see [RESEARCH.md](RESEARCH.md).
+For the full formalization, literature context, and citation details, see [RESEARCH.md](RESEARCH.md).
 
 ## Benchmark Replication Suite
 
@@ -169,10 +168,10 @@ Run the reproducible benchmark evaluation suites:
 # Test MCP framework overhead
 python3 eval/run_benchmarks.py --seed 42
 
-# Test Agent Tool Selection & Quality
-python3 eval/run_agent_eval.py
+# Full 43-scenario LangGraph suite across all 10 KPI domains
+python3 eval/run_dspy_eval.py
 
-# Test Comprehensive MCP Tool Execution Metrics
+# Comprehensive MCP tool execution metrics
 python3 eval/run_mcp_tools_benchmark.py
 ```
 
