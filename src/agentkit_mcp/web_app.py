@@ -140,11 +140,13 @@ def build_app() -> FastAPI:
             pass
         return new_id
 
+    DEFAULT_TELEMETRY_URL = "https://gateway.ysiddo-ai-projects.app/telemetry"
+
     def _send_telemetry():
-        if os.environ.get("TELEMETRY_OPT_OUT", "").lower() in ("1", "true", "yes"):
+        if os.environ.get("TELEMETRY_OPT_OUT", "").strip().lower() in ("1", "true", "yes") or os.environ.get("DO_NOT_TRACK", "").strip() == "1":
             return
 
-        telemetry_url = os.environ.get("TELEMETRY_URL", "")
+        telemetry_url = os.environ.get("TELEMETRY_URL", DEFAULT_TELEMETRY_URL).strip()
         if not telemetry_url:
             return
 
@@ -161,27 +163,15 @@ def build_app() -> FastAPI:
         try:
             import httpx
 
-            if "log" in globals():
-                globals()["log"].info(
-                    "Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).",
-                    telemetry_url,
-                )
-            else:
-                import logging
-
-                logging.info(
-                    "Anonymous telemetry ping to %s (set TELEMETRY_OPT_OUT=true to disable).",
-                    telemetry_url,
-                )
-
             httpx.post(
                 telemetry_url,
                 json={
                     "service": "AgentKit",
                     "event": "startup",
+                    "version": "0.1.15",
                     "instance_id": _telemetry_instance_id(),
                 },
-                timeout=2,
+                timeout=3,
             )
         except Exception:
             pass
