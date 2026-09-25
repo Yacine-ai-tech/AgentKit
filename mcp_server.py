@@ -6,7 +6,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from agentkit_mcp.mcp_server import _FASTMCP, _serve_sse, log, mcp  # noqa: E402
 if __name__ == "__main__":
     if _FASTMCP:
-        transport = os.getenv("MCP_TRANSPORT", "sse").lower()
+        default_transport = "sse" if ("PORT" in os.environ or "MCP_PORT" in os.environ) else "stdio"
+        transport = os.getenv("MCP_TRANSPORT", default_transport).lower()
         if transport == "stdio":
             log.info("Starting AgentKit MCP server (transport=stdio)...")
             mcp.run(transport="stdio", show_banner=False)
