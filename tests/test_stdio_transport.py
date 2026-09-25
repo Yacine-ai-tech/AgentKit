@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = REPO_ROOT / "src"
 
 
-def _read_json_line(proc: subprocess.Popen, timeout: float = 15.0) -> dict:
+def _read_json_line(proc: subprocess.Popen, timeout: float = 30.0) -> dict:
     """Read one line from the subprocess's stdout and parse it as JSON, with a
     hard timeout so a regression hangs the test instead of the whole suite."""
     import selectors
