@@ -40,3 +40,6 @@ include = ["agentkit_mcp*"]
 asyncio_mode = "auto"
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "unit: mark test as unit test",
+]

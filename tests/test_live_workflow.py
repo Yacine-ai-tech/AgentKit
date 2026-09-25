@@ -11,8 +11,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 pytestmark = pytest.mark.skipif(
-    not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("GROQ_API_KEY")),
-    reason="live test needs an LLM key",
+    os.getenv("CI") == "true" or not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("GROQ_API_KEY")),
+    reason="live test needs an LLM key and is skipped in CI",
 )
 
 
