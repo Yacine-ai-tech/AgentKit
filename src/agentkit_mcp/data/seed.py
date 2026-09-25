@@ -33,14 +33,13 @@ from typing import Dict, List
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from src.agentkit_mcp.services.pg_store import insert_kpi_metric
-
+    try:
+        from agentkit_mcp.services.pg_store import insert_kpi_metric
+    except ImportError:
+        from src.agentkit_mcp.services.pg_store import insert_kpi_metric
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
-    print(
-        "Warning: Database modules not available. This script can still generate data."
-    )
 
 SEED = 42
 MONTHS = 24  # 2 years of historical data
