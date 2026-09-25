@@ -1,0 +1,18 @@
+# Smithery configuration file
+# https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  command: python
+  args: ["mcp_server.py"]
+  env:
+    MCP_TRANSPORT: "stdio"
+
+configSchema:
+  type: object
+  required: []
+  properties:
+    MCP_TRANSPORT:
+      type: string
+      default: "stdio"
+      description: "Transport protocol for the MCP server (stdio or sse)"
