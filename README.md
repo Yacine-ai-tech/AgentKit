@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![AgentKit MCP server – quality score on Glama](https://glama.ai/mcp/servers/Yacine-ai-tech/AgentKit/badges/score.svg)](https://glama.ai/mcp/servers/Yacine-ai-tech/AgentKit)
 
 An MCP server where **tools are declarative, effects are typed, and every action is
 policy-gated and audited** — usable by any MCP client (Claude Desktop, Cursor,

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/connector.json",
+  "name": "agentkit-mcp",
+  "description": "Production Model Context Protocol (MCP) server for business-intelligence and data agents. Exposes dynamic KPI analytics, forecasting, anomaly detection, and schema resources across 10 enterprise domains via FastMCP.",
+  "maintainers": [
+    "siddoyacinetech227@gmail.com"
+  ],
+  "repository": {
+    "url": "https://github.com/Yacine-ai-tech/AgentKit",
+    "source": "github"
+  },
+  "categories": [
+    "AI & Machine Learning",
+    "Data Platforms",
+    "Monitoring"
+  ],
+  "keywords": [
+    "mcp",
+    "fastmcp",
+    "business-intelligence",
+    "ai-agents",
+    "langgraph",
+    "claude-desktop",
+    "cursor"
+  ],
+  "license": "AGPL-3.0",
+  "mcpServers": {
+    "agentkit": {
+      "command": "python",
+      "args": [
+        "mcp_server.py"
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
