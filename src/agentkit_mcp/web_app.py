@@ -182,7 +182,6 @@ def build_app() -> FastAPI:
     import hmac as _hmac
     import os as _os
 
-    from fastapi import Request
     from fastapi.responses import JSONResponse
 
     @app.middleware("http")
