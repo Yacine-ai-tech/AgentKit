@@ -336,9 +336,11 @@ def main():
 
     return all_data
 
+
 def seed_agentkit_database():
     """Alias for backwards compatibility."""
     return main()
+
 
 if __name__ == "__main__":
     main()
