@@ -23,16 +23,13 @@ datasource:
 tools:
   - name: list_annotations
     description: >
-      Read annotations, most recent first. Optionally filter to one metric. Retracted
-      annotations are excluded unless include_retracted is true.
+      Read historical metric annotations and operator notes, ordered from most recent to oldest.
+      Allows filtering by a specific KPI metric and optionally including retracted entries.
     effect: read
     params:
-      - {name: metric, type: string, required: false, description: "Metric name; omit for all"}
-      - {name: include_retracted, type: boolean, required: false, default: false}
-      - {name: limit, type: integer, required: false, default: 50}
-    # The ::text / ::boolean casts are load-bearing, not decoration: a parameter that
-    # only ever appears in an `IS NULL` test gives Postgres nothing to infer a type
-    # from, and it errors with "could not determine data type of parameter $1".
+      - {name: metric, type: string, required: false, description: "Optional KPI metric name to filter annotations by (e.g. 'revenue', 'gross_margin'). Omit or pass null to query across all metrics."}
+      - {name: include_retracted, type: boolean, required: false, default: false, description: "Whether to include soft-deleted / retracted annotations in the returned results. Defaults to false."}
+      - {name: limit, type: integer, required: false, default: 50, description: "Maximum number of annotation records to return. Defaults to 50 (range: 1 to 200)."}
     query: >
       SELECT id, metric, period, note, severity, author, created_at, retracted_at
       FROM kpi_annotations
@@ -43,30 +40,30 @@ tools:
 
   - name: annotate_metric
     description: >
-      Attach a durable note to a metric/period — e.g. an agent recording the root cause
-      it identified for an anomaly, so the next reader sees the explanation inline.
+      Attach a durable operational finding, investigation note, or root-cause explanation to a specific KPI metric and recording period.
+      Requires write permissions enabled.
     effect: write
     scopes: [annotations.write]
     rate_limit: 30
     params:
-      - {name: metric, type: string, required: true}
-      - {name: period, type: string, required: true, description: "e.g. 2026-07"}
-      - {name: note, type: string, required: true}
-      - {name: severity, type: string, required: false, default: info, description: "info|warning|critical"}
-      - {name: author, type: string, required: false, default: agentkit}
+      - {name: metric, type: string, required: true, description: "Canonical name of the metric being annotated (e.g. 'revenue', 'gross_margin', 'headcount')."}
+      - {name: period, type: string, required: true, description: "Target recording period for the annotation in YYYY-MM format (e.g. '2026-07')."}
+      - {name: note, type: string, required: true, description: "Detailed contextual explanation, root cause analysis, or operational finding to attach to the metric."}
+      - {name: severity, type: string, required: false, default: info, description: "Operational impact classification level: 'info', 'warning', or 'critical'. Defaults to 'info'."}
+      - {name: author, type: string, required: false, default: agentkit, description: "Identifier of the agent or human user recording the annotation. Defaults to 'agentkit'."}
     statement: >
       INSERT INTO kpi_annotations (metric, period, note, severity, author)
       VALUES (%(metric)s, %(period)s, %(note)s, %(severity)s, %(author)s)
 
   - name: retract_annotation
     description: >
-      Soft-delete an annotation (sets retracted_at). Irreversible from the agent's side
-      and externally visible, so it is classed destructive and requires human approval.
+      Soft-delete an erroneous or outdated annotation (stamps retracted_at).
+      Classed as a destructive action requiring a valid operator approval token.
     effect: destructive
     scopes: [annotations.write]
     rate_limit: 10
     params:
-      - {name: annotation_id, type: integer, required: true}
+      - {name: annotation_id, type: integer, required: true, description: "Unique integer ID of the specific annotation record to soft-delete/retract."}
     statement: >
       UPDATE kpi_annotations SET retracted_at = NOW()
       WHERE id = %(annotation_id)s AND retracted_at IS NULL
