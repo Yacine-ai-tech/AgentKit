@@ -114,7 +114,27 @@ async def query_kpis(
     metric_filter: Optional[str] = None,
     limit: int = 100,
 ) -> Dict[str, Any]:
-    """Return KPI metrics for a domain and period window."""
+    """Retrieve historical and real-time Key Performance Indicators (KPIs) from the governed Postgres store.
+
+    Fetches structured time-series metrics across enterprise business domains including Finance,
+    People (HR), Operations, Customer (Sales/Support), Engineering, Growth, Logistics, ESG, IT,
+    and Security.
+
+    Args:
+        domain: Optional taxonomy category filter (e.g. 'Finance', 'People', 'Operations',
+            'Customer', 'Engineering', 'Growth', 'ESG', 'IT', 'Security'). Omit to query across all domains.
+        period_from: Optional start period in 'YYYY-MM' format (e.g. '2024-01'). Inclusive lower bound.
+        period_to: Optional end period in 'YYYY-MM' format (e.g. '2026-06'). Inclusive upper bound.
+        metric_filter: Optional substring or exact metric name match (e.g. 'revenue', 'churn_rate',
+            'gross_margin', 'cac', 'headcount'). Case-insensitive.
+        limit: Maximum number of metric records to return. Defaults to 100 (range: 1 to 500).
+
+    Returns:
+        A dictionary containing:
+            - 'kpis': List of metric objects, each with 'id', 'metric', 'category', 'period',
+              'value', 'unit', and 'source'.
+            - 'total': Integer count of retrieved metric records.
+    """
     if not _PG:
         raise RuntimeError(
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
@@ -138,7 +158,26 @@ async def query_kpis(
 
 
 async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
-    """Return composite company health index for a domain (or all)."""
+    """Compute composite organizational health scores and diagnostic health index breakdown.
+
+    Synthesizes multi-factor business performance indicators into a holistic 0-100 health score
+    with categorized qualitative interpretations ('Optimal', 'Healthy', 'Warning', 'Critical')
+    and sub-component scores across growth rate, profit margins, cash runway, and operational efficiency.
+
+    Args:
+        domain: Optional business domain to compute isolated departmental health for (e.g. 'Finance',
+            'Operations', 'Customer', 'Growth'). If omitted or None, calculates company-wide aggregate health.
+
+    Returns:
+        A dictionary containing:
+            - 'score': Floating-point aggregate health index from 0.0 to 100.0.
+            - 'interpretation': Qualitative status assessment string ('Optimal', 'Healthy', 'Warning', 'Critical').
+            - 'components': Dictionary of granular sub-scores:
+                - 'growth': Year-over-year expansion and revenue momentum score.
+                - 'margin': Unit economics, EBITDA, and gross margin health score.
+                - 'cash_score': Cash runway longevity and liquidity ratio index.
+                - 'efficiency': Operational efficiency, headcount leverage, and burn multiple.
+    """
     if not (_PG and _INSIGHTS):
         raise RuntimeError(
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
@@ -172,7 +211,29 @@ async def detect_kpi_anomalies(
     method: str = "zscore",
     threshold: float = 2.5,
 ) -> Dict[str, Any]:
-    """Find anomalies in a domain's KPI history."""
+    """Detect statistical anomalies, sudden spikes, and unexpected deviations in KPI time-series history.
+
+    Analyzes metric historical distributions within a specified business domain using rigorous
+    parametric (Z-Score) or non-parametric (IQR - Interquartile Range) anomaly detection algorithms
+    to identify operational risks, unexpected budget variances, or sudden performance degradation.
+
+    Args:
+        domain: Target business domain to evaluate (e.g. 'Finance', 'Operations', 'Customer',
+            'People', 'Engineering', 'Growth', 'ESG', 'IT'). Required.
+        method: Statistical anomaly detection algorithm to execute. Options:
+            - 'zscore': Standard deviation testing for normally distributed metrics (default).
+            - 'iqr': Robust quartile range testing for skewed or fat-tailed metric distributions.
+        threshold: Sensitivity cutoff factor for classification. For 'zscore', specifies standard
+            deviations from mean (default: 2.5). For 'iqr', specifies multiplier above Q3/below Q1 (default: 1.5).
+
+    Returns:
+        A dictionary containing:
+            - 'anomalies': List of anomalous metric records, each containing 'metric', 'category',
+              'period', 'value', and calculated 'z_score' deviation magnitude.
+            - 'total': Total number of detected statistical anomalies.
+            - 'threshold': The numerical sensitivity threshold utilized.
+            - 'method': The statistical algorithm applied.
+    """
     if not (_PG and _INSIGHTS):
         raise RuntimeError(
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
@@ -211,11 +272,29 @@ async def forecast_metric(
     periods: int = 6,
     confidence_level: float = 0.95,
 ) -> Dict[str, Any]:
-    """Forecast `periods` periods ahead for a named metric (Monte Carlo CI bands)."""
+    """Generate forward-looking time-series forecasts with Monte Carlo confidence intervals for a named KPI.
+
+    Applies trend analysis and linear projection mathematical modeling over historical monthly metric data
+    to predict future trajectory across specified forward horizon periods, providing upper and lower
+    bound confidence intervals.
+
+    Args:
+        metric_name: Exact or substring name of the KPI metric to forecast (e.g. 'revenue', 'mrr',
+            'gross_margin', 'headcount', 'cac', 'active_users', 'churn_rate').
+        periods: Number of monthly periods ahead to project. Defaults to 6 periods (range: 1 to 24).
+        confidence_level: Statistical confidence interval band width (e.g. 0.95 for 95% confidence interval).
+            Defaults to 0.95.
+
+    Returns:
+        A dictionary containing:
+            - 'metric': Canonical name of the evaluated KPI metric.
+            - 'forecast': List of forecast objects with forward 'period' ('YYYY-MM') and projected 'value'.
+            - 'lower_ci': List of lower-bound confidence threshold values matching forecast horizon.
+            - 'upper_ci': List of upper-bound confidence threshold values matching forecast horizon.
+            - 'confidence_level': The statistical confidence level applied.
+            - 'method': The forecasting algorithm utilized (e.g. 'linear_regression').
+    """
     if not (_PG and _FORECAST):
-        # These are two distinct failure modes conflated into one message before —
-        # found the hard way debugging a real run where the actual cause (a missing
-        # scipy install) got reported as a database configuration problem instead.
         if not _PG:
             raise RuntimeError("AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics")
         raise RuntimeError(
@@ -225,7 +304,6 @@ async def forecast_metric(
     try:
         df = await _run_db(get_kpi_metrics, metrics=[metric_name])
         if df is None or df.empty:
-            # name-tolerant fallback: case-insensitive exact, then substring match
             alldf = await _run_db(get_kpi_metrics)
             if alldf is not None and not alldf.empty:
                 exact = alldf[alldf["metric"].str.lower() == metric_name.lower()]
@@ -286,7 +364,21 @@ async def forecast_metric(
 
 
 async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]:
-    """Discovery tool: list metrics, categories, and periods (metrics scoped to domain if given)."""
+    """Discover all supported KPI metrics, business domains, and available historical time periods.
+
+    Essential discovery tool for agents to inspect the metadata schema before formulating specific
+    queries, anomaly detections, or predictive forecasts.
+
+    Args:
+        domain: Optional business category to filter metric names by (e.g. 'Finance', 'People',
+            'Operations', 'Customer', 'Engineering'). If omitted, returns all global metrics.
+
+    Returns:
+        A dictionary containing:
+            - 'metrics': Alphabetically sorted list of all unique KPI metric identifier strings.
+            - 'categories': List of available business domain category names.
+            - 'periods': Chronologically sorted list of all historical recording periods ('YYYY-MM').
+    """
     if not _PG:
         raise RuntimeError(
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
@@ -308,7 +400,21 @@ async def list_available_metrics(domain: Optional[str] = None) -> Dict[str, Any]
 
 
 async def get_executive_summary() -> Dict[str, Any]:
-    """Synthesize health, KPIs, and anomalies into a one-shot executive summary."""
+    """Generate a comprehensive one-shot executive briefing synthesizing health, key metrics, and anomalies.
+
+    Executes a high-level cross-domain synthesis combining composite organizational health diagnostics,
+    primary KPI indicators, and active statistical anomalies across Finance, Operations, and Growth into
+    an actionable briefing for leadership.
+
+    Returns:
+        A dictionary containing:
+            - 'summary': High-level descriptive briefing title.
+            - 'health_score': Overall company health index (0.0 to 100.0).
+            - 'interpretation': Overall company health classification string ('Optimal', 'Healthy', 'Warning', 'Critical').
+            - 'components': Breakdown of health scores (growth, margin, cash_score, efficiency).
+            - 'key_metrics': Top 5 representative business KPI metric records.
+            - 'anomalies': Top 5 active statistical anomalies requiring immediate executive review.
+    """
     health = await get_company_health()
     kpis = await query_kpis(limit=10)
     anomalies = (
