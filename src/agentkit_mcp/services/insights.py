@@ -63,33 +63,51 @@ def compute_health_index(df: pd.DataFrame) -> Dict[str, float | str]:
         lbl = t("COMMON", "no_data") if I18N.lang() == "fr" else "No Data"
         return {"score": 0, "label": lbl}
 
-    rev = _metric_lookup(df, ["revenue", "sales", "arr", "mrr"]).sort_values("period")
+    # 1. Growth calculation: isolate a single primary time series to prevent cross-metric collisions
     growth = 0.0
-    if len(rev) >= 2:
-        prev = rev.iloc[-2]["value"]
-        if prev:
-            growth = (rev.iloc[-1]["value"] - prev) / prev * 100
+    for primary_metric in ["Revenue", "ARR", "MRR"]:
+        rev_match = df[df["metric"].str.lower() == primary_metric.lower()].sort_values("period")
+        if not rev_match.empty and len(rev_match) >= 2:
+            prev = float(rev_match.iloc[-2]["value"])
+            curr = float(rev_match.iloc[-1]["value"])
+            if prev > 0:
+                growth = (curr - prev) / prev * 100
+                break
+    else:
+        rev = _metric_lookup(df, ["revenue", "sales", "arr", "mrr"])
+        if not rev.empty:
+            first_metric = rev["metric"].iloc[0]
+            rev_match = rev[rev["metric"] == first_metric].sort_values("period")
+            if len(rev_match) >= 2:
+                prev = float(rev_match.iloc[-2]["value"])
+                curr = float(rev_match.iloc[-1]["value"])
+                if prev > 0:
+                    growth = (curr - prev) / prev * 100
 
-    margin_s = _metric_lookup(df, ["gross margin", "margin"])
-    margin = margin_s["value"].mean() if not margin_s.empty else 0
+    # 2. Gross margin: 0-100% scale
+    margin_s = df[df["metric"].str.lower().str.contains("gross margin|margin")]
+    margin = float(margin_s["value"].mean()) if not margin_s.empty else 75.0
 
-    cash_s = _metric_lookup(df, ["cash"])
-    cash_score = (
-        min(100, max(0, cash_s["value"].mean() / 1_000_000 * 20))
-        if not cash_s.empty
-        else 0
-    )
+    # 3. Cash runway / liquidity: handle both runway in months and cash balance in USD
+    cash_s = df[df["metric"].str.lower().str.contains("cash runway|runway|cash")]
+    if not cash_s.empty:
+        if any("month" in str(u).lower() for u in cash_s.get("unit", [])):
+            runway_months = float(cash_s["value"].mean())
+            cash_score = min(100.0, max(0.0, (runway_months / 24.0) * 100.0))
+        else:
+            cash_val = float(cash_s["value"].mean())
+            cash_score = min(100.0, max(0.0, cash_val / 1_000_000 * 20.0))
+    else:
+        cash_score = 60.0
 
-    eff_s = _metric_lookup(df, ["operating expense", "opex"])
-    efficiency = (
-        100 - min(100, eff_s["value"].mean() / 1_000_000 * 10)
-        if not eff_s.empty
-        else 60
-    )
+    # 4. Operating efficiency: 0-100 scale
+    eff_s = df[df["metric"].str.lower().str.contains("operating expense|opex")]
+    efficiency = max(0.0, 100.0 - min(100.0, float(eff_s["value"].mean()) / 1_000_000 * 10.0)) if not eff_s.empty else 70.0
 
-    score = float(
-        np.clip((growth * 2) + (margin * 0.5) + cash_score + efficiency, 0, 100)
-    )
+    # Weighted composite health score (0-100)
+    growth_norm = min(100.0, max(0.0, 50.0 + (growth * 5.0)))
+    score = float(np.clip((0.25 * growth_norm) + (0.25 * margin) + (0.25 * cash_score) + (0.25 * efficiency), 0.0, 100.0))
+    score = round(score, 1)
 
     labels_en = {80: "Strong", 60: "Stable", 40: "At Risk", 0: "Critical"}
     labels_fr = {80: "Solide", 60: "Stable", 40: "À risque", 0: "Critique"}
@@ -99,10 +117,10 @@ def compute_health_index(df: pd.DataFrame) -> Dict[str, float | str]:
     return {
         "score": score,
         "label": label,
-        "growth": float(growth),
-        "margin": float(margin),
-        "cash_score": float(cash_score),
-        "efficiency": float(efficiency),
+        "growth": round(float(growth), 2),
+        "margin": round(float(margin), 2),
+        "cash_score": round(float(cash_score), 2),
+        "efficiency": round(float(efficiency), 2),
     }
 
 
