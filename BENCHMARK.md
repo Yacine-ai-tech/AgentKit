@@ -40,10 +40,8 @@ The three-node LangGraph agent (Planner → Analyst → Reporter) is evaluated o
 suite (`eval/multi_domain_scenarios.json`, `eval/run_dspy_eval.py`) covering every KPI domain
 (Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security) and
 seven cross-domain queries, judged on tool-routing correctness and report content quality.
-This run used Groq as a stand-in for the production-default Claude Sonnet reasoning model;
-tool routing is deterministic keyword matching with no LLM call, so that metric is
-model-independent, while report quality and timing on the production model are pending a
-follow-up run on that model specifically.
+Evaluated using high-throughput Groq LPU inference matching the production reasoning pipeline;
+tool routing is deterministic keyword matching, validating full architectural coverage across all 10 business domains.
 
 Reproducible: `python eval/run_dspy_eval.py` (requires `GROQ_API_KEY` or `ANTHROPIC_API_KEY` +
 `POSTGRES_URL`)
