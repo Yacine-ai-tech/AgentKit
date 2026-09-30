@@ -94,13 +94,13 @@ Configure in `.devin/mcp.json` or Devin environment settings:
 }
 ```
 
-#### SSE Remote Mode (Render Deployed)
-If connecting to a deployed AgentKit instance on Render:
+#### SSE Remote Mode (Production Deployed)
+If connecting to a deployed AgentKit instance:
 ```json
 {
   "mcpServers": {
     "agentkit-remote": {
-      "url": "https://agentkit-<your-app>.onrender.com/sse",
+      "url": "https://agentkit.ysiddo-ai-projects.app/sse",
       "headers": {
         "Authorization": "Bearer YOUR_MCP_AUTH_TOKEN"
       }
