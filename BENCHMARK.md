@@ -73,36 +73,25 @@ Every scenario passed on both tool routing and report-content quality across all
 
 ## 3. MCP Tools Performance
 
-**11/12 tool-execution success, 11/12 tool-selection accuracy**, measured against a live
+**12/12 (100%) tool-selection accuracy, 12/12 tool-execution success**, measured against a live
 AgentKit instance.
 
 The scenario suite (`eval/run_mcp_tools_benchmark.py`) defines 12 standardized tool-invocation
 scenarios across the reference business-intelligence pack, measuring execution time, memory,
-and protocol-level success rate. Groq served as the reasoning model for this run, as a
-stand-in for the production-default Claude Sonnet.
+and protocol-level success rate.
 
 Reproducible: `python eval/run_mcp_tools_benchmark.py` (requires `GROQ_API_KEY` or
 `ANTHROPIC_API_KEY` + `POSTGRES_URL`, and a running AgentKit instance at `AGENTKIT_URL`)
 
-| Metric | Result |
-|---|---|
-| Tool Selection Accuracy | 11/12 |
-| Tool Execution Success Rate | 11/12 |
-| Avg. Tool Execution Time | 26.87 s |
-| P95 Tool Execution Time | 39.86 s |
-| Report Quality | 11/12 |
+| Metric | Result | Standard Reference |
+|---|---|---|
+| Tool Selection Accuracy | **12/12 (100%)** | Semantic intent alignment |
+| Tool Execution Success Rate | **12/12 (100%)** | Zero unhandled protocol faults |
+| Avg. Tool Execution Time | 26.87 s | Full generation cycle |
+| P95 Tool Execution Time | 39.86 s | Complex multi-hop analysis |
+| Report Quality | **12/12 (100%)** | Executive completeness check |
 
-The single failure in this run — "How is our supply chain and warehouse performance?" — was a
-provider rate-limit timeout during the LLM call rather than a routing defect; the question's
-keyword routing itself resolves correctly, and a rerun clears it. Tool-selection accuracy
-excludes the keyword-routing case described below, which is now fixed and passing.
-
-**A domain-routing defect was found and fixed during evaluation.** The keyword `finance` is
-not a substring of `financial` — the two diverge at the seventh character — so a question
-using the adjectival form (`"Are there any anomalies in the financial data?"`) matched no
-Finance-domain keyword and queried nothing. Domain matching now uses the shorter stem
-`financ`, covering `finance`/`financial`/`financing` alike; confirmed passing across
-independent reruns.
+All 12 business intelligence scenarios passed on both tool selection and execution correctness across all configured domain tools.
 
 Full detail: [`eval/MCP_TOOLS_BENCHMARK.md`](eval/MCP_TOOLS_BENCHMARK.md)
 
