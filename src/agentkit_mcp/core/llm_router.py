@@ -215,8 +215,13 @@ async def llm_call(
 ):
     """Route one chat completion through the configured tier.
 
-    Raises LLMUnavailable (never returns a fabricated response) when the call cannot be
-    completed and no fallback succeeds.
+    Fallback chain:
+    1. Primary model (per tier, honouring INFERENCE_MODE).
+    2. Provider override (LLM_REASONING_FALLBACK / LLM_JUDGE_FALLBACK) — only on auth error;
+       configured in VPS .env when Anthropic/OpenAI key is unavailable.
+    3. Local model (LLM_FALLBACK_TO_LOCAL=1 + INFERENCE_MODE != local).
+
+    Raises LLMUnavailable (never returns a fabricated response) when all fallbacks fail.
     """
     if not _LITELLM:
         raise LLMUnavailable("litellm is not installed — pip install litellm")
@@ -225,6 +230,25 @@ async def llm_call(
     try:
         return await _complete_with_rate_limit_retry(model, messages, **kwargs)
     except Exception as primary_error:
+        # Step 2 — provider override fallback (auth error on primary model)
+        _auth_signals = ("AuthenticationError", "PermissionDeniedError", "401", "403",
+                         "invalid_api_key", "invalid api key")
+        is_auth_err = any(s.lower() in str(primary_error).lower() or
+                          s.lower() in type(primary_error).__name__.lower()
+                          for s in _auth_signals)
+        override_model = os.getenv(f"LLM_{tier.upper()}_FALLBACK", "")
+        if not override_model:
+            override_model = os.getenv("LLM_DEFAULT_FALLBACK", "")
+        if is_auth_err and override_model and override_model != model:
+            log.warning("tier=%s model=%s auth failed — retrying with override %s",
+                        tier, model, override_model)
+            try:
+                return await _complete_with_rate_limit_retry(override_model, messages, **kwargs)
+            except Exception as override_error:
+                log.warning("override fallback %s also failed: %s", override_model, override_error)
+                # fall through to local fallback below
+
+        # Step 3 — local model fallback
         local_model = settings.LLM_LOCAL
         should_fallback = (
             fallback_enabled()
@@ -236,10 +260,7 @@ async def llm_call(
 
         log.warning(
             "tier=%s model=%s failed (%s) — falling back to local %s",
-            tier,
-            model,
-            primary_error,
-            local_model,
+            tier, model, primary_error, local_model,
         )
         try:
             return await _complete(local_model, messages, **kwargs)
