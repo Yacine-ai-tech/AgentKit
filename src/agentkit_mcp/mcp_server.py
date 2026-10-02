@@ -140,9 +140,12 @@ async def query_kpis(
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
         )
     try:
+        cats = None
+        if domain and str(domain).strip().lower() not in ("all", "company", "global", "total", "*", "none", "null"):
+            cats = [domain.strip()]
         df = await _run_db(
             get_kpi_metrics,
-            categories=[domain] if domain else None,
+            categories=cats,
             period_from=period_from,
             period_to=period_to,
             metric_filter=metric_filter,
@@ -183,7 +186,10 @@ async def get_company_health(domain: Optional[str] = None) -> Dict[str, Any]:
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
         )
     try:
-        df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
+        cats = None
+        if domain and str(domain).strip().lower() not in ("all", "company", "global", "total", "*", "none", "null"):
+            cats = [domain.strip()]
+        df = await _run_db(get_kpi_metrics, categories=cats)
         if df is None or df.empty:
             return {"score": 0.0, "interpretation": "no_data", "components": {}}
         h = compute_health_index(df)
@@ -239,7 +245,10 @@ async def detect_kpi_anomalies(
             "AgentKit data layer unavailable: set POSTGRES_URL and seed kpi_metrics"
         )
     try:
-        df = await _run_db(get_kpi_metrics, categories=[domain] if domain else None)
+        cats = None
+        if domain and str(domain).strip().lower() not in ("all", "company", "global", "total", "*", "none", "null"):
+            cats = [domain.strip()]
+        df = await _run_db(get_kpi_metrics, categories=cats)
         if df is None or df.empty:
             return {
                 "anomalies": [],
