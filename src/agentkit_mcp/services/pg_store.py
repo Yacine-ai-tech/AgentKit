@@ -313,9 +313,14 @@ def get_kpi_metrics(
             ("segment", segments),
         ]:
             if vals:
-                ph = ",".join(["%s"] * len(vals))
-                filters.append(f"{col} IN ({ph})")
-                params.extend(vals)
+                if col in ("category", "metric", "segment"):
+                    ph = ",".join(["%s"] * len(vals))
+                    filters.append(f"LOWER({col}) IN ({ph})")
+                    params.extend([str(v).lower() for v in vals])
+                else:
+                    ph = ",".join(["%s"] * len(vals))
+                    filters.append(f"{col} IN ({ph})")
+                    params.extend(vals)
         if period_from:
             filters.append("period >= %s")
             params.append(period_from)
