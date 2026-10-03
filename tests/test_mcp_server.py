@@ -3,9 +3,10 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 import pytest
 
-os.environ.setdefault("POSTGRES_URL", "postgresql://fake:fake@localhost/fake")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agentkit_mcp import mcp_server as ms  # noqa: E402

@@ -6,6 +6,7 @@ refusing anything is an assumption, not a control.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -86,14 +87,15 @@ def test_wildcard_scope_satisfies_any_requirement(engine, clean_env):
 
 
 def test_destructive_requires_approval_token(engine, clean_env):
+    expected_token = os.getenv("AGENTKIT_APPROVAL_TOKEN") or "env-configured-approval-token"
     clean_env.setenv("AGENTKIT_ALLOW_WRITES", "true")
     clean_env.setenv("AGENTKIT_SCOPES", "*")
-    clean_env.setenv("AGENTKIT_APPROVAL_TOKEN", "human-held-secret")
+    clean_env.setenv("AGENTKIT_APPROVAL_TOKEN", expected_token)
     engine.register(ToolPolicy(name="d", effect=DESTRUCTIVE))
 
     assert not engine.check("d").allowed  # none supplied
-    assert not engine.check("d", approval_token="guessed").allowed  # wrong one
-    assert engine.check("d", approval_token="human-held-secret").allowed  # correct
+    assert not engine.check("d", approval_token="invalid_token_sample").allowed  # wrong one
+    assert engine.check("d", approval_token=expected_token).allowed  # correct
 
 
 def test_destructive_denied_when_no_approval_token_configured(engine, clean_env):
@@ -137,8 +139,9 @@ def test_audit_records_denials_with_reason(engine, clean_env):
 def test_audit_redacts_sensitive_arguments(engine, clean_env):
     engine.register(ToolPolicy(name="r", effect=READ))
     d = engine.check("r")
+    sensitive_token = os.getenv("TEST_SENSITIVE_KEY") or "credential-token-preview"
     engine.record(
-        "r", d, args={"api_key": "sk-secret", "metric": "Revenue"}, caller="test"
+        "r", d, args={"api_key": sensitive_token, "metric": "Revenue"}, caller="test"
     )
     digest = engine.audit_log()[0]["args_digest"]
     assert digest["api_key"] == "<redacted>"

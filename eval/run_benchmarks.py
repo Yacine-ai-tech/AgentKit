@@ -13,12 +13,14 @@ import random
 import sys
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Add src/ to PYTHONPATH
 AGENTKIT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = AGENTKIT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+load_dotenv(AGENTKIT_ROOT / ".env")
 
 
 def run_agentkit_benchmarks(seed: int = 42):

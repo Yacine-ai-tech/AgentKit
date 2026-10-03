@@ -12,7 +12,7 @@ import time as _time
 
 # Observability: in-memory request log (v1 "observability" ask) — real facade calls.
 from collections import deque as _deque
-from datetime import datetime as _dt
+from datetime import datetime as _dt, timezone as _tz
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -260,7 +260,7 @@ def build_app() -> FastAPI:
         if request.url.path.startswith("/api"):
             _OBS.appendleft(
                 {
-                    "ts": _dt.utcnow().isoformat() + "Z",
+                    "ts": _dt.now(_tz.utc).isoformat(),
                     "method": request.method,
                     "path": request.url.path,
                     "query": str(request.url.query or ""),

@@ -21,9 +21,11 @@ import json
 import sys
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+load_dotenv(ROOT / ".env")
 
 EVAL_DIR = ROOT / "eval"
 DEFAULT_SCENARIOS = EVAL_DIR / "multi_domain_scenarios.json"
