@@ -111,6 +111,7 @@ async function req<T>(path: string, init?: RequestInit, retryCount = 0): Promise
       headers.set("X-OmniIntel-Internal-Token", INTERNAL_TOKEN);
     }
     const res = await fetch(BASE + path, { ...init, headers });
+    const contentType = res.headers.get("content-type") || "";
     if (!res.ok) {
       if (res.status >= 500 && retryCount < 5) {
         await delay(2000 * (retryCount + 1));
@@ -118,10 +119,19 @@ async function req<T>(path: string, init?: RequestInit, retryCount = 0): Promise
       }
       let detail = res.statusText;
       try {
-        const body = await res.json();
-        detail = body.detail ?? JSON.stringify(body);
+        if (contentType.includes("application/json")) {
+          const body = await res.json();
+          detail = body.detail ?? body.message ?? JSON.stringify(body);
+        } else {
+          const text = await res.text();
+          detail = text.slice(0, 300) || res.statusText;
+        }
       } catch { /* keep statusText */ }
       throw new ApiError(res.status, detail);
+    }
+    if (!contentType.includes("application/json")) {
+      const text = await res.text();
+      throw new ApiError(res.status, `Server returned unexpected content type (${contentType || "non-JSON"}): ${text.slice(0, 200)}`);
     }
     return res.json() as Promise<T>;
   } catch (err: any) {
@@ -162,8 +172,21 @@ export const api = {
       body: JSON.stringify({ question }),
     }),
   /** Generic runner for the Tools try-it page. */
-  run: (endpoint: string, params: Record<string, string | number | undefined>) =>
-    req<Record<string, unknown>>(`${endpoint}${q(params)}`),
+  run: (
+    endpoint: string,
+    params: Record<string, string | number | boolean | undefined>,
+    method: "GET" | "POST" = "GET"
+  ) => {
+    const isPack = endpoint.startsWith("/api/packs/");
+    if (method === "POST" || isPack) {
+      return req<Record<string, unknown>>(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+    }
+    return req<Record<string, unknown>>(`${endpoint}${q(params as any)}`);
+  },
 };
 
 export type ObsRequest = { ts: string; method: string; path: string; query: string; status: number; ms: number };

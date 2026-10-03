@@ -210,7 +210,7 @@ class PolicyEngine:
         if policy is None:
             return Decision(False, f"unknown_tool: {tool!r} is not registered")
 
-        if policy.effect != READ and not self.writes_enabled():
+        if policy.effect != READ and not self.writes_enabled() and not dry_run:
             return Decision(
                 False,
                 f"writes_disabled: {tool!r} has effect={policy.effect}; set "
