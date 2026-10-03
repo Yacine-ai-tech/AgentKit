@@ -1,3 +1,15 @@
+import os
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+AGENTKIT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = AGENTKIT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+load_dotenv(AGENTKIT_ROOT / ".env")
+
 from agentkit_mcp.workflow import analyze
 
 

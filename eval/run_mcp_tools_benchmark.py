@@ -6,8 +6,12 @@ import time
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from dotenv import load_dotenv
 import httpx
 import psutil
+
+# Dynamically load from repository root .env
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 # Base URL for AgentKit's REST facade (web_app.py), not the raw MCP server.
 AGENTKIT_URL = os.environ.get("AGENTKIT_URL", "http://localhost:8005")
