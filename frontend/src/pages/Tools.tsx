@@ -75,16 +75,26 @@ function ToolCard({ tool, policy }: { tool: ToolMeta; policy?: ToolPolicy }) {
   const run = async () => {
     setBusy(true); setErr(""); setResult(null); setUnavailable(false);
     try {
-      const params: Record<string, string | number | undefined> = {};
+      const params: Record<string, string | number | boolean | undefined> = {};
       tool.params.forEach((p) => {
         const v = values[p.name];
-        if (v !== undefined && v !== "") params[p.name === "metric_name" ? "metric" : p.name] = v;
+        if (v !== undefined && v !== "") {
+          if (p.type === "integer" || p.type === "number") {
+            const num = Number(v);
+            params[p.name === "metric_name" ? "metric" : p.name] = isNaN(num) ? v : num;
+          } else if (p.type === "boolean") {
+            params[p.name] = v === "true" || v === "1";
+          } else {
+            params[p.name === "metric_name" ? "metric" : p.name] = v;
+          }
+        }
       });
       if (effect !== "read") {
-        if (dryRun) params.dry_run = "true";
+        if (dryRun) params.dry_run = true;
         if (approvalToken) params.approval_token = approvalToken;
       }
-      setResult(await api.run(tool.endpoint, params));
+      const isPost = effect !== "read" || tool.endpoint.startsWith("/api/packs/");
+      setResult(await api.run(tool.endpoint, params, isPost ? "POST" : "GET"));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
       setUnavailable(isUnavailable(e));

@@ -501,19 +501,18 @@ def build_app() -> FastAPI:
             ]
         }
 
-    @app.post("/api/packs/{pack_name}/{tool_name}")
+    @app.api_route("/api/packs/{pack_name}/{tool_name}", methods=["GET", "POST"])
     async def run_pack_tool(
         pack_name: str,
         tool_name: str,
-        body: Dict[str, Any],
+        request: Request,
         x_demo_session_id: Optional[str] = Header(
             default=None, alias="X-Demo-Session-Id"
         ),
     ) -> Dict[str, Any]:
         """Invoke a declarative pack tool through the same policy path the MCP tools use.
 
-        POST (not GET) because a pack tool may mutate; the effect class in /api/policy
-        says which. Body is the tool's params, plus optional dry_run / approval_token.
+        Supports both GET (with query parameters) and POST (with JSON body or query params).
         """
         from agentkit_mcp.core.policy import PolicyDenied
         from agentkit_mcp.pack_runtime import call_pack_tool
@@ -524,9 +523,23 @@ def build_app() -> FastAPI:
         tool = next((t for t in pack.tools if t.name == tool_name), None)
         if tool is None:
             raise HTTPException(status_code=404, detail=f"unknown tool: {tool_name}")
+
+        params: Dict[str, Any] = {}
+        if request.method == "POST":
+            ct = request.headers.get("content-type", "")
+            if "application/json" in ct:
+                try:
+                    params = await request.json() or {}
+                except Exception:
+                    params = {}
+            if not params and request.query_params:
+                params = dict(request.query_params)
+        else:
+            params = dict(request.query_params)
+
         try:
             return await call_pack_tool(
-                pack, tool, body or {}, caller="rest", session_id=x_demo_session_id
+                pack, tool, params, caller="rest", session_id=x_demo_session_id
             )
         except PolicyDenied as e:
             # 403 with the actual reason — a guardrail that blocks silently is not one.
