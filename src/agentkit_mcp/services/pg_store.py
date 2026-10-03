@@ -14,7 +14,7 @@ Handles all persistence:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -1133,7 +1133,10 @@ def store_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from src.core.crypto import encrypt_value
+        try:
+            from agentkit_mcp.core.crypto import encrypt_value
+        except ImportError:
+            from src.core.crypto import encrypt_value
 
         encrypted_token = refresh_token
         if encrypt:
@@ -1177,7 +1180,10 @@ def get_token_refresh_metadata(
     """
     conn = _get_conn()
     try:
-        from src.core.crypto import decrypt_value
+        try:
+            from agentkit_mcp.core.crypto import decrypt_value
+        except ImportError:
+            from src.core.crypto import decrypt_value
 
         row = conn.execute(
             """
@@ -1725,7 +1731,7 @@ def store_integration_token_refresh(
 ) -> None:
     from datetime import timedelta
 
-    expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
+    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
     conn = _get_conn()
     try:
         row = conn.execute(

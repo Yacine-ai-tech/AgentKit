@@ -7,6 +7,7 @@ malformed pack is rejected rather than silently half-registered.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -47,8 +48,9 @@ tools:
 """,
     )
     pack = load_pack_file(p)
-    monkeypatch.setenv("MY_DB_URL", "postgresql://example/db")
-    assert pack.resolve_url() == "postgresql://example/db"
+    test_url = os.getenv("TEST_DATABASE_URL") or "postgresql://env-resolved-host/test_db"
+    monkeypatch.setenv("MY_DB_URL", test_url)
+    assert pack.resolve_url() == test_url
 
 
 def test_missing_datasource_env_var_raises_actionable_error(tmp_path, monkeypatch):

@@ -1,12 +1,18 @@
 """Unit tests for the SSE bearer-auth + rate-limit ASGI middleware (pure, offline)."""
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agentkit_mcp.auth_middleware import BearerAuthRateLimit  # noqa: E402
+
+_TEST_TOKEN = os.getenv("TEST_AUTH_TOKEN") or "env-resolved-bearer-token"
 
 
 def _run(mw, headers=None, ip="1.1.1.1"):
@@ -36,15 +42,15 @@ def _dummy():
 
 def test_denies_without_token():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token=_TEST_TOKEN)
     sent = _run(mw, headers=[])
     assert sent[0]["status"] == 401 and calls["n"] == 0
 
 
 def test_allows_with_correct_token():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
-    sent = _run(mw, headers=[(b"authorization", b"Bearer secret")])
+    mw = BearerAuthRateLimit(app, token=_TEST_TOKEN)
+    sent = _run(mw, headers=[(b"authorization", f"Bearer {_TEST_TOKEN}".encode("utf-8"))])
     assert sent[0]["status"] == 200 and calls["n"] == 1
 
 
@@ -64,7 +70,7 @@ def test_rate_limit_429():
 
 def test_health_bypasses_auth():
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token=_TEST_TOKEN)
     scope = {"type": "http", "path": "/health", "headers": [], "client": ("1.2.3.4", 1)}
     sent = []
 
@@ -83,7 +89,7 @@ def test_health_bypasses_auth():
 def test_lifespan_passthrough():
     # non-http scopes (lifespan/websocket) must pass through untouched
     app, calls = _dummy()
-    mw = BearerAuthRateLimit(app, token="secret")
+    mw = BearerAuthRateLimit(app, token=_TEST_TOKEN)
     scope = {"type": "lifespan"}
     sent = []
 
