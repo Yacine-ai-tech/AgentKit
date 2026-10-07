@@ -1,9 +1,10 @@
 import UserGuidePage from './pages/UserGuidePage';
 import BenchmarkPage from './pages/BenchmarkPage';
+import ResearchPage from './pages/ResearchPage';
 import ApiDocs from './pages/ApiDocs';
 import { Component, ReactNode, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
-import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity, Code2, BookOpen } from "lucide-react";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity, Code2, BookOpen, GraduationCap, Award } from "lucide-react";
 import { AppShell } from "./kit/AppShell";
 import { WakingBackend } from "./kit/misc";
 import { Skeleton } from "./kit/primitives";
@@ -75,6 +76,8 @@ const NAV = [
   { to: "/observability", label: "Observability", icon: Activity },
   { to: "/connect", label: "Connect", icon: Cable },
   { to: "/resources", label: "Resources & Prompts", icon: Library },
+  { to: "/research", label: "Research", icon: GraduationCap },
+  { to: "/benchmark", label: "Benchmarks", icon: Award },
   { to: "/api-docs", label: "API Docs", icon: Code2 },
   { to: "/user-guide", label: "User Guide", icon: BookOpen }
 ];
@@ -114,9 +117,12 @@ export default function App() {
                 <Route path="/observability" element={<Observability />} />
                 <Route path="/connect" element={<Connect />} />
                 <Route path="/resources" element={<Resources />} />
-                <Route path="/api-docs" element={<ApiDocs />} />
+                <Route path="/research" element={<ResearchPage />} />
                 <Route path="/benchmark" element={<BenchmarkPage />} />
+                <Route path="/benchmarks" element={<Navigate to="/benchmark" replace />} />
+                <Route path="/api-docs" element={<ApiDocs />} />
                 <Route path="/user-guide" element={<UserGuidePage />} />
+                <Route path="/guide" element={<Navigate to="/user-guide" replace />} />
                 <Route path="*" element={<Overview />} />
               </Routes>
             </RouteErrorBoundary>
