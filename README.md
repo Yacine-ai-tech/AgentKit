@@ -3,10 +3,20 @@
 [![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![AgentKit MCP server – quality score on Glama](https://glama.ai/mcp/servers/Yacine-ai-tech/AgentKit/badges/score.svg)](https://glama.ai/mcp/servers/Yacine-ai-tech/AgentKit)
+[![Live App](https://img.shields.io/badge/Live_App-agentkit--ui-0070f3?style=flat&logo=vercel)](https://agentkit-ui-2026.vercel.app)
+[![Research](https://img.shields.io/badge/Research-Capability_Policy-8a2be2?style=flat)](https://agentkit-ui-2026.vercel.app/research)
+[![Benchmarks](https://img.shields.io/badge/Benchmarks-14%2F14_Guardrails-green?style=flat)](https://agentkit-ui-2026.vercel.app/benchmark)
+[![Guide](https://img.shields.io/badge/Docs-User_Guide-blue?style=flat)](https://agentkit-ui-2026.vercel.app/guide)
 
 An MCP server where **tools are declarative, effects are typed, and every action is
 policy-gated and audited** — usable by any MCP client (Claude Desktop, Cursor,
 LangGraph, Claude Agent SDK, CrewAI).
+
+**Live Application:** [agentkit-ui-2026.vercel.app](https://agentkit-ui-2026.vercel.app) (also accessible at [agentkit.ysiddo-ai-projects.app](https://agentkit.ysiddo-ai-projects.app)).
+- **Research Background:** [`RESEARCH.md`](RESEARCH.md) / [Online Research Documentation](https://agentkit-ui-2026.vercel.app/research)
+- **Empirical Benchmarks:** [`BENCHMARK.md`](BENCHMARK.md) / [Online Benchmark Dashboard](https://agentkit-ui-2026.vercel.app/benchmark)
+- **User Guide:** [Online User Guide](https://agentkit-ui-2026.vercel.app/guide)
+- **Self-Hosting Guide:** [`SELF_HOSTING.md`](SELF_HOSTING.md)
 
 Three things distinguish it from a typical MCP server:
 
@@ -21,8 +31,6 @@ Three things distinguish it from a typical MCP server:
 
 The bundled business-intelligence tools below are the **reference pack** that
 demonstrates all of this — not the limit of what the server does.
-
-> **Self-hosting:** see [SELF_HOSTING.md](SELF_HOSTING.md) to run your own instance.
 
 ## What It Does
 
