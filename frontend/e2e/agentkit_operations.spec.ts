@@ -167,7 +167,7 @@ test.describe('Phase 6 — AgentKit API Validation', () => {
       data: {
         name: `e2e_test_tool_${Date.now()}`,
         type: 'tavily_search',
-        config: { api_key: process.env.TAVILY_API_KEY || 'YOUR_API_KEY', max_results: 5 },
+        config: { api_key: process.env.TAVILY_API_KEY || '', max_results: 5 },
         description: 'Playwright E2E test tool'
       }
     }).catch(() => null);
