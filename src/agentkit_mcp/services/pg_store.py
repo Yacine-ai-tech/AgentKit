@@ -70,7 +70,7 @@ def _init_pool():
                 max_size=16,
                 max_idle=300,
                 timeout=10.0,
-                kwargs={"row_factory": dict_row, "options": "-c statement_timeout=30000"},
+                kwargs={"row_factory": dict_row},
                 open=False,
                 reconnect_timeout=30,
                 reconnect_failed=None,
