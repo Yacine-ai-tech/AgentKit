@@ -243,6 +243,9 @@ def build_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    from fastapi.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
     try:
         root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         assets_dir = os.path.join(root_dir, "frontend", "dist", "assets")
