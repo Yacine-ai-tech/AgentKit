@@ -231,6 +231,24 @@ def init_pg_tables():
             "CREATE INDEX IF NOT EXISTS idx_monitoring_type ON monitoring_logs(event_type)"
         )
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS kpi_annotations (
+                id           SERIAL PRIMARY KEY,
+                metric       TEXT        NOT NULL,
+                period       TEXT        NOT NULL,
+                note         TEXT        NOT NULL,
+                severity     TEXT        NOT NULL DEFAULT 'info',
+                author       TEXT        NOT NULL DEFAULT 'agentkit',
+                domain       TEXT,
+                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                retracted_at TIMESTAMPTZ
+            )
+        """)
+        conn.execute("ALTER TABLE kpi_annotations ADD COLUMN IF NOT EXISTS domain TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_metric ON kpi_annotations(metric, retracted_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_domain ON kpi_annotations(domain, retracted_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_created ON kpi_annotations(created_at DESC)")
+
         conn.commit()
         log.info("✅ PostgreSQL tables initialized")
     except Exception as e:
