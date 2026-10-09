@@ -488,7 +488,7 @@ def build_app() -> FastAPI:
 
         return {
             "entries": policy_engine.audit_log(
-                limit=limit, effect=effect, session_id=target_session
+                limit=limit, effect=effect, session_id=target_session, include_global=is_admin
             )
         }
 
