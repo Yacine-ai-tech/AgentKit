@@ -461,6 +461,7 @@ def build_app() -> FastAPI:
     async def audit(
         limit: int = 100,
         effect: Optional[str] = None,
+        session_id: Optional[str] = None,
         x_demo_session_id: Optional[str] = Header(
             default=None, alias="X-Demo-Session-Id"
         ),
@@ -480,10 +481,10 @@ def build_app() -> FastAPI:
         """
         from agentkit_mcp.core.policy import policy_engine
 
-        admin_secret = os.getenv("ADMIN_TOKEN") or os.getenv("AGENTKIT_INTERNAL_TOKEN")
-        is_admin = bool((x_admin_token and admin_secret and x_admin_token == admin_secret) or
-                        (x_agentkit_token and admin_secret and x_agentkit_token == admin_secret))
-        target_session = "*" if is_admin else x_demo_session_id
+        admin_secret = os.getenv("ADMIN_TOKEN")
+        is_admin = bool(x_admin_token and admin_secret and x_admin_token == admin_secret)
+        effective_session = session_id or x_demo_session_id
+        target_session = "*" if is_admin else effective_session
 
         return {
             "entries": policy_engine.audit_log(
@@ -551,9 +552,10 @@ def build_app() -> FastAPI:
         else:
             params = dict(request.query_params)
 
+        effective_session = request.query_params.get("session_id") or x_demo_session_id
         try:
             return await call_pack_tool(
-                pack, tool, params, caller="rest", session_id=x_demo_session_id
+                pack, tool, params, caller="rest", session_id=effective_session
             )
         except PolicyDenied as e:
             # 403 with the actual reason — a guardrail that blocks silently is not one.
