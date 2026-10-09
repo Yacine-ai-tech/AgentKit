@@ -330,10 +330,14 @@ class PolicyEngine:
             items = list(self._audit)
         if effect:
             items = [r for r in items if r.effect == effect]
-        if session_id is not None:
+        if session_id == "*":
+            pass
+        elif session_id is not None:
             items = [
                 r for r in items if r.session_id is None or r.session_id == session_id
             ]
+        else:
+            items = [r for r in items if r.session_id is None]
         return [r.to_dict() for r in items[:limit]]
 
     def describe(self) -> Dict[str, Any]:
