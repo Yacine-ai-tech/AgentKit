@@ -180,3 +180,24 @@ def test_bad_type_is_rejected():
     )
     with pytest.raises(ValueError, match="expects integer"):
         tool.bind({"n": "not-a-number"})
+
+
+def test_annotations_pack_domain_parameter():
+    pack = load_pack_file(REPO / "packs" / "annotations.yaml")
+    annotate_tool = next(t for t in pack.tools if t.name == "annotate_metric")
+    param_names = [p.name for p in annotate_tool.params]
+    assert "domain" in param_names
+    assert "note" in param_names
+
+    # Test binding with domain
+    bound = annotate_tool.bind({"domain": "engineering", "note": "Deployment delay resolved"})
+    assert bound["domain"] == "engineering"
+    assert bound["note"] == "Deployment delay resolved"
+    assert bound["metric"] == "general"
+
+    list_tool = next(t for t in pack.tools if t.name == "list_annotations")
+    list_param_names = [p.name for p in list_tool.params]
+    assert "domain" in list_param_names
+    bound_list = list_tool.bind({"domain": "engineering"})
+    assert bound_list["domain"] == "engineering"
+

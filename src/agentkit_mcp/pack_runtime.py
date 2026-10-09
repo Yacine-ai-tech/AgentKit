@@ -132,6 +132,31 @@ async def call_pack_tool(
     dry_run = bool(args.pop("dry_run", False))
     approval_token = args.pop("approval_token", None)
 
+    # Strip ambient transport/session metadata keys so they don't fail strict pack binding
+    for meta_key in ("session_id", "x_demo_session_id", "x_session_id", "request_id", "caller"):
+        args.pop(meta_key, None)
+
+    # Friendly alias and default resolution for annotate_metric / retract_annotation
+    if tool.name == "annotate_metric":
+        if "note" not in args or not args["note"]:
+            for alt in ("correction", "comment", "message", "text", "description", "content"):
+                if alt in args and args[alt]:
+                    args["note"] = args.pop(alt)
+                    break
+        if "metric" not in args or not args["metric"]:
+            if "domain" in args and args["domain"]:
+                args["metric"] = args["domain"]
+            else:
+                args["metric"] = "general"
+        if "period" not in args or not args["period"]:
+            from datetime import datetime, timezone
+            args["period"] = datetime.now(timezone.utc).strftime("%Y-%m")
+        args.pop("annotation_id", None)
+        args.pop("id", None)
+    elif tool.name == "retract_annotation":
+        if "annotation_id" not in args and "id" in args:
+            args["annotation_id"] = args.pop("id")
+
     decision = policy_engine.check(
         tool.name,
         args=args,

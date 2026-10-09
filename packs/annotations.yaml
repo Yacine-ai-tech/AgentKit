@@ -23,37 +23,47 @@ datasource:
 tools:
   - name: list_annotations
     description: >
-      Read historical metric annotations and operator notes, ordered from most recent to oldest.
-      Allows filtering by a specific KPI metric and optionally including retracted entries.
+      Read historical metric annotations, corrections, and operator notes, ordered from most recent to oldest.
+      Allows filtering by a specific KPI metric, business domain, and optionally including retracted entries.
     effect: read
     params:
+      - {name: domain, type: string, required: false, description: "Optional business domain to filter annotations by (e.g. 'engineering', 'finance', 'product', 'sales'). Omit or pass null to query across all domains."}
       - {name: metric, type: string, required: false, description: "Optional KPI metric name to filter annotations by (e.g. 'revenue', 'gross_margin'). Omit or pass null to query across all metrics."}
       - {name: include_retracted, type: boolean, required: false, default: false, description: "Whether to include soft-deleted / retracted annotations in the returned results. Defaults to false."}
       - {name: limit, type: integer, required: false, default: 50, description: "Maximum number of annotation records to return. Defaults to 50 (range: 1 to 200)."}
     query: >
-      SELECT id, metric, period, note, severity, author, created_at, retracted_at
+      SELECT id, metric, period, note, severity, author, domain, created_at, retracted_at
       FROM kpi_annotations
       WHERE (%(metric)s::text IS NULL OR metric = %(metric)s::text)
+        AND (%(domain)s::text IS NULL OR %(domain)s::text IN ('all', 'global', '*', '') OR domain = %(domain)s::text)
         AND (%(include_retracted)s::boolean OR retracted_at IS NULL)
       ORDER BY created_at DESC
       LIMIT %(limit)s
 
   - name: annotate_metric
     description: >
-      Attach a durable operational finding, investigation note, or root-cause explanation to a specific KPI metric and recording period.
+      Attach a durable operational finding, investigation note, root-cause explanation, or correction to a specific KPI metric, business domain, or recording period.
       Requires write permissions enabled.
     effect: write
     scopes: [annotations.write]
     rate_limit: 30
     params:
-      - {name: metric, type: string, required: true, description: "Canonical name of the metric being annotated (e.g. 'revenue', 'gross_margin', 'headcount')."}
-      - {name: period, type: string, required: true, description: "Target recording period for the annotation in YYYY-MM format (e.g. '2026-07')."}
-      - {name: note, type: string, required: true, description: "Detailed contextual explanation, root cause analysis, or operational finding to attach to the metric."}
+      - {name: domain, type: string, required: false, description: "Business domain the metric or annotation belongs to (e.g. 'engineering', 'finance', 'product', 'sales')."}
+      - {name: metric, type: string, required: false, default: general, description: "Canonical name of the metric being annotated (e.g. 'revenue', 'gross_margin', 'headcount', 'deploy_latency'). Defaults to 'general'."}
+      - {name: period, type: string, required: false, description: "Target recording period for the annotation in YYYY-MM format (e.g. '2026-10'). Defaults to current month if omitted."}
+      - {name: note, type: string, required: true, description: "Detailed contextual explanation, root cause analysis, correction, or operational finding."}
       - {name: severity, type: string, required: false, default: info, description: "Operational impact classification level: 'info', 'warning', or 'critical'. Defaults to 'info'."}
       - {name: author, type: string, required: false, default: agentkit, description: "Identifier of the agent or human user recording the annotation. Defaults to 'agentkit'."}
     statement: >
-      INSERT INTO kpi_annotations (metric, period, note, severity, author)
-      VALUES (%(metric)s, %(period)s, %(note)s, %(severity)s, %(author)s)
+      INSERT INTO kpi_annotations (metric, period, note, severity, author, domain)
+      VALUES (
+        COALESCE(%(metric)s, %(domain)s, 'general'),
+        COALESCE(%(period)s, to_char(NOW(), 'YYYY-MM')),
+        %(note)s,
+        COALESCE(%(severity)s, 'info'),
+        COALESCE(%(author)s, 'agentkit'),
+        %(domain)s
+      )
 
   - name: retract_annotation
     description: >
