@@ -14,13 +14,17 @@ CREATE TABLE IF NOT EXISTS kpi_annotations (
     note         TEXT        NOT NULL,
     severity     TEXT        NOT NULL DEFAULT 'info',   -- info | warning | critical
     author       TEXT        NOT NULL DEFAULT 'agentkit',
+    domain       TEXT,                          -- e.g. 'engineering', 'finance'
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     retracted_at TIMESTAMPTZ                     -- NULL = active
 );
 
--- Reads filter by metric and hide retracted rows; this covers both.
+-- Reads filter by metric and domain, hiding retracted rows.
 CREATE INDEX IF NOT EXISTS idx_kpi_annotations_metric
     ON kpi_annotations (metric, retracted_at);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_annotations_domain
+    ON kpi_annotations (domain, retracted_at);
 
 CREATE INDEX IF NOT EXISTS idx_kpi_annotations_created
     ON kpi_annotations (created_at DESC);
