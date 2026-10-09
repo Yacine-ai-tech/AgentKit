@@ -322,10 +322,12 @@ class PolicyEngine:
         limit: int = 100,
         effect: Optional[str] = None,
         session_id: Optional[str] = None,
+        include_global: bool = False,
     ) -> List[Dict[str, Any]]:
-        """session_id, when given, additionally scopes results to entries with no
-        session_id of their own (MCP/CLI calls — global, not tied to any visitor) plus
-        this caller's own — never another visitor's browser-originated calls."""
+        """session_id, when given without include_global, strictly scopes results to
+        this caller's own browser-originated calls — never another visitor's calls or
+        global CLI/MCP entries. When session_id is '*' or include_global=True, returns
+        all visible events."""
         with self._lock:
             items = list(self._audit)
         if effect:
@@ -333,9 +335,12 @@ class PolicyEngine:
         if session_id == "*":
             pass
         elif session_id is not None:
-            items = [
-                r for r in items if r.session_id is None or r.session_id == session_id
-            ]
+            if include_global:
+                items = [
+                    r for r in items if r.session_id is None or r.session_id == session_id
+                ]
+            else:
+                items = [r for r in items if r.session_id == session_id]
         else:
             items = [r for r in items if r.session_id is None]
         return [r.to_dict() for r in items[:limit]]

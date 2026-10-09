@@ -151,3 +151,24 @@ def test_audit_redacts_sensitive_arguments(engine, clean_env):
 def test_effect_must_be_valid():
     with pytest.raises(ValueError):
         ToolPolicy(name="bad", effect="sudo")
+
+
+def test_audit_session_isolation(engine, clean_env):
+    engine.register(ToolPolicy(name="tool_a", effect=READ))
+    d = engine.check("tool_a")
+    engine.record("tool_a", d, caller="test", session_id="user_1")
+    engine.record("tool_a", d, caller="test", session_id="user_2")
+    engine.record("tool_a", d, caller="test", session_id=None)
+
+    # user_1 strictly sees only user_1
+    entries_1 = engine.audit_log(session_id="user_1")
+    assert len(entries_1) == 1
+    assert entries_1[0]["session_id"] == "user_1"
+
+    # include_global allows seeing global CLI/unassigned
+    entries_global = engine.audit_log(session_id="user_1", include_global=True)
+    assert len(entries_global) == 2
+
+    # wildcard admin sees all 3
+    entries_admin = engine.audit_log(session_id="*")
+    assert len(entries_admin) == 3
