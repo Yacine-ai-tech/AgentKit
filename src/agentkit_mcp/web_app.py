@@ -153,7 +153,7 @@ def build_app() -> FastAPI:
         lock_file = os.path.join(_settings.LOGS_DIR, ".telemetry_last_ping")
         try:
             if os.path.exists(lock_file):
-                if time.time() - os.path.getmtime(lock_file) < 21600:
+                if time.time() - os.path.getmtime(lock_file) < 30:
                     return
             with open(lock_file, "w") as f:
                 f.write(str(time.time()))
@@ -464,6 +464,12 @@ def build_app() -> FastAPI:
         x_demo_session_id: Optional[str] = Header(
             default=None, alias="X-Demo-Session-Id"
         ),
+        x_admin_token: Optional[str] = Header(
+            default=None, alias="X-Admin-Token"
+        ),
+        x_agentkit_token: Optional[str] = Header(
+            default=None, alias="X-AgentKit-Internal-Token"
+        ),
     ) -> Dict[str, Any]:
         """Audit trail of tool invocations — allowed and denied, with the deny reason.
 
@@ -474,9 +480,14 @@ def build_app() -> FastAPI:
         """
         from agentkit_mcp.core.policy import policy_engine
 
+        admin_secret = os.getenv("ADMIN_TOKEN") or os.getenv("AGENTKIT_INTERNAL_TOKEN")
+        is_admin = bool((x_admin_token and admin_secret and x_admin_token == admin_secret) or
+                        (x_agentkit_token and admin_secret and x_agentkit_token == admin_secret))
+        target_session = "*" if is_admin else x_demo_session_id
+
         return {
             "entries": policy_engine.audit_log(
-                limit=limit, effect=effect, session_id=x_demo_session_id
+                limit=limit, effect=effect, session_id=target_session
             )
         }
 
