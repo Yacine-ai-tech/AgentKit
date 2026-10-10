@@ -202,7 +202,7 @@ export type WorkflowResult = {
   [k: string]: unknown;
 };
 
-export const DOMAINS = ["Finance", "Growth", "Operations", "People", "ESG", "IT_Ops"];
+export const DOMAINS = ["Finance", "Growth", "Operations", "People", "Customer", "Engineering", "Logistics", "ESG", "IT", "Security"];
 
 export function isUnavailable(e: unknown): boolean {
   return e instanceof ApiError && e.status === 503;
