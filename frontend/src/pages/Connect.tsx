@@ -45,38 +45,38 @@ export default function Connect() {
     <div>
       <PageHeader
         title="Connect your agents"
-        sub="Two direct integration paths: point Claude Desktop at the hosted SSE endpoint, or run the server locally over stdio. Custom declarative tool packs are loaded automatically."
+        sub="Framework-agnostic agent governance layer: connect Claude Desktop, Cursor, CrewAI, AutoGen, LangChain, LlamaIndex, or any custom client supporting the Model Context Protocol (MCP)."
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Snippet
           icon={Cable}
-          title="Claude Desktop — remote (hosted SSE)"
+          title="MCP Client / Desktop Apps — remote (hosted SSE)"
           tag="no local setup"
-          note="Uses mcp-remote (Node). The hosted endpoint requires a bearer token (MCP_AUTH_TOKEN) — request one from the maintainer."
+          note="Works with Claude Desktop, Cursor, or any SSE-compatible MCP client. Point your client to the hosted SSE endpoint."
           code={REMOTE_CONFIG}
         />
         <Snippet
           icon={TerminalSquare}
-          title="Claude Desktop — local (stdio)"
+          title="MCP Client / Stdio — local"
           tag="private"
-          note="Runs on your machine with your own DB and keys; tools return explicit errors when POSTGRES_URL is missing."
+          note="Runs locally via stdio for any agent framework (Claude Desktop, Cursor, Custom Python/Node agents). Tools return explicit errors when POSTGRES_URL is missing."
           code={LOCAL_CONFIG}
         />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card title="CrewAI demo" actions={<Chip><Bot size={11} /> demos/crewai_demo.py</Chip>}>
+        <Card title="CrewAI Crew Integration" actions={<Chip><Bot size={11} /> demos/crewai_demo.py</Chip>}>
           <p className="text-[13px] leading-6 text-dim">
-            A runnable CrewAI crew (planner / analyst / reporter) wired to the same service layer —
-            production-validated against the live database. Run it from the repo:
+            Runnable CrewAI crew (planner / analyst / reporter) wired to AgentKit governance tools —
+            demonstrating native multi-agent framework integration. Run it from the repo:
           </p>
           <pre className="num mt-2 overflow-x-auto rounded-xl border border-line bg-bg p-3 font-mono text-[12px] leading-5 text-dim">python demos/crewai_demo.py</pre>
         </Card>
-        <Card title="Claude Agent SDK demo" actions={<Chip><Boxes size={11} /> demos/claude_agent_sdk_demo.py</Chip>}>
+        <Card title="Universal Agent SDK & Custom Frameworks" actions={<Chip><Boxes size={11} /> demos/claude_agent_sdk_demo.py</Chip>}>
           <p className="text-[13px] leading-6 text-dim">
-            The same analyst pattern on Anthropic's Agent SDK — tool definitions map 1:1 onto the
-            MCP tools, demonstrating that AgentKit's capability layer is framework-agnostic.
+            AgentKit tools expose standard JSON-schema definitions and MCP transport primitives.
+            Compatible out-of-the-box with Anthropic Agent SDK, LangChain, AutoGen, LlamaIndex, or custom agent loops.
           </p>
           <pre className="num mt-2 overflow-x-auto rounded-xl border border-line bg-bg p-3 font-mono text-[12px] leading-5 text-dim">python demos/claude_agent_sdk_demo.py</pre>
         </Card>

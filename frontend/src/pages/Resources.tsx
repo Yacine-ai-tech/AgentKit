@@ -5,11 +5,13 @@ import { Button, Card, Chip, EmptyState, Skeleton } from "../kit/primitives";
 import { JSONViewer } from "../kit/JSONViewer";
 import { api, isUnavailable, KPI } from "../lib/api";
 
-/* The 6 kpi:// resources map 1:1 onto query_kpis(domain, limit=10) — the facade lets the
+/* The kpi:// resources map 1:1 onto query_kpis(domain, limit=10) — the facade lets the
    browser read the same live values agents get. The prompt text below is the REAL template
-   registered in mcp_server.py. */
+   registered in mcp_server.py.
+   These 10 domains are a reference baseline — any custom domain taxonomy can be configured
+   via STREAMPULSE_DOMAIN_PACK. The framework is fully extensible beyond this set. */
 
-const RESOURCES = ["Finance", "Growth", "Operations", "People", "ESG", "IT_Ops"];
+const RESOURCES = ["Finance", "Growth", "Operations", "People", "Customer", "Engineering", "Logistics", "ESG", "IT", "Security"];
 
 const PROMPT_TEXT = `Produce a monthly executive briefing for {month}. Sections: KEY FINDING, EVIDENCE (from KPI tools), ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. Be concrete and concise.`;
 

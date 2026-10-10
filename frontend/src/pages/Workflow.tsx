@@ -77,25 +77,71 @@ export default function Workflow() {
 
       {result && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <Chip tone={result.error ? "bad" : "ok"}>{result.error ? "completed with error" : "run complete"}</Chip>
-            {result._elapsed_ms != null && <Chip className="num">{(result._elapsed_ms / 1000).toFixed(1)}s</Chip>}
-            <Button variant="secondary" className="ml-auto" onClick={exportReport}><Download size={13} /> Export report (.md)</Button>
+          {/* Status & Export Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-surface-1 border border-line rounded-xl">
+            <div className="flex items-center gap-2">
+              <Chip tone={result.error ? "bad" : "ok"}>
+                {result.error ? "Execution Error" : "Analysis Complete"}
+              </Chip>
+              {result._elapsed_ms != null && (
+                <Chip className="num">{(result._elapsed_ms / 1000).toFixed(1)}s total runtime</Chip>
+              )}
+            </div>
+            <Button variant="secondary" onClick={exportReport}>
+              <Download size={13} /> Export Executive Report (.md)
+            </Button>
           </div>
+
+          {/* Stage 1: Analysis Plan */}
           {result.plan && (
-            <Card title="Plan"><p className="whitespace-pre-wrap text-[13.5px] leading-7 text-dim">{result.plan}</p></Card>
+            <Card
+              title="Stage 1 — Planner Agent Analysis Strategy"
+              actions={<Chip className="bg-blue-500/10 text-blue-400 border-blue-500/30">Planner Agent</Chip>}
+            >
+              <div className="p-4 bg-surface-2 rounded-xl border border-line">
+                <p className="whitespace-pre-wrap text-[13.5px] leading-7 text-body font-mono">
+                  {result.plan}
+                </p>
+              </div>
+            </Card>
           )}
+
+          {/* Stage 2 & 3: Executive Synthesis */}
           {result.report && (
-            <Card title="Executive report"><p className="whitespace-pre-wrap text-[13.5px] leading-7 text-dim">{result.report}</p></Card>
+            <Card
+              title="Stage 2 & 3 — Executive Briefing & Synthesis"
+              actions={<Chip tone="accent">Reporter Agent</Chip>}
+            >
+              <div className="prose prose-invert max-w-none text-[13.5px] leading-7 text-body p-4 bg-surface-2 rounded-xl border border-line whitespace-pre-wrap font-sans">
+                {result.report}
+              </div>
+            </Card>
           )}
+
+          {/* Structured Report Findings */}
           {result.report_sections && Object.keys(result.report_sections).length > 0 && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {Object.entries(result.report_sections).map(([k, v]) => (
-                <Card key={k} title={k}><p className="whitespace-pre-wrap text-[13px] leading-6 text-dim">{v}</p></Card>
-              ))}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-body tracking-wide uppercase text-dim">
+                Detailed Analysis Breakdown
+              </h3>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {Object.entries(result.report_sections).map(([k, v]) => (
+                  <Card
+                    key={k}
+                    title={k.toUpperCase()}
+                    className="border-line hover:border-line-strong transition"
+                  >
+                    <p className="whitespace-pre-wrap text-[13px] leading-6 text-dim">{v}</p>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
-          <Card title="Full run state"><JSONViewer data={result} maxHeight={320} /></Card>
+
+          {/* Execution Telemetry & Raw State */}
+          <Card title="Pipeline Execution Audit & Raw State">
+            <JSONViewer data={result} maxHeight={320} />
+          </Card>
         </motion.div>
       )}
 
