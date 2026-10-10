@@ -40,15 +40,15 @@ TOOL_META = [
     },
     {
         "name": "get_company_health",
-        "description": "Composite company health index for a domain (Finance, People, Operations, Customer, Engineering) (or all).",
+        "description": "Composite company health index for a domain (Finance, Growth, Operations, People, Customer, Engineering, Logistics, ESG, IT, Security) or all domains.",
         "params": [{"name": "domain", "type": "string", "required": False}],
         "endpoint": "/api/health-score",
     },
     {
         "name": "detect_kpi_anomalies",
-        "description": "Find anomalies in a domain's (Finance, People, Operations, Customer, Engineering) KPI history (z-score).",
+        "description": "Find anomalies in a domain's KPI history (z-score). Domains: Finance, Growth, Operations, People, Customer, Engineering, Logistics, ESG, IT, Security. Defaults to Finance.",
         "params": [
-            {"name": "domain", "type": "string", "required": True},
+            {"name": "domain", "type": "string", "required": False, "default": "Finance"},
             {
                 "name": "method",
                 "type": "string",
@@ -61,9 +61,9 @@ TOOL_META = [
     },
     {
         "name": "forecast_metric",
-        "description": "Forecast N periods ahead for a named metric across Finance, People, Operations, Customer, or Engineering with CI bands.",
+        "description": "Forecast N periods ahead for a named metric across any domain (Finance, Growth, Operations, People, Customer, Engineering, Logistics, ESG, IT, Security) with CI bands. Defaults to revenue.",
         "params": [
-            {"name": "metric_name", "type": "string", "required": True},
+            {"name": "metric_name", "type": "string", "required": False, "default": "revenue"},
             {"name": "periods", "type": "integer", "required": False, "default": 6},
             {
                 "name": "confidence_level",
@@ -76,13 +76,13 @@ TOOL_META = [
     },
     {
         "name": "list_available_metrics",
-        "description": "Discovery: metrics, categories (Finance, People, Operations, Customer, Engineering) and periods available in the store.",
+        "description": "Discovery: metrics, categories and periods available in the store. Domains: Finance, Growth, Operations, People, Customer, Engineering, Logistics, ESG, IT, Security.",
         "params": [{"name": "domain", "type": "string", "required": False}],
         "endpoint": "/api/metrics",
     },
     {
         "name": "get_executive_summary",
-        "description": "One-shot synthesis of health, key KPIs and anomalies across all 5 domains.",
+        "description": "One-shot synthesis of health, key KPIs and anomalies across all 10 domains (Finance, Growth, Operations, People, Customer, Engineering, Logistics, ESG, IT, Security).",
         "params": [],
         "endpoint": "/api/summary",
     },
@@ -413,7 +413,7 @@ def build_app() -> FastAPI:
 
     @app.get("/api/anomalies")
     async def anomalies(
-        domain: str, method: str = "zscore", threshold: float = 2.5
+        domain: str = "Finance", method: str = "zscore", threshold: float = 2.5
     ) -> Dict[str, Any]:
         return await _call(
             tools.detect_kpi_anomalies,
@@ -424,7 +424,7 @@ def build_app() -> FastAPI:
 
     @app.get("/api/forecast")
     async def forecast(
-        metric: str, periods: int = 6, confidence_level: float = 0.95
+        metric: str = "revenue", periods: int = 6, confidence_level: float = 0.95
     ) -> Dict[str, Any]:
         return await _call(
             tools.forecast_metric,

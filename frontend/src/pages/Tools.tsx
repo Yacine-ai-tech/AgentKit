@@ -96,7 +96,21 @@ function ToolCard({ tool, policy }: { tool: ToolMeta; policy?: ToolPolicy }) {
       const isPost = effect !== "read" || tool.endpoint.startsWith("/api/packs/");
       setResult(await api.run(tool.endpoint, params, isPost ? "POST" : "GET"));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      // Extract the most human-readable message possible from the error.
+      // FastAPI 422 detail is an array: [{msg: "...", loc: [...]}]
+      let msg = e instanceof Error ? e.message : String(e);
+      try {
+        const parsed = JSON.parse(msg);
+        if (Array.isArray(parsed)) {
+          msg = parsed.map((d: any) => d.msg || JSON.stringify(d)).join("; ");
+        } else if (parsed?.detail) {
+          const d = parsed.detail;
+          msg = Array.isArray(d) ? d.map((x: any) => x.msg || String(x)).join("; ") : String(d);
+        } else if (parsed?.message) {
+          msg = String(parsed.message);
+        }
+      } catch { /* not JSON, keep msg as-is */ }
+      setErr(msg);
       setUnavailable(isUnavailable(e));
     } finally { setBusy(false); }
   };
