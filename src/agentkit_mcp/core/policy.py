@@ -324,16 +324,16 @@ class PolicyEngine:
         session_id: Optional[str] = None,
         include_global: bool = False,
     ) -> List[Dict[str, Any]]:
-        """session_id, when given without include_global, strictly scopes results to
-        this caller's own browser-originated calls — never another visitor's calls or
-        global CLI/MCP entries. When session_id is '*' or include_global=True, returns
-        all visible events."""
+        """A wildcard session returns all entries only when include_global is set by
+        the trusted admin route; otherwise it returns no entries."""
         with self._lock:
             items = list(self._audit)
         if effect:
             items = [r for r in items if r.effect == effect]
-        if session_id == "*":
+        if session_id == "*" and include_global:
             pass
+        elif session_id == "*":
+            items = []
         elif session_id is not None:
             if include_global:
                 items = [
