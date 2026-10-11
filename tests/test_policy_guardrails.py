@@ -170,5 +170,22 @@ def test_audit_session_isolation(engine, clean_env):
     assert len(entries_global) == 2
 
     # wildcard admin sees all 3
-    entries_admin = engine.audit_log(session_id="*")
+    entries_admin = engine.audit_log(session_id="*", include_global=True)
     assert len(entries_admin) == 3
+    assert engine.audit_log(session_id="*") == []
+
+
+def test_audit_endpoint_rejects_visitor_wildcard(monkeypatch):
+    from fastapi.testclient import TestClient
+    from agentkit_mcp.web_app import build_app
+
+    monkeypatch.setenv("ADMIN_TOKEN", "admin-test-token")
+    monkeypatch.setenv("REQUIRE_INTERNAL_TOKEN", "false")
+    client = TestClient(build_app())
+
+    assert client.get("/api/audit?session_id=*").status_code == 403
+    admin_response = client.get(
+        "/api/audit?session_id=*",
+        headers={"X-Admin-Token": "admin-test-token"},
+    )
+    assert admin_response.status_code == 200
