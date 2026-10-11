@@ -484,6 +484,8 @@ def build_app() -> FastAPI:
         admin_secret = os.getenv("ADMIN_TOKEN")
         is_admin = bool(x_admin_token and admin_secret and x_admin_token == admin_secret)
         effective_session = session_id or x_demo_session_id
+        if effective_session == "*" and not is_admin:
+            raise HTTPException(status_code=403, detail="admin_required_for_unscoped_access")
         target_session = "*" if is_admin else effective_session
 
         return {
