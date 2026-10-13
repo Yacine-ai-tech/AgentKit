@@ -113,10 +113,11 @@ def build_app() -> FastAPI:
     send_startup_ping()
     # -------------------------
 
-    @app.on_event("startup")
-    async def _ensure_schema() -> None:
-        """Create or migrate the PostgreSQL tables (idempotent) when a database is set."""
-        import asyncio as _asyncio
+    # Create or migrate the PostgreSQL tables (idempotent) when a database is configured.
+    # Runs on a background thread at build time rather than as a startup event: this app
+    # is mounted into the MCP server's ASGI app, where sub-app startup events do not run.
+    def _ensure_schema() -> None:
+        import logging
         import os as _os_env
 
         if not (_os_env.getenv("POSTGRES_URL") or _os_env.getenv("DATABASE_URL")):
@@ -124,11 +125,13 @@ def build_app() -> FastAPI:
         try:
             from agentkit_mcp.services.pg_store import init_pg_tables
 
-            await _asyncio.to_thread(init_pg_tables)
+            init_pg_tables()
         except Exception as exc:  # the facade still serves read tools without it
-            import logging
-
             logging.warning("schema bootstrap skipped: %s", exc)
+
+    import threading as _threading
+
+    _threading.Thread(target=_ensure_schema, daemon=True, name="schema-bootstrap").start()
 
     import hmac as _hmac
     import os as _os
