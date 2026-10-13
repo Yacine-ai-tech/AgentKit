@@ -202,3 +202,19 @@ def note_failure(lease: Optional[KeyLease], exc: BaseException) -> bool:
 def other_key_available(provider: Optional[str]) -> bool:
     """True when at least one key of this provider is not cooling down."""
     return bool(provider) and pool(provider).available() > 0
+
+
+async def acompletion_pooled(acompletion_fn, model: str, **kwargs):
+    """Await ``acompletion_fn(model=..., **kwargs)`` with a leased provider key.
+
+    A key that fails with a rate limit is parked before the error propagates, so the
+    caller's own retry loop picks another key on its next attempt.
+    """
+    lease = lease_for_model(model)
+    if lease is not None and "api_key" not in kwargs:
+        kwargs["api_key"] = lease.key
+    try:
+        return await acompletion_fn(model=model, **kwargs)
+    except Exception as exc:
+        note_failure(lease, exc)
+        raise
