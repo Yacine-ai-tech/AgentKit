@@ -582,6 +582,12 @@ def main(default_transport: Optional[str] = None) -> None:
     if default_transport is None:
         default_transport = "sse" if ("PORT" in os.environ or "MCP_PORT" in os.environ) else "stdio"
     transport = os.getenv("MCP_TRANSPORT", default_transport).lower()
+    try:
+        from agentkit_mcp.telemetry import send_startup_ping
+
+        send_startup_ping()  # background thread; never writes to stdout
+    except Exception:
+        pass
     if transport == "stdio":
         # Local single-user IDE/desktop integration (Claude Desktop, Cursor, Devin: all
         # spawn this process directly and pipe stdin/stdout). No network port, no
