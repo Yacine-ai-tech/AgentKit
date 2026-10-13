@@ -354,7 +354,7 @@ A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools perfo
 `python eval/run_mcp_tools_benchmark.py`
 
 ## Setup
-- Test Suite: {len(TEST_SCENARIOS)} standardized queries spanning all 5 seeded domains
+- Test Suite: {len(TEST_SCENARIOS)} standardized queries spanning 5 of the 10 seeded domains
 - Tool Categories: Finance KPIs, People KPIs, Operations KPIs, Customer KPIs, Engineering KPIs, Forecasting, Anomalies
 - Metrics: Domain-selection accuracy, execution time, memory usage, success rate
 - Engine: Real 3-agent LangGraph workflow (Planner → Analyst → Reporter) via AgentKit's REST facade
@@ -369,7 +369,7 @@ A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools perfo
 | **Avg Tool Execution Time** | **{results['avg_execution_time']:.1f}s** |
 | **P95 Tool Execution Time** | **{results['p95_execution_time']:.1f}s** |
 | **Report Generation Quality** | **{results['report_quality_rate']:.1f}%** |
-| **Memory Peak per Tool** | **{results['max_memory']:.0f}MB** |
+| **Benchmark-client memory delta (peak)** | **{results['max_memory']:.0f}MB** |
 
 **Tool Breakdown:**
 
@@ -379,6 +379,13 @@ A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools perfo
 
     for category, metrics in results["category_summary"].items():
         content += f"| {category} | {metrics['success_rate']:.0f}% | {metrics['avg_time']:.1f}s | {metrics['selection_accuracy']:.0f}% |\n"
+
+    content += (
+        "\nExecution time covers the whole three-agent workflow (planner, analyst and reporter model calls "
+        "in sequence), so it is dominated by LLM generation and varies with provider rate limits. The memory "
+        "figure is the change in the benchmark client's own resident memory, not the server's. "
+        "Tool selection means that the expected domain's data was retrieved by the analyst step.\n"
+    )
 
     with open(md_path, "w") as f:
         f.write(content)

@@ -39,7 +39,7 @@ export default function ResearchPage() {
           <div className="rounded-xl border border-line bg-surface-2 p-4">
             <div className="text-xs font-semibold uppercase tracking-wider text-accent mb-1">Protocol Boundary</div>
             <div className="font-semibold text-body text-sm mb-1">Below-the-Prompt Security</div>
-            <div className="text-xs text-dim">Enforcement executed in Python runtime prior to tool dispatch; immune to prompt-layer jailbreaks.</div>
+            <div className="text-xs text-dim">Enforcement runs in the Python runtime before tool dispatch, so it does not depend on the model complying with a prompt.</div>
           </div>
           <div className="rounded-xl border border-line bg-surface-2 p-4">
             <div className="text-xs font-semibold uppercase tracking-wider text-ok mb-1">Stateful Graph</div>
@@ -63,7 +63,7 @@ export default function ResearchPage() {
           <ul className="list-disc pl-5 space-y-2 text-dim text-xs">
             <li><strong className="text-body">Indirect Prompt Injection:</strong> Retrieved untrusted context, user inputs, and intermediary tool outputs share the LLM attention window with system instructions.</li>
             <li><strong className="text-body">Absence of Caller Scopes:</strong> Conventional servers treat all invocations identically without granular capability scopes.</li>
-            <li><strong className="text-body">Binary Permissioning:</strong> Destructive operations are either permanently permitted or globally disabled, lacking dry-run simulations or cryptographic approval tokens.</li>
+            <li><strong className="text-body">Binary Permissioning:</strong> Destructive operations are either permanently permitted or globally disabled, with no dry-run simulation or human-held approval token.</li>
           </ul>
           <div className="rounded-lg border border-bad/30 bg-bad/10 p-4 text-xs text-bad flex items-start gap-3">
             <ShieldAlert size={18} className="shrink-0 mt-0.5" />
@@ -89,8 +89,8 @@ export default function ResearchPage() {
             </p>
             <ul className="list-disc pl-4 space-y-1">
               <li><strong className="text-body">Read-Only:</strong> Safe queries without state mutation (e.g., <code className="text-accent">get_company_health</code>).</li>
-              <li><strong className="text-body">Idempotent-Write:</strong> Controlled updates governed by rate limits.</li>
-              <li><strong className="text-body">Destructive-Write:</strong> Gated by cryptographic approval tokens and dry-run preflight validation.</li>
+              <li><strong className="text-body">Write:</strong> Controlled updates governed by rate limits.</li>
+              <li><strong className="text-body">Destructive:</strong> Gated by a human-held approval token, with dry-run preflight available.</li>
             </ul>
           </div>
         </Card>
@@ -123,11 +123,11 @@ export default function ResearchPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-lg bg-surface-2 p-3.5 border border-line">
               <div className="font-semibold text-body text-xs mb-1">Uncompiled Baseline</div>
-              <div className="text-xs text-dim">Direct zero-shot prompting over tool descriptions. Tool selection accuracy: 91.2%, occasional schema binding errors on complex parameter types.</div>
+              <div className="text-xs text-dim">Direct zero-shot prompting over tool descriptions. Held-out score 0.680 on 30 hand-written business questions.</div>
             </div>
             <div className="rounded-lg bg-surface-2 p-3.5 border border-line">
               <div className="font-semibold text-body text-xs mb-1">BootstrapFewShot Compiled</div>
-              <div className="text-xs text-dim">Compiled demonstrations optimize few-shot exemplars automatically. Tool selection accuracy reaches 100% across the 43 multi-domain scenarios.</div>
+              <div className="text-xs text-dim">Compiled demonstrations select few-shot exemplars automatically. Held-out score 0.707 on the same 30 questions: a small gain, not a categorical improvement.</div>
             </div>
           </div>
         </div>
@@ -137,20 +137,24 @@ export default function ResearchPage() {
       <Card title="5. Academic Literature & References">
         <div className="space-y-3 text-xs text-dim">
           <div className="border-b border-line pb-2">
-            <div className="font-semibold text-body">Securing the Model Context Protocol: Capability-Based Architectures for LLM Tool Servers</div>
-            <div className="text-muted">OWASP Agentic AI Safety Working Group & Coalition for Secure AI (2025–2026).</div>
+            <div className="font-semibold text-body">Securing the Model Context Protocol: Defending LLMs Against Tool Poisoning and Adversarial Attacks</div>
+            <div className="text-muted">arXiv:2512.06556 (2025). Layered defences against tool poisoning at the descriptor and runtime level.</div>
+          </div>
+          <div className="border-b border-line pb-2">
+            <div className="font-semibold text-body">Breaking the Protocol: Security Analysis of the Model Context Protocol</div>
+            <div className="text-muted">Maloyan, N. and Namiot, D. arXiv:2601.17549 (2026). Argues the weaknesses are architectural, including missing capability attestation.</div>
           </div>
           <div className="border-b border-line pb-2">
             <div className="font-semibold text-body">DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines</div>
-            <div className="text-muted">Khattab, O., et al. (Stanford University, 2023–2025). Foundational framework for modular LM optimization.</div>
+            <div className="text-muted">Khattab, O., et al. (2023; ICLR 2024). The framework behind the compilation experiment.</div>
           </div>
           <div className="border-b border-line pb-2">
-            <div className="font-semibold text-body">LangGraph: Building Stateful, Multi-Actor Applications with LLMs</div>
-            <div className="text-muted">LangChain AI (2024). Architectural blueprint for cyclically controlled agent state machines.</div>
+            <div className="font-semibold text-body">LangGraph documentation</div>
+            <div className="text-muted">LangChain (2024–2026). The state-graph library used for the planner, analyst and reporter workflow.</div>
           </div>
           <div>
-            <div className="font-semibold text-body">Model Context Protocol Specification (v1.0)</div>
-            <div className="text-muted">Anthropic (2024–2026). The open standard for local and remote LLM tool connectivity.</div>
+            <div className="font-semibold text-body">Model Context Protocol Specification</div>
+            <div className="text-muted">Anthropic and contributors (2024–2026). The open standard for local and remote tool connectivity.</div>
           </div>
         </div>
       </Card>

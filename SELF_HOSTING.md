@@ -1,15 +1,23 @@
 # Self-Hosting AgentKit
 
-1. **Installation:** Run `pip install agentkit-mcp`.
-2. **MCP Desktop:** Configure Claude Desktop via `claude_desktop_config.json`.
-3. **Running:** `mcp-remote https://agentkit.ysiddo-ai-projects.app/sse` or locally via `http://localhost:8005/sse`.
+1. **Install:** `pip install agentkit-mcp` (or run it without installing: `uvx agentkit-mcp`).
+2. **Point it at a database:** set `POSTGRES_URL` in the environment or in a `.env` file.
+3. **Run:**
+   - For an MCP desktop client, the `agentkit-mcp` command serves over stdio. See
+     [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) for Claude Desktop, Cursor and Devin
+     configuration.
+   - For a network deployment, set `PORT` (or `MCP_PORT`) to serve SSE,
+     and set `MCP_AUTH_TOKEN` so the endpoint requires a bearer token. For local testing the
+     SSE endpoint is `http://localhost:8005/sse`.
 
 ## Data source
 
-AgentKit's tools (`query_kpis`, `get_company_health`, `detect_kpi_anomalies`, etc.) read
-from whatever Postgres database `POSTGRES_URL` points at — set via `.env`, no code
-changes needed. The live hosted demo happens to point AgentKit at the same instance as
-the IntelAI demo, purely to show the two working together on the same real data; that's
-a demo-time convenience, not a requirement. For your own deployment, point `POSTGRES_URL`
-at a database seeded with your own KPI data using the schema in
-`src/agentkit_mcp/db/schema.sql` — AgentKit doesn't need IntelAI running to work.
+AgentKit's tools (`query_kpis`, `get_company_health`, `detect_kpi_anomalies`, and so on) read
+from whatever Postgres database `POSTGRES_URL` points at; no code change is needed. The hosted
+demo uses its own database seeded with sample KPI data covering ten business domains
+(`src/agentkit_mcp/data/seed.py`). For your own deployment, seed a database with your data using
+the schema in `src/agentkit_mcp/db/schema.sql`. AgentKit does not need any other service of this
+project to run.
+
+To expose your own database or HTTP API as tools without writing Python, see
+[docs/REUSE.md](docs/REUSE.md).
