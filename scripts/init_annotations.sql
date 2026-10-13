@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS kpi_annotations (
     severity     TEXT        NOT NULL DEFAULT 'info',   -- info | warning | critical
     author       TEXT        NOT NULL DEFAULT 'agentkit',
     domain       TEXT,                          -- e.g. 'engineering', 'finance'
+    owner_session_id TEXT,                      -- writing session; NULL = shared/operator row
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     retracted_at TIMESTAMPTZ                     -- NULL = active
 );
@@ -25,6 +26,9 @@ CREATE INDEX IF NOT EXISTS idx_kpi_annotations_metric
 
 CREATE INDEX IF NOT EXISTS idx_kpi_annotations_domain
     ON kpi_annotations (domain, retracted_at);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_annotations_owner
+    ON kpi_annotations (owner_session_id);
 
 CREATE INDEX IF NOT EXISTS idx_kpi_annotations_created
     ON kpi_annotations (created_at DESC);

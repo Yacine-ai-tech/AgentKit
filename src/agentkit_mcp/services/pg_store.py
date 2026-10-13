@@ -245,6 +245,8 @@ def init_pg_tables():
             )
         """)
         conn.execute("ALTER TABLE kpi_annotations ADD COLUMN IF NOT EXISTS domain TEXT")
+        conn.execute("ALTER TABLE kpi_annotations ADD COLUMN IF NOT EXISTS owner_session_id TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_owner ON kpi_annotations(owner_session_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_metric ON kpi_annotations(metric, retracted_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_domain ON kpi_annotations(domain, retracted_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_created ON kpi_annotations(created_at DESC)")
