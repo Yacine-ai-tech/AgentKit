@@ -9,7 +9,7 @@
 [![Guide](https://img.shields.io/badge/Docs-User_Guide-blue?style=flat)](https://agentkit.ysiddo-ai-projects.app/guide)
 
 An MCP server where **tools are declarative, effects are typed, and every action is
-policy-gated and audited** — usable by any MCP client (Claude Desktop, Cursor,
+policy-gated and audited**. It works with any MCP client (Claude Desktop, Cursor,
 LangGraph, Claude Agent SDK, CrewAI).
 
 **Live Application:** [agentkit.ysiddo-ai-projects.app](https://agentkit.ysiddo-ai-projects.app).
@@ -20,17 +20,17 @@ LangGraph, Claude Agent SDK, CrewAI).
 
 Three things distinguish it from a typical MCP server:
 
-- **Declarative tools** — define tools in YAML over your own Postgres or HTTP API. No
-  Python, no fork. ([docs/REUSE.md](docs/REUSE.md))
-- **Real actions, not just reads** — tools declare an effect (`read` / `write` /
-  `destructive`) and mutating tools genuinely mutate.
-- **Guardrails that hold regardless of the prompt** — writes are off by default,
-  destructive actions need a human-held approval token the model never sees, everything
-  supports dry-run, and every call (allowed *and denied*) is audited.
+- **Declarative tools.** Define tools in YAML over your own Postgres or HTTP API, with no
+  Python and no fork. ([docs/REUSE.md](docs/REUSE.md))
+- **Typed effects.** Each tool declares an effect (`read`, `write` or `destructive`), and
+  tools that mutate data do mutate it.
+- **Guardrails that do not depend on the prompt.** Writes are off by default, destructive
+  actions need a human-held approval token the model never sees, every mutating tool
+  supports dry-run, and every call (allowed and denied) is audited.
   ([SECURITY.md](SECURITY.md#capability-guardrails))
 
-The bundled business-intelligence tools below are the **reference pack** that
-demonstrates all of this — not the limit of what the server does.
+The bundled business-intelligence tools below are the **reference pack**. They show the
+mechanics end to end; they are not the limit of what the server can serve.
 
 ## What It Does
 
@@ -45,12 +45,12 @@ demonstrates all of this — not the limit of what the server does.
 > your own `@mcp.resource` / `@mcp.prompt` decorators. See
 > [docs/REUSE.md](docs/REUSE.md#direction-3----adding-your-own-mcp-resources-and-prompts).
 
-**Write and destructive actions are real, not aspirational.** The `annotations` pack
-lets an agent record a durable note on a metric (`annotate_metric`, effect `write`) and
-soft-delete one it got wrong (`retract_annotation`, effect `destructive` — requires a
-human-held `AGENTKIT_APPROVAL_TOKEN` the model never sees). Both are off by default
-(`AGENTKIT_ALLOW_WRITES=false`) — see [SECURITY.md](SECURITY.md#capability-guardrails)
-and [RESEARCH.md](RESEARCH.md) §2 for the full policy-engine model.
+**Write and destructive actions.** The `annotations` pack lets an agent record a durable
+note on a metric (`annotate_metric`, effect `write`) and soft-delete one it got wrong
+(`retract_annotation`, effect `destructive`, which requires a human-held
+`AGENTKIT_APPROVAL_TOKEN` the model never sees). Both are off by default
+(`AGENTKIT_ALLOW_WRITES=false`). See [SECURITY.md](SECURITY.md#capability-guardrails)
+and [RESEARCH.md](RESEARCH.md) section 2 for the policy-engine model.
 
 
 **Platform capabilities:**
@@ -62,13 +62,19 @@ and [RESEARCH.md](RESEARCH.md) §2 for the full policy-engine model.
 - **Claude Agent SDK demo** in `demos/claude_agent_sdk_demo.py`
 - **CrewAI demo** in `demos/crewai_demo.py`
 - **DSPy research scaffold** in `research/dspy_experiment.py`
-- **67 tests** across smoke, API, integration, MCP protocol, policy guardrails, and LangGraph workflow
+- **90+ tests** across smoke, API, integration, MCP protocol, policy guardrails, and LangGraph workflow
 
 ## PyPI Package
 
 ```bash
 pip install agentkit-mcp
 agentkit-mcp               # starts the server (stdio for MCP clients; set PORT for SSE)
+```
+
+For an MCP client, `uvx` can run the published package without a checkout:
+
+```json
+{ "mcpServers": { "agentkit": { "command": "uvx", "args": ["agentkit-mcp"] } } }
 ```
 
 ## Quick Start
@@ -162,11 +168,11 @@ print(result["report"])
    back annotations)                     + Monte Carlo CI)
 ```
 
-## Research Contribution
+## Design notes
 
-- **Standardized MCP middleware** — unified stdio and SSE transport for hot-swappable agent tools.
-- **Capability policy engine** — formal effect separation (read/write/destructive) and prompt-independent guardrails.
-- **Multi-agent interoperability** — verified across Claude Desktop, Cursor IDE, and Devin AI.
+- **One server, two transports.** The same tool set is served over stdio (local clients) and SSE (network).
+- **Capability policy engine.** Effects are separated (read, write, destructive) and enforced below the model, independent of the prompt.
+- **Client coverage.** Exercised with Claude Desktop, Cursor and Devin configurations (see the integration guides below).
 
 For the full formalization, literature context, and citation details, see [RESEARCH.md](RESEARCH.md).
 
