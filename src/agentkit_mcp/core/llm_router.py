@@ -43,6 +43,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
+from agentkit_mcp.core import keypool
 from agentkit_mcp.core.config import settings
 from agentkit_mcp.core.logger import get_logger
 
@@ -154,7 +155,7 @@ def describe_routing() -> Dict[str, Any]:
         "effective_models": {t: resolve_model(t) for t in TIERS},
         "configured_models": _tier_models(),
         "provider_keys_present": {
-            "groq": bool(settings.GROQ_API_KEY),
+            "groq": bool(settings.GROQ_API_KEY) or len(keypool.pool("groq")) > 0,
             "anthropic": bool(settings.ANTHROPIC_API_KEY),
             "openai": bool(settings.OPENAI_API_KEY),
         },
@@ -174,7 +175,16 @@ async def _complete(model: str, messages: List[Dict[str, str]], **kwargs: Any):
         key = local_api_key()
         if key:
             call["api_key"] = key
-    return await acompletion(**call)
+    # Hosted providers with several configured keys: lease the next usable key so load
+    # spreads across them, and park a key that hits its limit so the retry uses another.
+    lease = keypool.lease_for_model(model)
+    if lease is not None and "api_key" not in call:
+        call["api_key"] = lease.key
+    try:
+        return await acompletion(**call)
+    except Exception as exc:
+        keypool.note_failure(lease, exc)
+        raise
 
 
 def _rate_limit_wait_s(exc: Exception, default: float = 10.0) -> float:
@@ -203,6 +213,8 @@ async def _complete_with_rate_limit_retry(model: str, messages: List[Dict[str, s
             last_error = e
             if attempt >= settings.LLM_RATE_LIMIT_RETRIES:
                 break
+            if keypool.other_key_available(keypool.provider_for_model(model)):
+                continue  # another key of this provider is free: retry immediately
             wait_s = _rate_limit_wait_s(e)
             log.info("model=%s rate-limited (retry %d/%d), waiting %.1fs",
                      model, attempt + 1, settings.LLM_RATE_LIMIT_RETRIES, wait_s)
