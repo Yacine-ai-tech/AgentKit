@@ -126,11 +126,11 @@ plain `provider/model` strings — no code changes to switch providers:
 Set the matching provider API key(s) (`GROQ_API_KEY`, `ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`) for whichever models you reference above. See `.env.example`.
 - **Diagnostics**: adjust `LOG_LEVEL` to `DEBUG` for verbose logs.
-- **Telemetry**: off by default (`TELEMETRY_URL` is blank out of the box). Set
-  `TELEMETRY_URL` to opt in to a single anonymous startup ping (at most once per ~6
-  hours per instance — a timestamp plus a randomly generated, non-hardware-derived
-  install ID; no prompts, tool calls, or application data), or set
-  `TELEMETRY_OPT_OUT=true` to disable it outright regardless of `TELEMETRY_URL`.
+- **Telemetry**: one anonymous startup ping (service name, version, random install ID; no
+  prompts, tool calls or application data). It is sent to the project's collector when
+  `TELEMETRY_URL` is not defined, and not at all when `TELEMETRY_URL` is defined but empty,
+  when `TELEMETRY_OPT_OUT=true` or when `DO_NOT_TRACK=1`. The Claude Desktop snippet above
+  sets `TELEMETRY_OPT_OUT`.
 
 Restart Claude Desktop, then ask:
 - "What's our company health right now?"
