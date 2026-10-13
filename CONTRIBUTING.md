@@ -29,7 +29,7 @@ All contributors agree to participate in an open, welcoming, and harassment-free
 AgentKit is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
 - **Open Source Contributions**: All code contributions are submitted under AGPL-3.0.
-- **Commercial & Enterprise Licensing**: For organizations requiring closed-source SDK distribution, private SaaS integration, or exemption from AGPL-3.0 copyleft obligations, commercial licenses are available through **OmniIntelOS**. Refer to [`COMMERCIAL.md`](./COMMERCIAL.md) or contact `siddoyacinetech227@gmail.com`.
+- **Commercial & Enterprise Licensing**: For organizations requiring closed-source SDK distribution, private SaaS integration, or exemption from AGPL-3.0 copyleft obligations, commercial licenses are available through **OmniIntelOS**. Refer to [`COMMERCIAL.md`](./COMMERCIAL.md) or contact `contact@ysiddo-ai-projects.app`.
 
 ---
 
@@ -117,4 +117,4 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## 🔒 Security & Vulnerability Disclosure
 
-For private vulnerability disclosures, email `siddoyacinetech227@gmail.com`.
+For private vulnerability disclosures, email `contact@ysiddo-ai-projects.app`.
