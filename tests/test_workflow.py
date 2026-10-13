@@ -26,8 +26,7 @@ def test_workflow_logic():
 
 
 # ---------------------------------------------------------------------------
-# analyst_agent() keyword routing — real bugs found via eval/run_dspy_eval.py's
-# multi-domain suite, fixed in workflow.py.
+# analyst_agent() keyword routing across the multi-domain suite (eval/run_dspy_eval.py).
 # ---------------------------------------------------------------------------
 import asyncio
 

@@ -102,7 +102,7 @@ def _init_pool():
 def _get_conn():
     """Get a PostgreSQL connection. Uses pool if available, else direct connect.
 
-    Pool reuse eliminates the 2-4s Neon cold-start per call. Falls back
+    Pool reuse avoids a new connection handshake on every call. Falls back
     gracefully to direct psycopg.connect() if psycopg_pool is not installed.
     """
     pool = _init_pool()

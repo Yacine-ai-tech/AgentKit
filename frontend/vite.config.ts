@@ -3,7 +3,7 @@ import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 // Dev: `VITE_PROXY_TARGET=http://localhost:8000 npm run dev` proxies API calls to a
-// running backend (local uvicorn or the live Render URL). Prod build is same-origin —
+// running backend (local uvicorn or a deployed instance). Prod build is same-origin —
 // FastAPI serves dist/ itself.
 const target = process.env.VITE_PROXY_TARGET || "http://localhost:8000";
 const apiPaths = ["/health", "/api", "/docs", "/openapi.json"];
