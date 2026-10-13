@@ -82,3 +82,29 @@ def test_model_helpers(monkeypatch):
     assert second.key != first.key
     assert kp.lease_for_model("anthropic/x") is None
     kp.reset()
+
+
+def test_acompletion_pooled_passes_key_and_parks_on_rate_limit(monkeypatch):
+    import asyncio
+    monkeypatch.setenv("GROQ_API_KEY", "g1")
+    monkeypatch.setenv("GROQ_API_KEY_2", "g2")
+    kp.reset()
+    seen = []
+
+    class RL(Exception):
+        status_code = 429
+
+    async def fake(model, **kw):
+        seen.append(kw.get("api_key"))
+        if len(seen) == 1:
+            raise RL("rate limit")
+        return "ok"
+
+    async def run():
+        with pytest.raises(RL):
+            await kp.acompletion_pooled(fake, "groq/x", messages=[])
+        return await kp.acompletion_pooled(fake, "groq/x", messages=[])
+
+    assert asyncio.run(run()) == "ok"
+    assert seen[0] != seen[1] and None not in seen
+    kp.reset()
