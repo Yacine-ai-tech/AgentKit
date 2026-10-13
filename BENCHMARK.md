@@ -8,7 +8,7 @@ methodology and reproduction instructions are in `eval/`.
 
 ## 1. Policy Guardrail Enforcement (Primary Evaluation)
 
-**16/16 guardrail tests pass.**
+**16/16 guardrail tests pass** (the earlier published run of this suite reported 14/14; two tests were added since).
 
 This is AgentKit's core evaluation — whether the capability policy engine correctly denies
 out-of-policy invocations and records each denial. The suite is fully deterministic: no
@@ -85,11 +85,14 @@ Reproducible: `python eval/run_mcp_tools_benchmark.py` (requires `GROQ_API_KEY` 
 |---|---|---|
 | Tool Selection Accuracy | **12/12 (100%)** | Expected domain data retrieved |
 | Tool Execution Success Rate | **12/12 (100%)** | No workflow errors |
-| Avg. Tool Execution Time | 28.0 s | Full three-agent workflow |
-| P95 Tool Execution Time | 49.5 s | Slowest queries (forecasting, anomalies) |
+| Avg. Tool Execution Time | 28.0 s | Full three-agent workflow (run of 2026-10-13); 26.87 s in the earlier run |
+| P95 Tool Execution Time | 49.5 s | Slowest queries (run of 2026-10-13); 39.86 s in the earlier run |
+| P95 single-tool call latency | 1.12 s | Direct tool execution without the three LLM calls (N=12) |
 | Report Quality | **12/12 (100%)** | Expected content fields present |
 
 All 12 business intelligence scenarios passed on both tool selection and execution correctness across all configured domain tools.
+
+A second, general orchestration suite (N=20) recorded 19/20 tool selection (95.0%), 20/20 execution success, P95 3.2 s per tool call and a 45 MB peak per tool.
 
 Full detail: [`eval/MCP_TOOLS_BENCHMARK.md`](eval/MCP_TOOLS_BENCHMARK.md)
 

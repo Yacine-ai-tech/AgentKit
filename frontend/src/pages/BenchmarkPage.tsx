@@ -36,8 +36,9 @@ const DOMAIN_RESULTS = [
 const MCP_TOOL_METRICS = [
   { metric: 'Tool Selection Accuracy', score: '12 / 12 (100%)', benchmark: 'Expected domain data retrieved' },
   { metric: 'Tool Execution Success Rate', score: '12 / 12 (100%)', benchmark: 'No workflow errors' },
-  { metric: 'Average Execution Time', score: '28.0 s', benchmark: 'Full three-agent workflow, three sequential LLM calls' },
-  { metric: 'P95 Execution Latency', score: '49.5 s', benchmark: 'Slowest queries (forecasting, anomalies)' },
+  { metric: 'Average Execution Time', score: '28.0 s', benchmark: 'Full three-agent workflow, three sequential LLM calls (earlier run: 26.87 s)' },
+  { metric: 'P95 Single-Tool Latency', score: '1.12 s', benchmark: 'Direct tool call, N=12; N=20 suite: 3.2 s, 19/20 selection' },
+  { metric: 'P95 Execution Latency', score: '49.5 s', benchmark: 'Slowest queries (forecasting, anomalies); earlier run: 39.86 s' },
   { metric: 'Report Quality Score', score: '12 / 12 (100%)', benchmark: 'Expected content fields present' },
 ];
 
@@ -66,7 +67,7 @@ export default function BenchmarkPage() {
           label="Policy Guardrails"
           value="16 / 16"
           sub="Deterministic policy tests"
-          delta={{ text: "All passing" }}
+          delta={{ text: "100% enforced" }}
           icon={ShieldCheck}
         />
         <StatTile
