@@ -570,24 +570,31 @@ def _serve_sse(port: int) -> None:
         mcp.run(transport="sse", host="0.0.0.0", port=port)
 
 
-if __name__ == "__main__":
-    if _FASTMCP:
-        transport = os.getenv("MCP_TRANSPORT", "sse").lower()
-        if transport == "stdio":
-            # Local single-user IDE/desktop integration (Claude Desktop, Cursor, Devin —
-            # all spawn this process directly via command+args and pipe stdin/stdout).
-            # No network port, no MCP_AUTH_TOKEN: the OS process boundary is the security
-            # boundary here, same as any other local stdio MCP server. show_banner=False
-            # because stdout must carry nothing but JSON-RPC frames in this mode.
-            log.info("Starting AgentKit MCP server (transport=stdio)...")
-            mcp.run(transport="stdio", show_banner=False)
-        else:
-            port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
-            log.info(
-                "Starting AgentKit MCP server (transport=%s port=%s)...",
-                transport,
-                port,
-            )
-            _serve_sse(port)
-    else:
+def main(default_transport: Optional[str] = None) -> None:
+    """Start the server. Console-script entry point (`agentkit-mcp`).
+
+    Transport comes from ``MCP_TRANSPORT``. Without it, a process started by an MCP
+    client (no ``PORT``/``MCP_PORT``) speaks stdio; one started with a port serves SSE.
+    """
+    if not _FASTMCP:
         log.error("fastmcp not installed; cannot start MCP server. pip install fastmcp")
+        raise SystemExit(1)
+    if default_transport is None:
+        default_transport = "sse" if ("PORT" in os.environ or "MCP_PORT" in os.environ) else "stdio"
+    transport = os.getenv("MCP_TRANSPORT", default_transport).lower()
+    if transport == "stdio":
+        # Local single-user IDE/desktop integration (Claude Desktop, Cursor, Devin: all
+        # spawn this process directly and pipe stdin/stdout). No network port, no
+        # MCP_AUTH_TOKEN: the OS process boundary is the security boundary here.
+        # show_banner=False because stdout must carry nothing but JSON-RPC frames.
+        log.info("Starting AgentKit MCP server (transport=stdio)...")
+        mcp.run(transport="stdio", show_banner=False)
+    else:
+        port = int(os.getenv("MCP_PORT") or os.getenv("PORT") or "8005")
+        log.info("Starting AgentKit MCP server (transport=%s port=%s)...", transport, port)
+        _serve_sse(port)
+
+
+if __name__ == "__main__":
+    # Running the module directly keeps its historical default (SSE service).
+    main(default_transport="sse")
