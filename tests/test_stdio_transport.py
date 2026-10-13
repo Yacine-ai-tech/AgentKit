@@ -2,10 +2,9 @@
 subprocess (exactly how Claude Desktop/Cursor/Devin do via claude_desktop_config.json /
 cursor_mcp.json / devin_mcp.json) and speaks real JSON-RPC 2.0 over its stdin/stdout.
 
-Regression guard for two real bugs found in production use: (1) MCP_TRANSPORT was
-previously never read anywhere — the server always started an SSE/HTTP server
-regardless, so every "stdio" client config silently failed; (2) log lines went to
-stdout, which would have corrupted the JSON-RPC stream even after (1) was fixed.
+Regression guard for two requirements: (1) MCP_TRANSPORT must be honored, so a "stdio"
+client config gets a stdio server instead of an SSE/HTTP one; (2) log lines must go to
+stderr, because anything on stdout corrupts the JSON-RPC stream.
 No Postgres needed — this only exercises protocol-level requests (initialize,
 tools/list), not tool execution against real data.
 """

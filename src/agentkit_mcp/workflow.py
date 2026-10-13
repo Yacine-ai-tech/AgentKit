@@ -97,8 +97,8 @@ _METRIC_NAME_RE = re.compile(r"\b[A-Z][a-zA-Z]*(?:_[A-Z][a-zA-Z]*)+\b")
 def _forecast_target(raw_question: str) -> str:
     """Pick which metric to forecast from the question itself, instead of always
     forecasting revenue regardless of what was actually asked (e.g. a question about
-    forecasting Customer_Churn_Rate or Operating_Expenses silently got a revenue
-    forecast instead — found while extending eval/multi_domain_scenarios.json).
+    forecasting Customer_Churn_Rate or Operating_Expenses would otherwise return a
+    revenue forecast).
     KPI names in this project's questions are always written TitleCase_With_Underscores
     (see src/agentkit_mcp/data/seed.py's BUSINESS_KPIS), so that's what we look for; forecast_metric()
     already does case-insensitive exact/substring matching against the real metric table,
@@ -159,9 +159,7 @@ async def analyst_agent(state: BusinessAnalysisState) -> BusinessAnalysisState:
     # Domain routing by keywords — must match the real domain categories seeded in
     # src/agentkit_mcp/data/seed.py's BUSINESS_KPIS (10 domains: the original 5 plus Growth/
     # Logistics/ESG/IT, mirroring IntelAI's taxonomy for cross-portfolio consistency,
-    # plus Security). "mrr"/"arr" and "logistics" used to sit under Customer/Operations
-    # respectively because Growth and Logistics didn't exist as domains yet — moved to
-    # their own domains now that they do, rather than left as a stale workaround.
+    # plus Security). "mrr"/"arr" belong to Growth and "logistics" to Logistics.
     domain_keywords = {
         "Finance": ("financ", "revenue", "margin", "cost", "profit"),
         "People": ("people", "hr", "headcount", "hiring", "turnover", "retention"),
