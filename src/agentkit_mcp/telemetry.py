@@ -46,13 +46,27 @@ def _instance_id() -> str:
     return new_id
 
 
+
+def _pyproject_version(pkg_name):
+    import re
+    here = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(5):
+        cand = os.path.join(here, "pyproject.toml")
+        if os.path.exists(cand):
+            m = re.search(r'(?m)^version\s*=\s*"([^"]+)"', open(cand).read())
+            if m:
+                return m.group(1)
+        here = os.path.dirname(here)
+    return "unknown"
+
+
 def agentkit_version() -> str:
     try:
         from importlib.metadata import version
 
         return version("agentkit-mcp")
     except Exception:
-        return "unknown"
+        return _pyproject_version("agentkit-mcp")
 
 
 def _opted_out() -> bool:
