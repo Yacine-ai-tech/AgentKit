@@ -195,6 +195,12 @@ Automated client verification:
 python3 tests/test_mcp_client.py
 ```
 
+## Support the project
+
+If AgentKit is useful to you, a star on the repository helps other engineers find it, and following [@Yacine-ai-tech](https://github.com/Yacine-ai-tech) is the simplest way to hear about new releases. Passing the link to a colleague who has the same problem is just as welcome.
+
+Questions and field notes go to [Discussions](https://github.com/Yacine-ai-tech/AgentKit/discussions); reproducible bugs go to [Issues](https://github.com/Yacine-ai-tech/AgentKit/issues).
+
 ## License & Enterprise Use (Dual-License)
 
 This project is open-source under the **AGPL-3.0 License**. It is completely free for researchers, students, and open-source hobbyists.
