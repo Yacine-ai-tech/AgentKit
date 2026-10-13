@@ -127,10 +127,9 @@ Set the matching provider API key(s) (`GROQ_API_KEY`, `ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`) for whichever models you reference above. See `.env.example`.
 - **Diagnostics**: adjust `LOG_LEVEL` to `DEBUG` for verbose logs.
 - **Telemetry**: one anonymous startup ping (service name, version, random install ID; no
-  prompts, tool calls or application data). It is sent to the project's collector when
-  `TELEMETRY_URL` is not defined, and not at all when `TELEMETRY_URL` is defined but empty,
-  when `TELEMETRY_OPT_OUT=true` or when `DO_NOT_TRACK=1`. The Claude Desktop snippet above
-  sets `TELEMETRY_OPT_OUT`.
+  prompts, tool calls or application data), on by default for both the MCP console command and the
+  REST facade. `TELEMETRY_URL` redirects it to your own collector; `TELEMETRY_OPT_OUT=true` or
+  `DO_NOT_TRACK=1` disables it. The Claude Desktop snippet above sets `TELEMETRY_OPT_OUT`.
 
 Restart Claude Desktop, then ask:
 - "What's our company health right now?"
@@ -213,3 +212,5 @@ This project is open-source under the **AGPL-3.0 License**. It is completely fre
 Commercial license: see [COMMERCIAL.md](COMMERCIAL.md).
 
 <!-- mcp-name: io.github.Yacine-ai-tech/agentkit -->
+
+![views](https://gateway.ysiddo-ai-projects.app/pixel/readme/AgentKit.png)
