@@ -99,12 +99,9 @@ async def _run_http(
 
             headers[k] = os.getenv(v[1:], "")
 
-    params = (
-        {k: v for k, v in bound.items() if v is not None} if method == "GET" else None
-    )
-    json_body = (
-        {k: v for k, v in bound.items() if v is not None} if method != "GET" else None
-    )
+    public = {k: v for k, v in bound.items() if v is not None and not k.startswith("_")}
+    params = public if method == "GET" else None
+    json_body = public if method != "GET" else None
 
     async with httpx.AsyncClient(timeout=req.get("timeout", 30)) as client:
         resp = await client.request(
@@ -181,6 +178,9 @@ async def call_pack_tool(
     t0 = time.time()
     try:
         bound = tool.bind(args)
+        # The caller's session is available to statements as %(_session)s so a pack can
+        # scope its rows to the visitor that wrote them (None for operator/MCP callers).
+        bound["_session"] = session_id
         if tool.request:
             result = await _run_http(pack, tool, bound, dry_run)
         else:

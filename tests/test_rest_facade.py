@@ -40,3 +40,15 @@ def test_observability_is_scoped_to_the_callers_session(client):
     assert any(r["path"] == "/api/kpis" for r in own)
     assert not any(r["path"] == "/api/kpis" for r in other)
     assert anonymous == []
+
+
+def test_annotation_statements_are_scoped_to_the_writing_session():
+    from agentkit_mcp.toolpacks import load_pack_file as load_pack
+    import pathlib
+
+    pack = load_pack(pathlib.Path(__file__).resolve().parent.parent / "packs" / "annotations.yaml")
+    tools = {t.name: t for t in pack.tools}
+    assert "%(_session)s" in tools["list_annotations"].query
+    assert "owner_session_id" in tools["annotate_metric"].statement
+    assert "%(_session)s" in tools["annotate_metric"].statement
+    assert "owner_session_id" in tools["retract_annotation"].statement

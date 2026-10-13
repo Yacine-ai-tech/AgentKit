@@ -9,7 +9,10 @@
 # AGENTKIT_APPROVAL_TOKEN — see core/policy.py.
 #
 # Table (created by scripts/init_annotations.sql):
-#   kpi_annotations(id, metric, period, note, severity, author, created_at, retracted_at)
+#   kpi_annotations(id, metric, period, note, severity, author, domain, owner_session_id,
+#                   created_at, retracted_at)
+# Rows are scoped to the writing session: a caller reads shared (owner NULL) rows plus
+# its own, and can only retract its own.
 
 name: annotations
 description: >
@@ -37,6 +40,7 @@ tools:
       WHERE (%(metric)s::text IS NULL OR metric = %(metric)s::text)
         AND (%(domain)s::text IS NULL OR %(domain)s::text IN ('all', 'global', '*', '') OR domain = %(domain)s::text)
         AND (%(include_retracted)s::boolean OR retracted_at IS NULL)
+        AND (owner_session_id IS NULL OR owner_session_id = %(_session)s::text)
       ORDER BY created_at DESC
       LIMIT %(limit)s
 
@@ -55,14 +59,15 @@ tools:
       - {name: severity, type: string, required: false, default: info, description: "Operational impact classification level: 'info', 'warning', or 'critical'. Defaults to 'info'."}
       - {name: author, type: string, required: false, default: agentkit, description: "Identifier of the agent or human user recording the annotation. Defaults to 'agentkit'."}
     statement: >
-      INSERT INTO kpi_annotations (metric, period, note, severity, author, domain)
+      INSERT INTO kpi_annotations (metric, period, note, severity, author, domain, owner_session_id)
       VALUES (
         COALESCE(%(metric)s, %(domain)s, 'general'),
         COALESCE(%(period)s, to_char(NOW(), 'YYYY-MM')),
         %(note)s,
         COALESCE(%(severity)s, 'info'),
         COALESCE(%(author)s, 'agentkit'),
-        %(domain)s
+        %(domain)s,
+        %(_session)s::text
       )
 
   - name: retract_annotation
@@ -77,3 +82,4 @@ tools:
     statement: >
       UPDATE kpi_annotations SET retracted_at = NOW()
       WHERE id = %(annotation_id)s AND retracted_at IS NULL
+        AND owner_session_id IS NOT DISTINCT FROM %(_session)s::text
