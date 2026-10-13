@@ -52,6 +52,7 @@ def discover(provider: str, environ: Optional[Dict[str, str]] = None) -> List[st
     pattern = re.compile(rf"^{p}_API_KEY(?:_[A-Za-z0-9]+)?$")
     names = sorted(n for n in env if pattern.match(n))
     # Plain ``P_API_KEY`` first, then numeric suffixes in numeric order, then the rest.
+
     def order(n: str):
         suffix = n[len(f"{provider.upper()}_API_KEY"):].lstrip("_")
         return (0, 0, "") if not suffix else ((1, int(suffix), "") if suffix.isdigit() else (2, 0, suffix))
@@ -215,6 +216,18 @@ async def acompletion_pooled(acompletion_fn, model: str, **kwargs):
         kwargs["api_key"] = lease.key
     try:
         return await acompletion_fn(model=model, **kwargs)
+    except Exception as exc:
+        note_failure(lease, exc)
+        raise
+
+
+def completion_pooled(completion_fn, model: str, **kwargs):
+    """Synchronous counterpart of :func:`acompletion_pooled`."""
+    lease = lease_for_model(model)
+    if lease is not None and "api_key" not in kwargs:
+        kwargs["api_key"] = lease.key
+    try:
+        return completion_fn(model=model, **kwargs)
     except Exception as exc:
         note_failure(lease, exc)
         raise
