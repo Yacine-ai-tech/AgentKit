@@ -187,7 +187,7 @@ the server deny out-of-policy invocations, and is the denial recorded?
 | Dry run | Destructive call with `dry_run=true` | Permit, no commit |
 | Audit | Any denial | Recorded with reason |
 
-**Result: 14/14 guardrails enforced correctly.** Reproducible via
+**Result: 16/16 guardrail tests pass.** Reproducible via
 `python -m pytest tests/test_policy_guardrails.py -v`. This suite is fully deterministic — no
 network access, no LLM calls.
 
