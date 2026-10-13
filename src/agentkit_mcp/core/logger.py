@@ -36,8 +36,8 @@ def _configure_once() -> None:
 
     # Console handler — stderr, not stdout. In MCP_TRANSPORT=stdio mode, stdout IS the
     # JSON-RPC wire; any plain-text log line written there would corrupt the protocol
-    # stream from the client's point of view. Docker/Render capture stderr in their log
-    # aggregation the same as stdout, so this doesn't lose anything in SSE/HTTP mode.
+    # stream from the client's point of view. Container log collectors capture stderr the
+    # same as stdout, so nothing is lost in SSE/HTTP mode.
     sh = logging.StreamHandler(sys.stderr)
     sh.setFormatter(fmt)
     root.addHandler(sh)
