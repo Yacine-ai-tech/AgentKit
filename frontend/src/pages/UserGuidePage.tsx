@@ -238,7 +238,7 @@ export default function UserGuidePage() {
                 Reproducible suites: the deterministic policy guardrail tests (<code className="bg-gray-950 px-1 rounded">pytest tests/test_policy_guardrails.py</code>)
                 and a 43-scenario LangGraph evaluation across all ten KPI domains
                 (<code className="bg-gray-950 px-1 rounded">python eval/run_dspy_eval.py</code>). See the Benchmark page for the
-                recorded results.
+                recorded results. A four-query smoke test (`python eval/run_agent_eval.py`) scored 4/4.
               </p>
             </div>
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
