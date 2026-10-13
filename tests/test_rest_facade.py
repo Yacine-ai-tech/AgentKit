@@ -30,3 +30,13 @@ def test_workflow_requires_a_question(client):
     r = client.post("/api/workflow/run", json={})
     assert r.status_code == 400
     assert r.json()["detail"] == "question required"
+
+
+def test_observability_is_scoped_to_the_callers_session(client):
+    client.get("/api/kpis", headers={"X-Demo-Session-Id": "session-a"})
+    own = client.get("/api/observability", headers={"X-Demo-Session-Id": "session-a"}).json()["requests"]
+    other = client.get("/api/observability", headers={"X-Demo-Session-Id": "session-b"}).json()["requests"]
+    anonymous = client.get("/api/observability").json()["requests"]
+    assert any(r["path"] == "/api/kpis" for r in own)
+    assert not any(r["path"] == "/api/kpis" for r in other)
+    assert anonymous == []

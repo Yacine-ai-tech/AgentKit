@@ -203,6 +203,7 @@ def build_app() -> FastAPI:
                     "query": str(request.url.query or ""),
                     "status": response.status_code,
                     "ms": round((_time.time() - t0) * 1000, 1),
+                    "_sid": request.headers.get("X-Demo-Session-Id"),
                 }
             )
         return response
@@ -376,9 +377,18 @@ def build_app() -> FastAPI:
         return await _call(tools.get_executive_summary)
 
     @app.get("/api/observability")
-    async def observability(limit: int = 100) -> Dict[str, Any]:
-        """Recent facade requests (method, path, status, latency) — real observability."""
-        return {"requests": list(_OBS)[:limit], "capacity": _OBS.maxlen}
+    async def observability(
+        limit: int = 100,
+        x_demo_session_id: Optional[str] = Header(default=None, alias="X-Demo-Session-Id"),
+        x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token"),
+    ) -> Dict[str, Any]:
+        """Recent facade requests (method, path, status, latency) for the caller's own
+        session; the operator's admin token sees all of them."""
+        admin_secret = _os.environ.get("ADMIN_TOKEN")
+        is_admin = bool(x_admin_token and admin_secret and _hmac.compare_digest(x_admin_token, admin_secret))
+        rows = [r for r in _OBS if is_admin or (x_demo_session_id and r.get("_sid") == x_demo_session_id)]
+        visible = [{k: v for k, v in r.items() if k != "_sid"} for r in rows[: max(1, min(limit, 500))]]
+        return {"requests": visible, "capacity": _OBS.maxlen}
 
     # ── Capability / guardrail surface ──────────────────────────────────────
     @app.get("/api/policy")
