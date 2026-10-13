@@ -46,7 +46,6 @@ def _instance_id() -> str:
     return new_id
 
 
-
 def _pyproject_version(pkg_name):
     import re
     here = os.path.dirname(os.path.abspath(__file__))
