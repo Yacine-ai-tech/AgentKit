@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Yacine-ai-tech/agentkit",
+  "description": "Governed MCP server: YAML-declared tools, typed effects, policy-gated and audited calls.",
+  "repository": {
+    "url": "https://github.com/Yacine-ai-tech/AgentKit",
+    "source": "github"
+  },
+  "version": "0.1.17",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "agentkit-mcp",
+      "version": "0.1.17",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "POSTGRES_URL",
+          "description": "Optional Postgres connection string for your own KPI tables; the bundled seed data is used when unset.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

@@ -67,8 +67,8 @@ and [RESEARCH.md](RESEARCH.md) §2 for the full policy-engine model.
 ## PyPI Package
 
 ```bash
-pip install agentkit-mcp   # v0.1.15
-agentkit-mcp               # CLI entrypoint
+pip install agentkit-mcp
+agentkit-mcp               # starts the server (stdio for MCP clients; set PORT for SSE)
 ```
 
 ## Quick Start
@@ -205,3 +205,5 @@ Questions and field notes go to [Discussions](https://github.com/Yacine-ai-tech/
 
 This project is open-source under the **AGPL-3.0 License**. It is completely free for researchers, students, and open-source hobbyists.
 Commercial license: see [COMMERCIAL.md](COMMERCIAL.md).
+
+<!-- mcp-name: io.github.Yacine-ai-tech/agentkit -->
