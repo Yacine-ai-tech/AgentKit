@@ -1,37 +1,36 @@
 # AgentKit — MCP Tools Performance Benchmark
 
-A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools performance, accuracy, and resource utilization. Reproducible:
+A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools performance, accuracy, and resource utilization, run against the real 3-agent LangGraph workflow (`POST /api/workflow/run`). Reproducible:
 `python eval/run_mcp_tools_benchmark.py`
 
 ## Setup
-- Test Suite: 20 standardized tool invocation scenarios
-- Tool Categories: Reference pack queries and general orchestration
-- Metrics: Tool selection accuracy, execution time, memory usage, success rate
-- LLM Engine: Claude 3.5 Sonnet (via Anthropic API)
+- Test Suite: 12 standardized queries spanning 5 of the 10 seeded domains
+- Tool Categories: Finance KPIs, People KPIs, Operations KPIs, Customer KPIs, Engineering KPIs, Forecasting, Anomalies
+- Metrics: Domain-selection accuracy, execution time, memory usage, success rate
+- Engine: Real 3-agent LangGraph workflow (Planner → Analyst → Reporter) via AgentKit's REST facade
 - Database: PostgreSQL
 
-## Results
+## Results (real run, 2026-10-13, N=12)
 
-### 10-Domain Enterprise MCP Tool Selection ($N=12$)
+| Metric | Result |
+|--------|--------|
+| **Tool/Domain Selection Accuracy** | **100.0%** |
+| **Tool Execution Success Rate** | **100.0%** |
+| **Avg Tool Execution Time** | **28.0s** |
+| **P95 Tool Execution Time** | **49.5s** |
+| **Report Generation Quality** | **100.0%** |
+| **Benchmark-client memory delta (peak)** | **1MB** |
 
-Evaluated live against the running MCP server across all 10 enterprise domains (Finance, Growth, ESG, People, Operations, IT, Security, Logistics, Customer, Engineering):
+**Tool Breakdown:**
 
-| Metric | Result | Target | Status |
-|---|---|---|---|
-| **Tool Selection Accuracy** | **12/12 (100%)** | $\ge 11/12$ | ✅ Passed |
-| **Tool Execution Success Rate** | **12/12 (100%)** | 100% | ✅ Passed |
-| **P95 Execution Latency** | **1.12s** | $< 2.0\text{s}$ | ✅ Passed |
-| **Schema Validation Rate** | **100%** | 100% | ✅ Passed |
+| Tool Category | Success Rate | Avg Time | Accuracy |
+|---------------|--------------|----------|----------|
+| Finance KPIs | 100% | 8.9s | 100% |
+| Anomalies | 100% | 37.6s | 100% |
+| People KPIs | 100% | 32.7s | 100% |
+| Operations KPIs | 100% | 42.4s | 100% |
+| Customer KPIs | 100% | 22.2s | 100% |
+| Engineering KPIs | 100% | 21.6s | 100% |
+| Forecasting | 100% | 42.3s | 100% |
 
-### General Tool Orchestration Suite ($N=20$)
-
-| Metric | Result | Target | Status |
-|--------|--------|--------|--------|
-| **Tool Selection Accuracy** | **19/20 (95.0%)** | $\ge 18/20$ | ✅ Passed |
-| **Execution Success Rate** | **20/20 (100%)** | 100% | ✅ Passed |
-| **P95 Execution Latency** | **3.2s** | $< 5.0\text{s}$ | ✅ Passed |
-| **Memory Peak per Tool** | **45 MB** | $< 100\text{MB}$ | ✅ Passed |
-
-**Protocol Analysis:**
-- **Deterministic Schema Matching**: Schema descriptions across all 10 enterprise domains resolve accurately without ambiguity.
-- **Resource Efficiency**: Sub-second execution latency and low memory footprint (45 MB peak) ensure responsive integration into agentic workflows.
+Execution time covers the whole three-agent workflow (planner, analyst and reporter model calls in sequence), so it is dominated by LLM generation and varies with provider rate limits. The memory figure is the change in the benchmark client's own resident memory, not the server's. Tool selection means that the expected domain's data was retrieved by the analyst step.
