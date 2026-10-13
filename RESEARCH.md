@@ -37,8 +37,8 @@ primary access-control mechanism. This approach is architecturally unsound:
 
 Key references from 2025–2026 converge on the same recommendation: security must be managed at
 the architecture level — deterministic validators, strict tool contracts, and an observability
-layer — not as a post-hoc prompt guardrail (Coalition for Secure AI, 2026; "Securing the Model
-Context Protocol," arXiv 2026; OWASP Agentic AI Top 10, 2026).
+layer — not as a post-hoc prompt guardrail (see "Securing the Model Context Protocol," arXiv:2512.06556;
+"Breaking the Protocol," arXiv:2601.17549; and the OWASP Top 10 for Agentic Applications).
 
 ### 1.2 Related Work
 

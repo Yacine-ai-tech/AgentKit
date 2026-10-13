@@ -12,21 +12,34 @@ AgentKit implements the standard **Model Context Protocol (MCP)** specification 
 - **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 ### Configuration Snippet
-Add AgentKit to your `claude_desktop_config.json`:
+With the published package (no checkout needed), add AgentKit to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agentkit": {
+      "command": "uvx",
+      "args": ["agentkit-mcp"],
+      "env": {
+        "POSTGRES_URL": "postgresql://<user>:<password>@<host>/<database>?sslmode=require"
+      }
+    }
+  }
+}
+```
+
+From a source checkout, run the module directly and select the stdio transport explicitly:
 
 ```json
 {
   "mcpServers": {
     "agentkit": {
       "command": "python",
-      "args": [
-        "-m",
-        "agentkit_mcp.mcp_server"
-      ],
+      "args": ["-m", "agentkit_mcp.mcp_server"],
       "env": {
         "PYTHONPATH": "/path/to/AgentKit/src",
         "MCP_TRANSPORT": "stdio",
-        "POSTGRES_URL": "postgresql://user:password@localhost/neondb?sslmode=require"
+        "POSTGRES_URL": "postgresql://<user>:<password>@<host>/<database>?sslmode=require"
       }
     }
   }
@@ -94,15 +107,16 @@ Configure in `.devin/mcp.json` or Devin environment settings:
 }
 ```
 
-#### SSE Remote Mode (Production Deployed)
-If connecting to a deployed AgentKit instance:
+#### SSE Remote Mode (your own deployment)
+If you run AgentKit with the SSE transport behind your own host, set `MCP_AUTH_TOKEN` on the
+server and send it as a bearer token:
 ```json
 {
   "mcpServers": {
     "agentkit-remote": {
-      "url": "https://agentkit.ysiddo-ai-projects.app/sse",
+      "url": "https://<your-agentkit-host>/sse",
       "headers": {
-        "Authorization": "Bearer YOUR_MCP_AUTH_TOKEN"
+        "Authorization": "Bearer <MCP_AUTH_TOKEN>"
       }
     }
   }

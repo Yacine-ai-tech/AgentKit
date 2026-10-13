@@ -121,10 +121,10 @@ export default function UserGuidePage() {
           <div className="space-y-6">
             <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
               <h3 className="font-semibold text-lg text-gray-100 flex items-center gap-2 mb-3">
-                <FileCode className="w-5 h-5 text-orange-400" /> Remote — hosted SSE (no local setup)
+                <FileCode className="w-5 h-5 text-orange-400" /> Remote — SSE (a deployment you have a token for)
               </h3>
               <p className="text-sm text-gray-300 mb-3">
-                Point Claude Desktop at the hosted server via <code className="bg-gray-950 px-1 rounded">mcp-remote</code>,
+                Point Claude Desktop at a deployed server via <code className="bg-gray-950 px-1 rounded">mcp-remote</code>,
                 using a bearer token (<code className="bg-gray-950 px-1 rounded">MCP_AUTH_TOKEN</code>):
               </p>
               <pre className="bg-gray-950 p-4 rounded-lg text-sm font-mono text-green-300 overflow-x-auto">
@@ -160,7 +160,7 @@ export default function UserGuidePage() {
       "args": ["-m", "agentkit_mcp.mcp_server"],
       "env": {
         "PYTHONPATH": "/path/to/AgentKit/src",
-        "POSTGRES_URL": "postgresql://user:password@localhost/neondb?sslmode=require"
+        "POSTGRES_URL": "postgresql://<user>:<password>@<host>/<database>?sslmode=require"
       }
     }
   }
@@ -235,9 +235,10 @@ export default function UserGuidePage() {
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
               <h3 className="font-semibold text-gray-100 flex items-center gap-2 mb-1"><GitBranch className="w-4 h-4 text-amber-400" /> Evaluation Benchmark</h3>
               <p className="text-sm text-gray-300">
-                A reproducible LLM-as-judge benchmark (<code className="bg-gray-950 px-1 rounded">python eval/run_agent_eval.py</code>)
-                scoring the LangGraph agent's tool-selection accuracy and answer groundedness on 4 core
-                multi-tool queries — current published result is 100% (4/4).
+                Reproducible suites: the deterministic policy guardrail tests (<code className="bg-gray-950 px-1 rounded">pytest tests/test_policy_guardrails.py</code>)
+                and a 43-scenario LangGraph evaluation across all ten KPI domains
+                (<code className="bg-gray-950 px-1 rounded">python eval/run_dspy_eval.py</code>). See the Benchmark page for the
+                recorded results.
               </p>
             </div>
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
