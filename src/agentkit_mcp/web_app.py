@@ -203,6 +203,7 @@ def build_app() -> FastAPI:
                     "query": str(request.url.query or ""),
                     "status": response.status_code,
                     "ms": round((_time.time() - t0) * 1000, 1),
+                    "_sid": request.headers.get("X-Demo-Session-Id"),
                 }
             )
         return response
@@ -376,9 +377,18 @@ def build_app() -> FastAPI:
         return await _call(tools.get_executive_summary)
 
     @app.get("/api/observability")
-    async def observability(limit: int = 100) -> Dict[str, Any]:
-        """Recent facade requests (method, path, status, latency) — real observability."""
-        return {"requests": list(_OBS)[:limit], "capacity": _OBS.maxlen}
+    async def observability(
+        limit: int = 100,
+        x_demo_session_id: Optional[str] = Header(default=None, alias="X-Demo-Session-Id"),
+        x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token"),
+    ) -> Dict[str, Any]:
+        """Recent facade requests (method, path, status, latency) for the caller's own
+        session; the operator's admin token sees all of them."""
+        admin_secret = _os.environ.get("ADMIN_TOKEN")
+        is_admin = bool(x_admin_token and admin_secret and _hmac.compare_digest(x_admin_token, admin_secret))
+        rows = [r for r in _OBS if is_admin or (x_demo_session_id and r.get("_sid") == x_demo_session_id)]
+        visible = [{k: v for k, v in r.items() if k != "_sid"} for r in rows[: max(1, min(limit, 500))]]
+        return {"requests": visible, "capacity": _OBS.maxlen}
 
     # ── Capability / guardrail surface ──────────────────────────────────────
     @app.get("/api/policy")
@@ -466,7 +476,9 @@ def build_app() -> FastAPI:
         Supports both GET (with query parameters) and POST (with JSON body or query params).
         """
         from agentkit_mcp.core.policy import PolicyDenied
-        from agentkit_mcp.pack_runtime import call_pack_tool
+        from agentkit_mcp.pack_runtime import (
+            PackExecutionError, PackInputError, call_pack_tool,
+        )
 
         pack = getattr(tools, "PACKS", {}).get(pack_name)
         if pack is None:
@@ -496,6 +508,10 @@ def build_app() -> FastAPI:
         except PolicyDenied as e:
             # 403 with the actual reason — a guardrail that blocks silently is not one.
             raise HTTPException(status_code=403, detail=str(e))
+        except PackInputError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except PackExecutionError as e:
+            raise HTTPException(status_code=502, detail=f"tool_failed: {e}")
 
     @app.post("/api/workflow/run")
     async def workflow_run(body: Dict[str, Any]) -> Dict[str, Any]:
