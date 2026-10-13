@@ -107,76 +107,10 @@ def build_app() -> FastAPI:
         description="AI Agent Intelligence Platform — read-only facade over the MCP tools.",
     )
 
-    # --- ETHICAL TELEMETRY ---
-    # See README.md's Telemetry section / .env.example. One anonymous startup ping per ~6h, sending only
-    # {service, event, instance_id} — no document content, filenames, IPs, or other
-    # request data. Fully controllable: TELEMETRY_OPT_OUT=true disables it outright, and
-    # leaving TELEMETRY_URL blank (the default) disables it too, since there's nowhere to
-    # send the ping.
-    import threading
-    import time
-    import uuid
+    # --- ANONYMOUS STARTUP PING (see agentkit_mcp/telemetry.py; opt out with TELEMETRY_OPT_OUT=true) ---
+    from agentkit_mcp.telemetry import send_startup_ping
 
-    from agentkit_mcp.core.config import settings as _settings
-
-    def _telemetry_instance_id() -> str:
-        """A random, locally-generated install ID — NOT derived from MAC address or any
-        other hardware fingerprint. Persisted under LOGS_DIR so repeat startups of the
-        same install report the same ID (for dedup on the receiving end); delete the
-        file to reset it."""
-        id_file = os.path.join(_settings.LOGS_DIR, ".telemetry_instance_id")
-        try:
-            if os.path.exists(id_file):
-                existing = open(id_file).read().strip()
-                if existing:
-                    return existing
-        except Exception:
-            pass
-        new_id = uuid.uuid4().hex[:16]
-        try:
-            with open(id_file, "w") as f:
-                f.write(new_id)
-        except Exception:
-            pass
-        return new_id
-
-    DEFAULT_TELEMETRY_URL = "https://gateway.ysiddo-ai-projects.app/telemetry"
-
-    def _send_telemetry():
-        if os.environ.get("TELEMETRY_OPT_OUT", "").strip().lower() in ("1", "true", "yes") or os.environ.get("DO_NOT_TRACK", "").strip() == "1":
-            return
-
-        telemetry_url = os.environ.get("TELEMETRY_URL", DEFAULT_TELEMETRY_URL).strip()
-        if not telemetry_url:
-            return
-
-        lock_file = os.path.join(_settings.LOGS_DIR, ".telemetry_last_ping")
-        try:
-            if os.path.exists(lock_file):
-                if time.time() - os.path.getmtime(lock_file) < 30:
-                    return
-            with open(lock_file, "w") as f:
-                f.write(str(time.time()))
-        except Exception:
-            pass
-
-        try:
-            import httpx
-
-            httpx.post(
-                telemetry_url,
-                json={
-                    "service": "AgentKit",
-                    "event": "startup",
-                    "version": "0.1.15",
-                    "instance_id": _telemetry_instance_id(),
-                },
-                timeout=3,
-            )
-        except Exception:
-            pass
-
-    threading.Thread(target=_send_telemetry, daemon=True).start()
+    send_startup_ping()
     # -------------------------
 
     import hmac as _hmac
