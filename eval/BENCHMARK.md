@@ -47,8 +47,9 @@ python eval/run_dspy_eval.py
 ```
 
 **Result:** 43/43 scenarios passed (last recorded run 2026-09-24; see the top-level
-[`BENCHMARK.md`](../BENCHMARK.md) for the per-domain table). The earlier four-query smoke test in
-`run_agent_eval.py` is kept as a quick end-to-end check and is not a statistical result.
+[`BENCHMARK.md`](../BENCHMARK.md) for the per-domain table). The four-query smoke test in `run_agent_eval.py` (N=4) recorded
+4/4 tool selection, 4/4 answer groundedness and 4/4 workflow completion; at that size it confirms the
+workflow works end to end and is not a statistical estimate.
 
 ---
 
@@ -62,9 +63,17 @@ AGENTKIT_URL=https://<your-host> python eval/run_mcp_tools_benchmark.py --reset
 ```
 
 **Result (2026-10-13, N=12, public deployment):** 12/12 selected the expected domain data and
-completed; average 28.0 s and P95 49.5 s per query. The latency is three sequential LLM calls,
-not protocol overhead. Per-category figures are in
-[`MCP_TOOLS_BENCHMARK.md`](MCP_TOOLS_BENCHMARK.md).
+completed; average 28.0 s and P95 49.5 s per query (the earlier run recorded 26.87 s and 39.86 s). The
+latency is three sequential LLM calls, not protocol overhead.
+
+Other recorded runs of the same harness:
+
+| Suite | Tool selection | Execution | P95 | Notes |
+|---|---|---|---|---|
+| 10-domain MCP tool selection (N=12) | 12/12 (100%) | 12/12 | 1.12 s | single tool call, schema validation 100% |
+| General orchestration (N=20) | 19/20 (95.0%) | 20/20 | 3.2 s | answer quality 18/20, peak 45 MB per tool, MCP protocol 20/20 |
+
+Per-category figures for the latest run are in [`MCP_TOOLS_BENCHMARK.md`](MCP_TOOLS_BENCHMARK.md).
 
 ---
 
