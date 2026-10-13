@@ -466,7 +466,9 @@ def build_app() -> FastAPI:
         Supports both GET (with query parameters) and POST (with JSON body or query params).
         """
         from agentkit_mcp.core.policy import PolicyDenied
-        from agentkit_mcp.pack_runtime import call_pack_tool
+        from agentkit_mcp.pack_runtime import (
+            PackExecutionError, PackInputError, call_pack_tool,
+        )
 
         pack = getattr(tools, "PACKS", {}).get(pack_name)
         if pack is None:
@@ -496,6 +498,10 @@ def build_app() -> FastAPI:
         except PolicyDenied as e:
             # 403 with the actual reason — a guardrail that blocks silently is not one.
             raise HTTPException(status_code=403, detail=str(e))
+        except PackInputError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except PackExecutionError as e:
+            raise HTTPException(status_code=502, detail=f"tool_failed: {e}")
 
     @app.post("/api/workflow/run")
     async def workflow_run(body: Dict[str, Any]) -> Dict[str, Any]:

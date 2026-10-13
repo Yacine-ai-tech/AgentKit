@@ -118,6 +118,14 @@ async def _run_http(
         return {"result": resp.text[:5000], "effect": tool.effect}
 
 
+class PackInputError(ValueError):
+    """The supplied arguments do not satisfy the tool's declared parameters."""
+
+
+class PackExecutionError(RuntimeError):
+    """The tool was permitted and bound but failed while running."""
+
+
 async def call_pack_tool(
     pack: ToolPack,
     tool: PackTool,
@@ -189,6 +197,11 @@ async def call_pack_tool(
             duration_ms=round((time.time() - t0) * 1000, 1),
         )
         log.exception("pack tool %s.%s failed: %s", pack.name, tool.name, e)
+        if caller == "rest":
+            # The REST facade maps these to HTTP statuses instead of a 200 body.
+            if isinstance(e, ValueError):
+                raise PackInputError(str(e)) from e
+            raise PackExecutionError(str(e)) from e
         return {"error": str(e), "tool": tool.name, "pack": pack.name}
 
     policy_engine.complete(
