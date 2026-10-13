@@ -230,7 +230,7 @@ async def llm_call(
     Fallback chain:
     1. Primary model (per tier, honouring INFERENCE_MODE).
     2. Provider override (LLM_REASONING_FALLBACK / LLM_JUDGE_FALLBACK) — only on auth error;
-       configured in VPS .env when Anthropic/OpenAI key is unavailable.
+       configured through environment variables when an Anthropic/OpenAI key is unavailable.
     3. Local model (LLM_FALLBACK_TO_LOCAL=1 + INFERENCE_MODE != local).
 
     Raises LLMUnavailable (never returns a fabricated response) when all fallbacks fail.

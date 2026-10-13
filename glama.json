@@ -3,7 +3,7 @@
   "name": "agentkit-mcp",
   "description": "Production Model Context Protocol (MCP) server for business-intelligence and data agents. Exposes dynamic KPI analytics, forecasting, anomaly detection, and schema resources across 10 enterprise domains via FastMCP.",
   "maintainers": [
-    "siddoyacinetech227@gmail.com"
+    "Yacine-ai-tech"
   ],
   "repository": {
     "url": "https://github.com/Yacine-ai-tech/AgentKit",
