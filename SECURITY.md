@@ -67,7 +67,7 @@ useful without becoming a data-leak vector.
   model-supplied value cannot alter query structure. Undeclared arguments are rejected
   before reaching the driver, and a `read` tool declaring a `statement:` is refused at
   load time.
-- **Prompt injection:** the honest scope. Tools return structured data rather than
+- **Prompt injection:** the scope. Tools return structured data rather than
   free text that the server then interprets, which narrows the surface — but content
   retrieved from your database *can* still influence a model that reads it. The
   guardrails above are the mitigation that matters: even a fully persuaded model cannot

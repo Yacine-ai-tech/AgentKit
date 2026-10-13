@@ -148,7 +148,7 @@ Load it by importing it before the server starts, for example from your own entr
 - **Parameters are bound, never interpolated.** `%(name)s` goes through the driver's
   parameter binding, so a model-supplied value cannot change query structure. Write the
   query yourself; let the agent fill declared parameters only.
-- **Declare effects honestly.** `read` / `write` / `destructive` drive real enforcement
+- **Declare effects accurately.** `read` / `write` / `destructive` drive real enforcement
   (see [SECURITY.md](../SECURITY.md#capability-guardrails)). A `read` tool may not use
   `statement:` — loading rejects it.
 - **Undeclared arguments are refused** before reaching SQL.

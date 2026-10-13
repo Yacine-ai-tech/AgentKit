@@ -347,7 +347,7 @@ if _DSPY:
 
 
 def _eval_on(program, examples: list, call_delay: float) -> tuple:
-    """Score `program` against a held-out set, spacing calls out for free-tier LLM rate
+    """Score `program` against a held-out set, spacing calls out to respect provider rate
     limits and skipping (not crashing on) any single example that hits a transient error.
     Returns (mean_score, n_scored)."""
     import time
@@ -441,10 +441,10 @@ def main():
     # Override with DSPY_MAX_TOKENS if your model needs more headroom.
     # num_retries is generous here (default is 3) because BootstrapFewShot's own compile
     # loop makes several chained LLM calls back-to-back with no delay between them —
-    # on a free-tier per-minute token budget this reliably hits a transient 429 before
+    # under a per-minute provider token budget this can hit a transient 429 before
     # the window rolls over. litellm/DSPy back off and retry on 429 automatically; a
     # higher retry ceiling just gives that backoff enough attempts to ride out a ~10-20s
-    # per-minute quota reset instead of surfacing it as a hard failure.
+    # per-minute rate-limit reset instead of surfacing it as a hard failure.
     dspy.configure(
         lm=dspy.LM(
             model, temperature=0.3, max_tokens=int(os.getenv("DSPY_MAX_TOKENS", "4096")),
