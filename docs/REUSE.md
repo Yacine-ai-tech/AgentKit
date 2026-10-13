@@ -137,7 +137,7 @@ async def weekly_summary_prompt(metric: str = "revenue") -> str:
     )
 ```
 
-Load it by importing it before the server starts — e.g. add a line to your entrypoint, or set `AGENTKIT_EXTENSIONS=my_extension.py` if your deployment supports it. The decorated resources and prompts appear immediately in `resources/list` and `prompts/list` to any connecting MCP client.
+Load it by importing it before the server starts, for example from your own entrypoint script. The decorated resources and prompts appear immediately in `resources/list` and `prompts/list` to any connecting MCP client.
 
 > **Design principle.** Domain-specific resources and prompts belong to the consuming project, not the core server. Keeping the server blank means any team can layer their own `@mcp.resource` / `@mcp.prompt` decorators without forking — they get the policy engine and transport for free.
 

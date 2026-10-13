@@ -34,11 +34,11 @@ const DOMAIN_RESULTS = [
 ];
 
 const MCP_TOOL_METRICS = [
-  { metric: 'Tool Selection Accuracy', score: '12 / 12 (100%)', benchmark: 'Semantic intent alignment' },
-  { metric: 'Tool Execution Success Rate', score: '12 / 12 (100%)', benchmark: 'Zero unhandled protocol faults' },
-  { metric: 'Average Execution Time', score: '26.87 s', benchmark: 'Full generation cycle with LLM synthesis' },
-  { metric: 'P95 Execution Latency', score: '39.86 s', benchmark: 'Complex multi-hop cross-domain analysis' },
-  { metric: 'Report Quality Score', score: '12 / 12 (100%)', benchmark: 'Executive completeness verification' },
+  { metric: 'Tool Selection Accuracy', score: '12 / 12 (100%)', benchmark: 'Expected domain data retrieved' },
+  { metric: 'Tool Execution Success Rate', score: '12 / 12 (100%)', benchmark: 'No workflow errors' },
+  { metric: 'Average Execution Time', score: '28.0 s', benchmark: 'Full three-agent workflow, three sequential LLM calls' },
+  { metric: 'P95 Execution Latency', score: '49.5 s', benchmark: 'Slowest queries (forecasting, anomalies)' },
+  { metric: 'Report Quality Score', score: '12 / 12 (100%)', benchmark: 'Expected content fields present' },
 ];
 
 export default function BenchmarkPage() {
@@ -64,9 +64,9 @@ export default function BenchmarkPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile
           label="Policy Guardrails"
-          value="14 / 14"
+          value="16 / 16"
           sub="Deterministic policy tests"
-          delta={{ text: "100% enforced" }}
+          delta={{ text: "All passing" }}
           icon={ShieldCheck}
         />
         <StatTile
@@ -99,7 +99,7 @@ export default function BenchmarkPage() {
             activeTab === 'guardrails' ? 'bg-surface-2 text-body border border-line-strong' : 'text-dim hover:text-body'
           }`}
         >
-          1. Policy Guardrails (14/14)
+          1. Policy Guardrails (16/16)
         </button>
         <button
           onClick={() => setActiveTab('langgraph')}
@@ -123,7 +123,7 @@ export default function BenchmarkPage() {
       {activeTab === 'guardrails' && (
         <Card title="Primary Security Benchmark: Protocol-Level Capability Invariants">
           <p className="text-xs text-dim mb-4 leading-relaxed">
-            Evaluates whether the capability policy engine correctly denies out-of-policy invocations and records each event. The suite runs 100% deterministically with zero network calls or external LLM dependencies.
+            Evaluates whether the capability policy engine correctly denies out-of-policy invocations and records each event. The suite is deterministic: it makes no network calls and uses no LLM.
           </p>
 
           <div className="overflow-x-auto">
@@ -196,14 +196,14 @@ export default function BenchmarkPage() {
               <div className="rounded-xl border border-line bg-surface-2 p-4 text-xs text-dim">
                 <div className="font-semibold text-body mb-1">Cross-Domain Multi-Tool Synthesis</div>
                 <p className="leading-relaxed">
-                  Seven complex queries specifically test cross-domain tool orchestration (e.g., comparing HR headcount trends with financial gross margin expansion). All 7 scenarios invoked both required tools in the correct topological sequence and grounded reports accurately.
+                  Seven complex queries specifically test cross-domain tool orchestration (e.g., comparing HR headcount trends with financial gross margin expansion). All 7 scenarios called the expected tools and produced reports containing the expected content.
                 </p>
               </div>
 
               <div className="rounded-xl border border-line bg-surface-2 p-4 text-xs text-dim">
-                <div className="font-semibold text-body mb-1">High-Throughput Groq LPU Validation</div>
+                <div className="font-semibold text-body mb-1">What this suite does and does not test</div>
                 <p className="leading-relaxed">
-                  Evaluated with Groq LPU inference matching production reasoning performance. Validates deterministic keyword tool routing and robust synthesis across enterprise BI domains.
+                  Tool routing in the analyst step is deterministic keyword matching, so the suite verifies coverage and wiring across the ten domains. It is not a measure of model reasoning quality.
                 </p>
               </div>
             </div>
@@ -213,14 +213,14 @@ export default function BenchmarkPage() {
 
       {/* Tab 3: MCP Tool Performance */}
       {activeTab === 'mcp' && (
-        <Card title="Reference MCP BI Tool Performance Suite (12 Scenarios)">
+        <Card title="Reference MCP BI Tool Performance Suite (12 Scenarios, run on 2026-10-13)">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-line text-left text-muted font-medium uppercase tracking-wider">
                   <th className="pb-2.5 pr-4">Evaluation Metric</th>
                   <th className="pb-2.5 pr-4">Measured Score</th>
-                  <th className="pb-2.5">Methodology & Standard</th>
+                  <th className="pb-2.5">What it means</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">

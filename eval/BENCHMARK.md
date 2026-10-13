@@ -24,60 +24,47 @@ python -m pytest tests/test_policy_guardrails.py -v
 | Audit — allows | any allowed call | recorded ✅ |
 | Audit — denials | any denial | recorded with reason ✅ |
 
-**Summary: 14/14 guardrails enforced correctly.**
+**Summary: all 16 guardrail tests pass** (the table lists the nine behaviours they cover; the rest
+check session isolation, argument redaction, wildcard scopes and effect validation).
 
 This evaluation is fully reproducible with no external services.
 
 ---
 
-## Benchmark 2 — LangGraph Agent Orchestration (`run_agent_eval.py`)
+## Benchmark 2 — LangGraph Agent Orchestration (`run_dspy_eval.py`)
 
-**What it measures:** Does the three-node LangGraph agent (Planner → Analyst → Reporter) correctly select tools, execute them, and synthesize grounded answers?
+**What it measures:** Does the three-node LangGraph agent (Planner → Analyst → Reporter) select
+the right domain tools and produce a report with the expected content?
 
-**Methodology:**
-- N=4 domain-agnostic queries requiring multi-step tool coordination
-- Judge: Claude (LLM-as-judge) evaluating tool selection accuracy, answer groundedness, and workflow completion
-- Queries span: data retrieval, anomaly analysis, forecasting, cross-metric synthesis
+**Methodology:** 43 scenarios in `multi_domain_scenarios.json` covering all 10 KPI domains plus
+seven cross-domain queries. A scenario passes when the expected tools were called, the expected
+keywords appear and the report meets a minimum length. Tool routing in the analyst step is
+deterministic keyword matching, so the suite checks coverage and wiring rather than model
+reasoning quality.
 
 ```bash
-python eval/run_agent_eval.py
+python eval/run_dspy_eval.py
 ```
 
-| Metric | Result | Notes |
-|---|---|---|
-| Tool Selection Accuracy | 4/4 | Correct tool invoked for each sub-task |
-| Final Answer Groundedness | 4/4 | Answers traced to real tool output |
-| Overall Workflow Completion | 4/4 | No agent loop failures or dead ends |
-
-**Important caveat:** N=4 is a very small sample. These results confirm the workflow functions correctly end-to-end; they do not constitute a statistically valid accuracy estimate. A larger adversarial eval set is needed for that claim.
+**Result:** 43/43 scenarios passed (last recorded run 2026-09-24; see the top-level
+[`BENCHMARK.md`](../BENCHMARK.md) for the per-domain table). The earlier four-query smoke test in
+`run_agent_eval.py` is kept as a quick end-to-end check and is not a statistical result.
 
 ---
 
 ## Benchmark 3 — MCP Tools Performance (`run_mcp_tools_benchmark.py`)
 
-**What it measures:** Protocol-layer reliability and latency for 20 standardized tool invocation scenarios across the reference BI pack.
-
-**Setup:**
-- N=20 invocation scenarios (reference pack: Finance, Operations, People KPIs + forecasting + anomalies)
-- Measured: tool selection accuracy, execution time, memory, protocol success rates
-- LLM: Claude 3.5 Sonnet (via Anthropic API)
-- Database: PostgreSQL
+**What it measures:** End-to-end success and latency of the real workflow through AgentKit's REST
+facade for 12 queries (5 of the 10 domains, plus forecasting and anomalies).
 
 ```bash
-python eval/run_mcp_tools_benchmark.py
+AGENTKIT_URL=https://<your-host> python eval/run_mcp_tools_benchmark.py --reset
 ```
 
-| Metric | Result | Target | Status |
-|---|---|---|---|
-| **Tool Selection Accuracy** | 19/20 | ≥ 18/20 | ✅ |
-| **Tool Execution Success Rate** | 20/20 | ≥ 19/20 | ✅ |
-| **Avg Tool Execution Time** | ~1.8s | < 3s | ✅ |
-| **P95 Tool Execution Time** | ~3.2s | < 5s | ✅ |
-| **Answer Quality** | 18/20 | ≥ 17/20 | ✅ |
-| **Memory Peak per Tool** | ~45MB | < 100MB | ✅ |
-| **MCP protocol (discovery, marshaling, parsing, errors)** | 20/20 | 20/20 | ✅ |
-
-*Execution time includes DB query + ML compute (insights/forecasting) + LiteLLM round trip. Pure MCP overhead (JSON-RPC serialization) is sub-millisecond.*
+**Result (2026-10-13, N=12, public deployment):** 12/12 selected the expected domain data and
+completed; average 28.0 s and P95 49.5 s per query. The latency is three sequential LLM calls,
+not protocol overhead. Per-category figures are in
+[`MCP_TOOLS_BENCHMARK.md`](MCP_TOOLS_BENCHMARK.md).
 
 ---
 

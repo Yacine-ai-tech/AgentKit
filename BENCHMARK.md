@@ -8,7 +8,7 @@ methodology and reproduction instructions are in `eval/`.
 
 ## 1. Policy Guardrail Enforcement (Primary Evaluation)
 
-**14/14 guardrails enforced correctly.**
+**16/16 guardrail tests pass.**
 
 This is AgentKit's core evaluation — whether the capability policy engine correctly denies
 out-of-policy invocations and records each denial. The suite is fully deterministic: no
@@ -40,8 +40,8 @@ The three-node LangGraph agent (Planner → Analyst → Reporter) is evaluated o
 suite (`eval/multi_domain_scenarios.json`, `eval/run_dspy_eval.py`) covering every KPI domain
 (Finance, People, Operations, Customer, Engineering, Growth, Logistics, ESG, IT, Security) and
 seven cross-domain queries, judged on tool-routing correctness and report content quality.
-Evaluated using high-throughput Groq LPU inference matching the production reasoning pipeline;
-tool routing is deterministic keyword matching, validating full architectural coverage across all 10 business domains.
+The analyst's tool routing is deterministic keyword matching, so this suite checks architectural
+coverage across the 10 domains rather than model reasoning quality.
 
 Reproducible: `python eval/run_dspy_eval.py` (requires `GROQ_API_KEY` or `ANTHROPIC_API_KEY` +
 `POSTGRES_URL`)
@@ -71,23 +71,23 @@ Every scenario passed on both tool routing and report-content quality across all
 
 ## 3. MCP Tools Performance
 
-**12/12 (100%) tool-selection accuracy, 12/12 tool-execution success**, measured against a live
-AgentKit instance.
+**12/12 (100%) tool-selection accuracy, 12/12 tool-execution success**, measured against the
+live public deployment on 2026-10-13.
 
 The scenario suite (`eval/run_mcp_tools_benchmark.py`) defines 12 standardized tool-invocation
-scenarios across the reference business-intelligence pack, measuring execution time, memory,
-and protocol-level success rate.
+scenarios across the reference business-intelligence pack (5 of the 10 domains plus forecasting
+and anomalies), measuring execution time and success rate.
 
 Reproducible: `python eval/run_mcp_tools_benchmark.py` (requires `GROQ_API_KEY` or
 `ANTHROPIC_API_KEY` + `POSTGRES_URL`, and a running AgentKit instance at `AGENTKIT_URL`)
 
-| Metric | Result | Standard Reference |
+| Metric | Result | What it means |
 |---|---|---|
-| Tool Selection Accuracy | **12/12 (100%)** | Semantic intent alignment |
-| Tool Execution Success Rate | **12/12 (100%)** | Zero unhandled protocol faults |
-| Avg. Tool Execution Time | 26.87 s | Full generation cycle |
-| P95 Tool Execution Time | 39.86 s | Complex multi-hop analysis |
-| Report Quality | **12/12 (100%)** | Executive completeness check |
+| Tool Selection Accuracy | **12/12 (100%)** | Expected domain data retrieved |
+| Tool Execution Success Rate | **12/12 (100%)** | No workflow errors |
+| Avg. Tool Execution Time | 28.0 s | Full three-agent workflow |
+| P95 Tool Execution Time | 49.5 s | Slowest queries (forecasting, anomalies) |
+| Report Quality | **12/12 (100%)** | Expected content fields present |
 
 All 12 business intelligence scenarios passed on both tool selection and execution correctness across all configured domain tools.
 
@@ -97,9 +97,9 @@ Full detail: [`eval/MCP_TOOLS_BENCHMARK.md`](eval/MCP_TOOLS_BENCHMARK.md)
 
 ## 4. MCP Framework Protocol Overhead
 
-Raw MCP overhead — JSON-RPC serialization, tool registration, schema synthesis — is
-sub-millisecond, confirming that the policy engine adds negligible overhead to the protocol
-layer itself.
+Raw MCP overhead (JSON-RPC serialization, tool registration, schema synthesis) is
+sub-millisecond in `eval/run_benchmarks.py`. That script measures the protocol layer, not the
+policy engine's own cost.
 
 Reproducible (deterministic, no external services): `python eval/run_benchmarks.py --seed 42`
 
