@@ -6,12 +6,12 @@
     "url": "https://github.com/Yacine-ai-tech/AgentKit",
     "source": "github"
   },
-  "version": "0.1.17",
+  "version": "0.1.18",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "agentkit-mcp",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
