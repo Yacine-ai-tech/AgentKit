@@ -81,7 +81,7 @@ For an MCP client, `uvx` can run the published package without a checkout:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt      # server only; demos and research scripts: requirements-demos.txt
 cp .env.example .env  # fill in keys + POSTGRES_URL
 python mcp_server.py
 ```
@@ -145,6 +145,12 @@ print(result["report"])
 ```
 
 ## Architecture
+
+The call funnel, policy model, tool packs and design decisions are described in
+[`ARCHITECTURE.md`](ARCHITECTURE.md), with an interactive version in the dashboard. The REST
+facade (`/api/...`) exposes the same tools, policy, audit and routing views over HTTP for the
+dashboard and ordinary callers. Every configuration variable is described in
+[`.env.example`](.env.example).
 
 ```
         Claude Desktop / Cursor / LangGraph
