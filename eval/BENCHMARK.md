@@ -1,5 +1,7 @@
 # AgentKit — Benchmark Suite
 
+> Figures recorded: 2026-10. Document last reviewed: 2026-10-14.
+
 This directory contains reproducible benchmarks for AgentKit's performance, policy enforcement, and agent orchestration capabilities.
 
 ## Benchmark 1 — Policy Refusal Correctness (`test_policy_guardrails.py`)

@@ -21,3 +21,21 @@ project to run.
 
 To expose your own database or HTTP API as tools without writing Python, see
 [docs/REUSE.md](docs/REUSE.md).
+
+## Installing the demos and research scripts
+
+`requirements.txt` contains only what the server needs, which keeps the container image small. The
+CrewAI and Claude Agent SDK demos (`demos/`) and the DSPy experiment (`research/`) have their own
+dependencies in `requirements-demos.txt`:
+
+```bash
+pip install -r requirements-demos.txt
+```
+
+## REST facade
+
+The same process that serves MCP over SSE also serves a REST facade under `/api` (tools,
+resources, prompts, policy, audit, routing, packs and `POST /api/workflow/run`) and the dashboard.
+Use `GET /health` for liveness. Set `REQUIRE_INTERNAL_TOKEN=true` and an internal token to require
+a header on every `/api` route when the service is reachable from outside a trusted network.
+Every variable is described in [`.env.example`](.env.example).

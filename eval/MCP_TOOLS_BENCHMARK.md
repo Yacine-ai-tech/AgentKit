@@ -1,5 +1,7 @@
 # AgentKit — MCP Tools Performance Benchmark
 
+> Figures recorded: 2026-10. Document last reviewed: 2026-10-14.
+
 A comprehensive benchmark of AgentKit's MCP (Model Context Protocol) tools performance, accuracy, and resource utilization, run against the real 3-agent LangGraph workflow (`POST /api/workflow/run`). Reproducible:
 `python eval/run_mcp_tools_benchmark.py`
 

@@ -1,5 +1,7 @@
 # Benchmark Results
 
+> Figures recorded: 2026-10. Document last reviewed: 2026-10-14.
+
 This document summarizes AgentKit's measured policy-enforcement correctness, agent
 orchestration quality, MCP tool performance, and DSPy pipeline optimization results. Full
 methodology and reproduction instructions are in `eval/`.

@@ -65,7 +65,7 @@ frontend/node_modules/
 .env.bak-corrupted
 
 # Internal dev-session architecture notes (not committed) — session-specific
-ARCHITECTURE.md
+FULL_ARCHITECTURE.md
 architecture.md
 Architecture.md
 PROJECT_OVERVIEW.md
