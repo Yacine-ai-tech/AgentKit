@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.18] - 2026-10-14
+### Changed
+- Policy, audit and session-scoped annotation behaviour as documented in the README and the
+  architecture page; REST facade reports tool input and execution errors with HTTP status codes.
+- The schema bootstrap runs in the background at start-up and the server image no longer
+  installs the demo and research packages.
+- Anonymous start-up ping is on by default and can be switched off (`TELEMETRY_OPT_OUT`,
+  `DO_NOT_TRACK`).
+
 ## [0.1.17] - 2026-10-13
 ### Added
 - `agentkit-mcp` console script (`agentkit_mcp.mcp_server:main`). The README documented
