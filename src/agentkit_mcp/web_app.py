@@ -182,7 +182,14 @@ def build_app() -> FastAPI:
                 )
                 if t
             ]
-            if not token or not any(_hmac.compare_digest(token, exp) for exp in expected_tokens):
+            authorized = bool(token) and any(
+                _hmac.compare_digest(token, exp) for exp in expected_tokens
+            )
+            if not authorized and token:
+                from agentkit_mcp.core.session_token import verify_session_token
+
+                authorized = verify_session_token(token)
+            if not authorized:
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "Missing or invalid X-AgentKit-Internal-Token"},
@@ -231,6 +238,38 @@ def build_app() -> FastAPI:
     @app.get("/health", include_in_schema=False)
     async def health() -> Dict[str, Any]:
         return {"status": "ok", "service": "agentkit", "version": "0.1.0"}
+
+    @app.post("/api/v1/auth/login")
+    async def auth_login(request: Request) -> Dict[str, Any]:
+        """Exchange the deployment's internal token for a short-lived session token.
+
+        The static internal token is a service-to-service credential and is never
+        shipped in the frontend bundle; browsers call this once per session and use
+        the returned token for subsequent /api requests.
+        """
+        from agentkit_mcp.core import session_token as _st
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        candidate = str((body or {}).get("token") or "").strip()
+        expected = [
+            t
+            for t in (
+                _os.environ.get("AGENTKIT_INTERNAL_TOKEN"),
+                _os.environ.get("INTERNAL_TOKEN"),
+                _os.environ.get("OMNIINTEL_INTERNAL_TOKEN"),
+            )
+            if t
+        ]
+        if not candidate or not any(_hmac.compare_digest(candidate, exp) for exp in expected):
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+        try:
+            session, ttl = _st.issue_session_token()
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        return {"session_token": session, "expires_in": ttl, "token_type": "bearer"}
 
     @app.get("/api/tools")
     async def list_tools() -> Dict[str, Any]:

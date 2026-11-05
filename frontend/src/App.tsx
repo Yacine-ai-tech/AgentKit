@@ -9,7 +9,7 @@ import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity, Cod
 import { AppShell } from "./kit/AppShell";
 import { WakingBackend } from "./kit/misc";
 import { Skeleton } from "./kit/primitives";
-import { api } from "./lib/api";
+import { api, login, onAuthRequired, sessionToken } from "./lib/api";
 import Overview from "./pages/Overview";
 import Tools from "./pages/Tools";
 import Workflow from "./pages/Workflow";
@@ -84,6 +84,62 @@ const NAV = [
   { to: "/user-guide", label: "User Guide", icon: BookOpen }
 ];
 
+function AuthGate({ children }: { children: ReactNode }) {
+  const [needed, setNeeded] = useState(false);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => onAuthRequired(() => setNeeded(true)), []);
+
+  const submit = async () => {
+    if (!value.trim() || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await login(value);
+      setNeeded(false);
+      setValue("");
+      window.location.reload();
+    } catch {
+      setError("Invalid token — check the internal token and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!needed) return <>{children}</>;
+
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center p-6">
+      <div className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900/60 p-6 shadow-xl">
+        <h2 className="text-lg font-semibold text-slate-100 mb-1">AgentKit access</h2>
+        <p className="text-sm text-slate-400 mb-4">
+          This deployment requires the internal access token. Enter it once — a short-lived
+          session token is kept for this tab only.
+        </p>
+        <input
+          type="password"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="Internal token"
+          autoFocus
+          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-500"
+        />
+        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+        <button
+          onClick={submit}
+          disabled={busy || !value.trim()}
+          className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+        >
+          {busy ? "Signing in…" : "Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [health, setHealth] = useState<"ok" | "down" | "checking">("checking");
   const [attempts, setAttempts] = useState(0);
@@ -111,6 +167,7 @@ export default function App() {
         ) : (
           <Suspense fallback={<Skeleton className="h-64 w-full" />}>
             <RouteErrorBoundary>
+              <AuthGate>
               <Routes>
                 <Route path="/" element={<Overview />} />
                 <Route path="/tools" element={<Tools />} />
@@ -128,6 +185,7 @@ export default function App() {
                 <Route path="/guide" element={<Navigate to="/user-guide" replace />} />
                 <Route path="*" element={<Overview />} />
               </Routes>
+              </AuthGate>
             </RouteErrorBoundary>
           </Suspense>
         )}
