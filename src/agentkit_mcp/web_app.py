@@ -106,6 +106,16 @@ def _app_version() -> str:
 
         return version("agentkit-mcp")
     except PackageNotFoundError:
+        pass
+    # Container images run from a source checkout without dist metadata —
+    # fall back to the version declared in pyproject.toml.
+    try:
+        import tomllib
+        from pathlib import Path
+
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        return tomllib.loads(pyproject.read_text())["project"]["version"]
+    except Exception:
         return "0.0.0"
 
 
