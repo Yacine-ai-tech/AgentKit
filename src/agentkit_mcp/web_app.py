@@ -239,6 +239,12 @@ def build_app() -> FastAPI:
     async def health() -> Dict[str, Any]:
         return {"status": "ok", "service": "agentkit", "version": "0.1.0"}
 
+    # Failed-login throttle: lock a client IP out briefly after repeated bad
+    # internal-token guesses. In-memory is sufficient — the facade is single-process.
+    _LOGIN_FAILS: Dict[str, _deque] = {}
+    _LOGIN_LOCK_SECONDS = 900
+    _LOGIN_MAX_FAILS = 5
+
     @app.post("/api/v1/auth/login")
     async def auth_login(request: Request) -> Dict[str, Any]:
         """Exchange the deployment's internal token for a short-lived session token.
@@ -248,6 +254,15 @@ def build_app() -> FastAPI:
         the returned token for subsequent /api requests.
         """
         from agentkit_mcp.core import session_token as _st
+
+        client_ip = request.client.host if request.client else "unknown"
+        now = _time.time()
+        fails = _LOGIN_FAILS.get(client_ip)
+        if fails is not None:
+            while fails and now - fails[0] > _LOGIN_LOCK_SECONDS:
+                fails.popleft()
+            if len(fails) >= _LOGIN_MAX_FAILS:
+                raise HTTPException(status_code=429, detail="too_many_attempts")
 
         try:
             body = await request.json()
@@ -264,7 +279,10 @@ def build_app() -> FastAPI:
             if t
         ]
         if not candidate or not any(_hmac.compare_digest(candidate, exp) for exp in expected):
+            fails = _LOGIN_FAILS.setdefault(client_ip, _deque())
+            fails.append(now)
             raise HTTPException(status_code=401, detail="invalid_credentials")
+        _LOGIN_FAILS.pop(client_ip, None)
         try:
             session, ttl = _st.issue_session_token()
         except RuntimeError as exc:
