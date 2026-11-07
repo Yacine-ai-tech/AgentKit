@@ -55,8 +55,11 @@ class BearerAuthRateLimit:
 
         # 1) auth
         if self.token:
+            import hmac as _hmac
+
             auth = headers.get(b"authorization", b"").decode()
-            if auth != f"Bearer {self.token}":
+            expected = f"Bearer {self.token}"
+            if not _hmac.compare_digest(auth, expected):
                 return await self._deny(send, 401, "unauthorized")
 
         # 2) rate limit per client IP (sliding window)
