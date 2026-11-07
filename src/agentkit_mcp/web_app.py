@@ -100,10 +100,19 @@ async def _call(fn, *args, **kwargs) -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=str(e))
 
 
+def _app_version() -> str:
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        return version("agentkit-mcp")
+    except PackageNotFoundError:
+        return "0.0.0"
+
+
 def build_app() -> FastAPI:
     app = FastAPI(
         title="AgentKit",
-        version="0.1.0",
+        version=_app_version(),
         description="AI Agent Intelligence Platform — read-only facade over the MCP tools.",
     )
 
@@ -237,7 +246,7 @@ def build_app() -> FastAPI:
 
     @app.get("/health", include_in_schema=False)
     async def health() -> Dict[str, Any]:
-        return {"status": "ok", "service": "agentkit", "version": "0.1.0"}
+        return {"status": "ok", "service": "agentkit", "version": _app_version()}
 
     # Failed-login throttle: lock a client IP out briefly after repeated bad
     # internal-token guesses. In-memory is sufficient — the facade is single-process.
@@ -261,7 +270,9 @@ def build_app() -> FastAPI:
         if fails is not None:
             while fails and now - fails[0] > _LOGIN_LOCK_SECONDS:
                 fails.popleft()
-            if len(fails) >= _LOGIN_MAX_FAILS:
+            if not fails:
+                _LOGIN_FAILS.pop(client_ip, None)
+            elif len(fails) >= _LOGIN_MAX_FAILS:
                 raise HTTPException(status_code=429, detail="too_many_attempts")
 
         try:
