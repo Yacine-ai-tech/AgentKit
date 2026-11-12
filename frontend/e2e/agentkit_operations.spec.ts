@@ -35,7 +35,7 @@ test.describe('Phase 6 — AgentKit Operations', () => {
     await page.route('**/*', async route => {
       const req = route.request();
       const url = req.url();
-      if ((req.resourceType() === 'fetch' || req.resourceType() === 'xhr') && url.includes('vercel.app')) {
+      if ((req.resourceType() === 'fetch' || req.resourceType() === 'xhr') && url.includes('pages.dev')) {
         let backendUrl = process.env.STAGING_API_URL || 'http://localhost:8000';
         if (url.includes('agentkit-ui')) backendUrl = process.env.STAGING_AGENTKIT_URL || 'https://agentkit-demo.example.com';
         
