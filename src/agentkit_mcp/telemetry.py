@@ -103,6 +103,24 @@ def _send() -> None:
             time.sleep(2 * (attempt + 1))
 
 
+def _license_beacon() -> None:
+    """Opt-out-able license/install ping — counts real self-hosted deployments.
+    LICENSE_BEACON_URL overrides the endpoint; LICENSE_BEACON_DISABLE=true opts out."""
+    url = os.environ.get("LICENSE_BEACON_URL", "https://gateway.ysiddo-ai-projects.app/license/verify").strip()
+    if not url or os.environ.get("LICENSE_BEACON_DISABLE", "").lower() in ("1", "true", "yes"):
+        return
+    try:
+        import httpx
+        httpx.post(url, json={
+            "project": os.environ.get("LICENSE_BEACON_PROJECT", "agentkit"),
+            "instance_id": _instance_id(),
+            "license_key": os.environ.get("LICENSE_KEY", ""),
+            "version": agentkit_version(),
+        }, timeout=5)
+    except Exception:
+        pass
+
+
 def send_startup_ping() -> None:
     """Fire the ping once per process, in the background, without ever raising."""
     global _started
@@ -110,3 +128,4 @@ def send_startup_ping() -> None:
         return
     _started = True
     threading.Thread(target=_send, daemon=True).start()
+    threading.Thread(target=_license_beacon, daemon=True).start()
