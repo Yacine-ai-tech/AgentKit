@@ -3,7 +3,7 @@
 [![CI](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Yacine-ai-tech/AgentKit/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![AgentKit MCP server – quality score on Glama](https://glama.ai/mcp/servers/Yacine-ai-tech/AgentKit/badges/score.svg)](https://glama.ai/mcp/servers/Yacine-ai-tech/AgentKit)
-[![Live App](https://img.shields.io/badge/Live_App-agentkit-0070f3?style=flat)](https://agentkit.ysiddo-ai-projects.app)
+[![Live App](https://img.shields.io/badge/Live_App-agentkit-0070f3?style=flat)](https://agentkit.ysiddo-ai-projects.app?utm_source=github&utm_medium=referral)
 [![Research](https://img.shields.io/badge/Research-Capability_Policy-8a2be2?style=flat)](https://agentkit.ysiddo-ai-projects.app/research)
 [![Benchmarks](https://img.shields.io/badge/Benchmarks-14%2F14_Guardrails-green?style=flat)](https://agentkit.ysiddo-ai-projects.app/benchmark)
 [![Guide](https://img.shields.io/badge/Docs-User_Guide-blue?style=flat)](https://agentkit.ysiddo-ai-projects.app/guide)
