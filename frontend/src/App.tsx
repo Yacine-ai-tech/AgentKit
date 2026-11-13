@@ -1,9 +1,3 @@
-import UserGuidePage from './pages/UserGuidePage';
-import BenchmarkPage from './pages/BenchmarkPage';
-import ResearchPage from './pages/ResearchPage';
-import ArchitecturePage from './pages/ArchitecturePage';
-import ApiDocs from './pages/ApiDocs';
-import LicensePage from './pages/LicensePage.tsx';
 import { Component, ReactNode, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { LayoutGrid, Wrench, BarChart3, GitBranch, Cable, Library, Activity, Code2, BookOpen, GraduationCap, Award, Workflow as WorkflowIcon } from "lucide-react";
@@ -12,13 +6,19 @@ import { WakingBackend } from "./kit/misc";
 import { Skeleton } from "./kit/primitives";
 import { api, login, onAuthRequired, sessionToken } from "./lib/api";
 import Overview from "./pages/Overview";
-import Tools from "./pages/Tools";
-import Workflow from "./pages/Workflow";
-import Connect from "./pages/Connect";
-import Resources from "./pages/Resources";
-import Observability from "./pages/Observability";
 
+const Tools = lazy(() => import("./pages/Tools"));
+const Workflow = lazy(() => import("./pages/Workflow"));
+const Connect = lazy(() => import("./pages/Connect"));
+const Resources = lazy(() => import("./pages/Resources"));
+const Observability = lazy(() => import("./pages/Observability"));
 const Intelligence = lazy(() => import("./pages/Intelligence"));
+const ArchitecturePage = lazy(() => import("./pages/ArchitecturePage"));
+const ResearchPage = lazy(() => import("./pages/ResearchPage"));
+const BenchmarkPage = lazy(() => import("./pages/BenchmarkPage"));
+const ApiDocs = lazy(() => import("./pages/ApiDocs"));
+const LicensePage = lazy(() => import("./pages/LicensePage"));
+const UserGuidePage = lazy(() => import("./pages/UserGuidePage"));
 
 interface ErrorBoundaryState {
   hasError: boolean;
