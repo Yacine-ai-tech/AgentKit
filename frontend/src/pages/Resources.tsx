@@ -6,16 +6,26 @@ import { JSONViewer } from "../kit/JSONViewer";
 import { api, isUnavailable, KPI } from "../lib/api";
 
 /* The kpi:// resources map 1:1 onto query_kpis(domain, limit=10) — the facade lets the
-   browser read the same live values agents get. The prompt text below is the REAL template
-   registered in mcp_server.py.
+   browser read the same live values agents get. The prompt text is rendered live via
+   GET /api/prompts/monthly_executive_briefing (the real template in mcp_server.py).
    These 10 domains are a reference baseline — any custom domain taxonomy can be configured
    via STREAMPULSE_DOMAIN_PACK. The framework is fully extensible beyond this set. */
 
 const RESOURCES = ["Finance", "Growth", "Operations", "People", "Customer", "Engineering", "Logistics", "ESG", "IT", "Security"];
 
-const PROMPT_TEXT = `Produce a monthly executive briefing for {month}. Sections: KEY FINDING, EVIDENCE (from KPI tools), ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. Be concrete and concise.`;
+// Fallback only — the rendered template is fetched live from /api/prompts so the
+// page can never drift from what the MCP server actually registers.
+const PROMPT_FALLBACK = `Produce a monthly executive briefing for {month}. Sections: KEY FINDING, EVIDENCE (from KPI tools), ROOT CAUSE, RECOMMENDED ACTION, RISK IF UNADDRESSED. Be concrete and concise.`;
 
 export default function Resources() {
+  const [promptText, setPromptText] = useState<string>(PROMPT_FALLBACK);
+
+  useEffect(() => {
+    api.prompt("monthly_executive_briefing")
+      .then((r) => { if (r.content) setPromptText(r.content); })
+      .catch(() => { /* keep fallback */ });
+  }, []);
+
   return (
     <div>
       <PageHeader
@@ -30,7 +40,7 @@ export default function Resources() {
         className="mt-4"
         actions={<Chip>prompt template</Chip>}
       >
-        <pre className="whitespace-pre-wrap rounded-xl border border-line bg-bg p-4 text-[12.5px] leading-6 text-dim">{PROMPT_TEXT}</pre>
+        <pre className="whitespace-pre-wrap rounded-xl border border-line bg-bg p-4 text-[12.5px] leading-6 text-dim">{promptText}</pre>
         <p className="mt-2 text-[12.5px] text-muted">
           Registered in mcp_server.py — agents fill <code className="font-mono text-[11.5px]">{"{month}"}</code> and get a structured briefing spec.
         </p>

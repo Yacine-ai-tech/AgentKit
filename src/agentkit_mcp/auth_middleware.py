@@ -29,6 +29,8 @@ class BearerAuthRateLimit:
         self.rate = int(os.getenv("MCP_RATE_LIMIT", rate))
         self.window = int(os.getenv("MCP_RATE_WINDOW", window))
         self._hits: Dict[str, Deque[float]] = defaultdict(deque)
+        # Cap tracked IPs so the dict can't grow unboundedly under spoofed-source traffic.
+        self._max_tracked = int(os.getenv("MCP_RATE_MAX_TRACKED_IPS", "10000"))
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http":
@@ -71,6 +73,20 @@ class BearerAuthRateLimit:
         if len(q) >= self.rate:
             return await self._deny(send, 429, "rate limit exceeded")
         q.append(now)
+
+        # Periodic sweep: drop IPs whose window has fully expired once the table
+        # grows past the cap, so _hits stays bounded.
+        if len(self._hits) > self._max_tracked:
+            stale = [
+                k
+                for k, v in self._hits.items()
+                if not v or now - v[-1] > self.window
+            ]
+            for k in stale:
+                self._hits.pop(k, None)
+            # Still over cap (all entries fresh): evict oldest-seen keys arbitrarily.
+            while len(self._hits) > self._max_tracked:
+                self._hits.pop(next(iter(self._hits)), None)
 
         return await self.app(scope, receive, send)
 

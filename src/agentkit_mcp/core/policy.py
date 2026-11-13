@@ -163,6 +163,8 @@ class PolicyEngine:
     def __init__(self, audit_capacity: int = 1000):
         self._policies: Dict[str, ToolPolicy] = {}
         self._hits: Dict[str, Deque[float]] = defaultdict(deque)
+        # Bound the rate-limit table even if tool names ever become caller-influenced.
+        self._max_rate_keys = int(os.getenv("AGENTKIT_RATE_MAX_KEYS", "10000"))
         self._audit: Deque[AuditRecord] = deque(maxlen=audit_capacity)
         self._lock = threading.Lock()
 
@@ -260,6 +262,18 @@ class PolicyEngine:
                         policy=policy,
                     )
                 q.append(now)
+                # Periodic sweep: evict keys whose sliding window has fully expired
+                # once the table grows past the cap.
+                if len(self._hits) > self._max_rate_keys:
+                    stale = [
+                        k
+                        for k, v in self._hits.items()
+                        if not v or now - v[-1] > policy.rate_window
+                    ]
+                    for k in stale:
+                        self._hits.pop(k, None)
+                    while len(self._hits) > self._max_rate_keys:
+                        self._hits.pop(next(iter(self._hits)), None)
 
         return Decision(True, "ok", dry_run=dry_run, policy=policy)
 

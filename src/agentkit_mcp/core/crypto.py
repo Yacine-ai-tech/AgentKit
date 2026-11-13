@@ -26,7 +26,12 @@ def get_fernet() -> Fernet:
         or settings.POSTGRES_URL
     )
     if not secret:
-        secret = hashlib.sha256(b"agentkit_default_storage_envelope").hexdigest()
+        # Fail closed: there is no safe default key — a hardcoded fallback would let
+        # anyone decrypt stored credentials. Require an explicit deployment secret.
+        raise RuntimeError(
+            "AgentKit storage encryption requires a secret: set SECRET_KEY "
+            "(or AGENTKIT_INTERNAL_TOKEN / MCP_AUTH_TOKEN / POSTGRES_URL)"
+        )
     key = _derive_key(secret)
     return Fernet(key)
 

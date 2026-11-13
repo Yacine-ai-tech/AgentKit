@@ -30,6 +30,12 @@ class ForecastEngine:
         if df.empty or len(df) < 2:
             return pd.DataFrame()
 
+        # Only well-formed YYYY-MM period tags are forecastable — anything else
+        # (e.g. "Q3-2024", "latest") would crash the strptime below or sort wrongly.
+        df = df[df["month_tag"].astype(str).str.match(r"^\d{4}-(0[1-9]|1[0-2])$")].copy()
+        if df.empty or len(df) < 2:
+            return pd.DataFrame()
+
         df = df.sort_values("month_tag").copy()
         df["time_index"] = range(len(df))
         X = df[["time_index"]].values

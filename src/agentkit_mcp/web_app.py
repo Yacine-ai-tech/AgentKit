@@ -276,6 +276,17 @@ def build_app() -> FastAPI:
 
         client_ip = request.client.host if request.client else "unknown"
         now = _time.time()
+        # Bound the failure table: evict IPs whose lockout window has expired once
+        # it grows past the cap (spoofed-source traffic must not grow it forever).
+        if len(_LOGIN_FAILS) > 10000:
+            for k in [
+                k
+                for k, v in _LOGIN_FAILS.items()
+                if not v or v[-1] < now - _LOGIN_LOCK_SECONDS
+            ]:
+                _LOGIN_FAILS.pop(k, None)
+            while len(_LOGIN_FAILS) > 10000:
+                _LOGIN_FAILS.pop(next(iter(_LOGIN_FAILS)), None)
         fails = _LOGIN_FAILS.get(client_ip)
         if fails is not None:
             while fails and now - fails[0] > _LOGIN_LOCK_SECONDS:
@@ -524,8 +535,19 @@ def build_app() -> FastAPI:
         from agentkit_mcp.core.policy import policy_engine
 
         admin_secret = os.getenv("ADMIN_TOKEN")
-        is_admin = bool(x_admin_token and admin_secret and x_admin_token == admin_secret)
-        effective_session = session_id or x_demo_session_id
+        is_admin = bool(
+            x_admin_token
+            and admin_secret
+            and _hmac.compare_digest(x_admin_token, admin_secret)
+        )
+        if is_admin:
+            effective_session = session_id or x_demo_session_id
+        else:
+            # Non-admin callers are bound to their header-derived session. A
+            # session_id query param that disagrees is a forgery attempt — reject.
+            if session_id and session_id != x_demo_session_id:
+                raise HTTPException(status_code=403, detail="session_mismatch")
+            effective_session = x_demo_session_id
         if effective_session == "*" and not is_admin:
             raise HTTPException(status_code=403, detail="admin_required_for_unscoped_access")
         target_session = "*" if is_admin else effective_session
@@ -598,7 +620,12 @@ def build_app() -> FastAPI:
         else:
             params = dict(request.query_params)
 
-        effective_session = request.query_params.get("session_id") or x_demo_session_id
+        # The demo-session header is the visitor identity; a conflicting
+        # session_id query param must not override it (audit/annotation forgery).
+        qp_session = request.query_params.get("session_id")
+        if qp_session and x_demo_session_id and qp_session != x_demo_session_id:
+            raise HTTPException(status_code=403, detail="session_mismatch")
+        effective_session = x_demo_session_id or qp_session
         try:
             return await call_pack_tool(
                 pack, tool, params, caller="rest", session_id=effective_session
