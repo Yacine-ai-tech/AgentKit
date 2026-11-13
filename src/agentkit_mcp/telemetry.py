@@ -109,6 +109,8 @@ def _license_beacon() -> None:
     url = os.environ.get("LICENSE_BEACON_URL", "https://gateway.ysiddo-ai-projects.app/license/verify").strip()
     if not url or os.environ.get("LICENSE_BEACON_DISABLE", "").lower() in ("1", "true", "yes"):
         return
+    if _opted_out():
+        return
     try:
         import httpx
         httpx.post(url, json={

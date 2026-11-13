@@ -316,13 +316,36 @@ async def forecast_metric(
             alldf = await _run_db(get_kpi_metrics)
             if alldf is not None and not alldf.empty:
                 exact = alldf[alldf["metric"].str.lower() == metric_name.lower()]
-                df = (
-                    exact
-                    if not exact.empty
-                    else alldf[
+                if not exact.empty:
+                    df = exact
+                else:
+                    fuzzy = alldf[
                         alldf["metric"].str.contains(metric_name, case=False, na=False)
                     ]
-                )
+                    if not fuzzy.empty:
+                        # Never blend across units — a fuzzy name matching both USD and
+                        # headcount series would produce a meaningless forecast.
+                        if "unit" in fuzzy.columns:
+                            units = {
+                                str(u).strip().lower()
+                                for u in fuzzy["unit"].dropna().tolist()
+                                if str(u).strip() and str(u).strip().lower() != "nan"
+                            }
+                            if len(units) > 1:
+                                return {
+                                    "forecast": [],
+                                    "upper_ci": [],
+                                    "lower_ci": [],
+                                    "method": "none",
+                                    "note": "no_data",
+                                    "reason": "ambiguous_units",
+                                }
+                        # Restrict to a single metric series (the dominant match) rather
+                        # than averaging unrelated metrics that happen to share a name.
+                        if fuzzy["metric"].nunique() > 1:
+                            top = fuzzy["metric"].value_counts().idxmax()
+                            fuzzy = fuzzy[fuzzy["metric"] == top]
+                    df = fuzzy
         if df is None or df.empty:
             return {
                 "forecast": [],
@@ -564,10 +587,16 @@ def _serve_sse(port: int) -> None:
         log.info("Serving SSE (auth=%s) + web facade on :%s", bool(token), port)
         uvicorn.run(composite, host="0.0.0.0", port=port)
     except Exception as e:
-        log.warning(
-            "guarded SSE serve unavailable (%s) — falling back to mcp.run(sse)", e
+        # mcp.run(sse) serves WITHOUT bearer auth or rate limiting — falling back to it
+        # would expose the full tool surface unauthenticated on 0.0.0.0. Refuse instead.
+        log.error(
+            "guarded SSE serve unavailable (%s) — refusing unauthenticated fallback", e
         )
-        mcp.run(transport="sse", host="0.0.0.0", port=port)
+        raise RuntimeError(
+            "SSE serve requires the guarded ASGI path (bearer auth + rate limit); "
+            "refusing to start an unauthenticated server. Fix the guarded path "
+            "(see logs) or unset the SSE transport."
+        ) from e
 
 
 def main(default_transport: Optional[str] = None) -> None:

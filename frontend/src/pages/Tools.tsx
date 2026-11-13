@@ -50,13 +50,19 @@ export default function Tools() {
             <ToolCard 
               key={t.name} 
               tool={t} 
-              policy={policy?.tools?.[t.name]} 
+              policy={policyByName(policy)?.[t.name]} 
             />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+// /api/policy returns `tools` as a list of policy objects; index by name for lookup.
+function policyByName(policy: PolicyResponse | null): Record<string, ToolPolicy> | null {
+  if (!policy || !Array.isArray(policy.tools)) return null;
+  return Object.fromEntries(policy.tools.map((p) => [p.name, p]));
 }
 
 function ToolCard({ tool, policy }: { tool: ToolMeta; policy?: ToolPolicy }) {

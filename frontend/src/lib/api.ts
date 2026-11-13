@@ -25,7 +25,7 @@ export type PolicyResponse = {
   writes_enabled: boolean;
   approval_configured: boolean;
   granted_scopes: string[];
-  tools: Record<string, ToolPolicy>;
+  tools: ToolPolicy[];
   audit_sink: string | null;
 };
 
@@ -195,7 +195,17 @@ const q = (params: Record<string, string | number | undefined>) => {
 export const api = {
   health: () => req<{ status: string }>("/health"),
   policy: () => req<PolicyResponse>("/api/policy"),
-  tools: () => req<{ tools: ToolMeta[]; resources: string[]; prompts: string[] }>("/api/tools"),
+  tools: () => req<{
+    tools: ToolMeta[];
+    resources: { uri: string; name: string; description: string }[];
+    prompts: {
+      name: string;
+      description: string;
+      arguments: { name: string; description: string; required: boolean }[];
+    }[];
+  }>("/api/tools"),
+  prompt: (name: string, params?: Record<string, string>) =>
+    req<{ name: string; content?: string; error?: string }>(`/api/prompts/${name}${q(params || {})}`),
   kpis: (p: { domain?: string; period_from?: string; period_to?: string; metric_filter?: string; limit?: number }) =>
     req<{ kpis: KPI[]; total: number; error?: string }>(`/api/kpis${q(p)}`),
   healthScore: (domain?: string) => req<HealthScore>(`/api/health-score${q({ domain })}`),

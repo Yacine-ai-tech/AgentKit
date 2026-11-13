@@ -4,6 +4,7 @@ Insight engine — health index, risk scoring, anomalies, executive summary.
 
 from __future__ import annotations
 
+import re
 from typing import Dict, List
 
 import numpy as np
@@ -36,7 +37,18 @@ def format_number(value: float | None, currency: str = "$") -> str:
 
 
 def _metric_lookup(df: pd.DataFrame, keywords: List[str]) -> pd.DataFrame:
-    mask = df["metric"].str.lower().apply(lambda name: any(k in name for k in keywords))
+    # Token/word-boundary matching: "arr" must not match inside "carrier".
+    # Boundaries are non-alphanumeric, so "gross_margin" still matches "margin".
+    patterns = [
+        re.compile(r"(?<![a-z0-9])" + re.escape(k.lower()) + r"(?![a-z0-9])")
+        for k in keywords
+    ]
+
+    def _match(name: object) -> bool:
+        n = str(name).lower()
+        return any(p.search(n) for p in patterns)
+
+    mask = df["metric"].apply(_match)
     return df[mask]
 
 
@@ -153,6 +165,20 @@ def detect_anomalies(
         if "value" in df.columns
         else ("actual" if "actual" in df.columns else df.columns[0])
     )
+
+    # Stats must be computed per series, not across the whole frame — z-scores and
+    # IQR bounds derived from mixed metrics/units are meaningless.
+    group_cols = [c for c in ("metric", "unit") if c in df.columns]
+    if group_cols:
+        groups = list(df.groupby(group_cols, sort=False, dropna=False))
+        if len(groups) > 1:
+            return pd.concat(
+                [
+                    detect_anomalies(g, z_threshold=z_threshold, method=method)
+                    for _, g in groups
+                ],
+                axis=0,
+            )
 
     if method == "zscore":
         # Z-score based anomaly detection
