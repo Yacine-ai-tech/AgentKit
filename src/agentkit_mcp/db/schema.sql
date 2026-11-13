@@ -1,4 +1,20 @@
--- AgentKit — PostgreSQL Schema
+-- ⚠️  DEPRECATED — DO NOT USE FOR NEW DEPLOYMENTS ⚠️
+--
+-- This file describes an aspirational ledger/finance schema (companies, periods,
+-- accounts, journal_entries, UUID keys, enums) that does NOT match the schema the
+-- application code actually uses. The runtime source of truth is
+--   src/agentkit_mcp/services/pg_store.py :: init_pg_tables()
+-- which creates every table the code touches (users, chat_sessions, chat_messages,
+-- uploaded_files, kpi_metrics, kpi_entities, kpi_targets, kpi_annotations,
+-- knowledge_base, audit_trail, monitoring_logs, token_refresh_metadata,
+-- oauth_token_events, data_ingestion_log, data_export_log, domain_preference,
+-- data_spreadsheet, integration_credentials) with the exact column names the code
+-- references (e.g. users.password_hash, not hashed_password).
+--
+-- It is kept for historical reference only. The web app bootstraps the real schema
+-- automatically via init_pg_tables() when POSTGRES_URL is set.
+--
+-- AgentKit — PostgreSQL Schema (DEPRECATED)
 -- Migration from DuckDB + SQLite → unified PostgreSQL
 
 -- ════════════════════════════════════════════════════════════
