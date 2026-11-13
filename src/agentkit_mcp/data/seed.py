@@ -34,10 +34,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     try:
-        from agentkit_mcp.services.pg_store import insert_kpi_metric
+        from agentkit_mcp.services.pg_store import (
+            init_pg_tables,
+            store_kpi_metrics,
+            store_knowledge_docs,
+        )
+        from agentkit_mcp.core.config import settings
     except ImportError:
-        from src.agentkit_mcp.services.pg_store import insert_kpi_metric
-    DB_AVAILABLE = True
+        from src.agentkit_mcp.services.pg_store import (
+            init_pg_tables,
+            store_kpi_metrics,
+            store_knowledge_docs,
+        )
+        from src.agentkit_mcp.core.config import settings
+    # Seeding is only possible when a database is actually configured —
+    # importing pg_store alone is not enough (it would just fail at connect time).
+    DB_AVAILABLE = bool(getattr(settings, "POSTGRES_URL", ""))
 except ImportError:
     DB_AVAILABLE = False
 
@@ -233,67 +245,152 @@ def generate_time_series_data(scenario: str = "healthy") -> List[Dict]:
     return data
 
 
-def seed_database(data: List[Dict]) -> bool:
-    """Seed database with generated KPI data"""
+_DIRECTION_MAP = {"up": "higher_is_better", "down": "lower_is_better"}
+
+
+def _records_to_kpi_rows(records: List[Dict], source: str = "seed") -> List[Dict]:
+    """Normalize generated scenario records into kpi_metrics row dicts.
+
+    Accepts both raw scenario records (``date`` + ``direction`` keys, as produced by
+    :func:`generate_time_series_data`) and already-normalized rows (``period`` key).
+    """
+    rows = []
+    for rec in records:
+        period = rec.get("period") or str(rec.get("date", ""))[:7]
+        if not period:
+            continue
+        rows.append(
+            {
+                "period": period,
+                "metric": str(rec.get("metric", "")),
+                "value": float(rec.get("value", 0)),
+                "category": str(rec.get("category", "Other")),
+                "segment": str(rec.get("segment", "Global")),
+                "unit": str(rec.get("unit", "")),
+                "direction": _DIRECTION_MAP.get(
+                    str(rec.get("direction", "")), "higher_is_better"
+                ),
+                "source": source,
+            }
+        )
+    return rows
+
+
+def generate_kpi_rows(scenario: str = "healthy") -> List[Dict]:
+    """Generate normalized KPI rows (period/metric/value/category/...) for a scenario."""
+    return _records_to_kpi_rows(generate_time_series_data(scenario))
+
+
+def generate_knowledge_docs(kpi_rows: List[Dict]) -> List[Dict]:
+    """Derive knowledge-base documents (one handbook per category) from KPI rows."""
+    by_category: Dict[str, Dict[str, Dict]] = {}
+    for row in kpi_rows:
+        metric_rows = by_category.setdefault(row["category"], {})
+        prev = metric_rows.get(row["metric"])
+        if prev is None or row["period"] >= prev["period"]:
+            metric_rows[row["metric"]] = row
+
+    docs = []
+    for category, metrics in sorted(by_category.items()):
+        lines = [
+            f"- {metric}: {info['value']:,.2f} {info['unit']} "
+            f"(period {info['period']}, direction {info['direction']})"
+            for metric, info in sorted(metrics.items())
+        ]
+        docs.append(
+            {
+                "title": f"{category} KPI Handbook",
+                "content": (
+                    f"Seeded reference for the {category} domain.\n\n"
+                    + "\n".join(lines)
+                ),
+                "source": "seed",
+            }
+        )
+    return docs
+
+
+def seed_database(
+    data: "List[Dict] | None" = None,
+    replace: bool = True,
+    scenario: str = "healthy",
+) -> Dict[str, int]:
+    """Seed PostgreSQL with generated KPI metrics and knowledge-base docs.
+
+    ``data`` may be raw scenario records (from :func:`generate_time_series_data`)
+    or normalized KPI rows; when omitted the ``scenario`` dataset is generated.
+    Returns ``{"kpi_rows": n, "docs": m}`` — both 0 when no database is configured.
+    """
+    counts = {"kpi_rows": 0, "docs": 0}
     if not DB_AVAILABLE:
-        print("Database not available - data generation only")
-        return False
+        print("Database not available - set POSTGRES_URL to enable seeding")
+        return counts
 
     try:
-        # Clear existing data
-        print("Clearing existing KPI data...")
-        # This would require a delete function in pg_store
+        import pandas as pd
 
-        # Insert new data
-        print(f"Seeding {len(data)} KPI records...")
-        success_count = 0
+        # Ensure the full schema exists before writing (idempotent).
+        init_pg_tables()
 
-        for record in data:
-            try:
-                insert_kpi_metric(
-                    category=record["category"],
-                    metric=record["metric"],
-                    value=record["value"],
-                    unit=record["unit"],
-                    date_str=record["date"],
-                )
-                success_count += 1
-            except Exception as e:
-                print(f"Failed to insert {record['metric']}: {e}")
+        records = generate_time_series_data(scenario) if data is None else data
+        kpi_rows = _records_to_kpi_rows(records)
 
-        print(f"Successfully seeded {success_count}/{len(data)} records")
-        return success_count > 0
+        if kpi_rows:
+            print(f"Seeding {len(kpi_rows)} KPI records...")
+            store_kpi_metrics(
+                pd.DataFrame(kpi_rows), source_name="seed", replace=replace
+            )
+            counts["kpi_rows"] = len(kpi_rows)
+
+        docs = generate_knowledge_docs(kpi_rows)
+        if docs:
+            docs_df = pd.DataFrame(
+                [
+                    {
+                        "doc_id": f"seed-{i}",
+                        "title": d["title"],
+                        "content": d["content"],
+                        "source": d.get("source", "seed"),
+                        "embedding": "",
+                        "language": "en",
+                    }
+                    for i, d in enumerate(docs)
+                ]
+            )
+            store_knowledge_docs(docs_df, replace_prefix="seed-")
+            counts["docs"] = len(docs)
+
+        print(
+            f"Successfully seeded {counts['kpi_rows']} KPI rows "
+            f"and {counts['docs']} knowledge docs"
+        )
+        return counts
 
     except Exception as e:
         print(f"Database seeding failed: {e}")
-        return False
+        return counts
 
 
-def generate_scenario_summary() -> Dict:
-    """Generate summary of each scenario for documentation"""
-    summaries = {}
+def generate_scenario_summary(scenario: str) -> Dict:
+    """Generate summary statistics for a single scenario."""
+    data = generate_time_series_data(scenario)
 
-    for scenario in SCENARIOS:
-        data = generate_time_series_data(scenario)
+    # Calculate summary statistics
+    finance_revenue = [d["value"] for d in data if d["metric"] == "Monthly_Revenue"]
+    people_headcount = [d["value"] for d in data if d["metric"] == "Headcount"]
 
-        # Calculate summary statistics
-        finance_revenue = [d["value"] for d in data if d["metric"] == "Monthly_Revenue"]
-        people_headcount = [d["value"] for d in data if d["metric"] == "Headcount"]
-
-        summaries[scenario] = {
-            "total_records": len(data),
-            "avg_revenue": (
-                sum(finance_revenue) / len(finance_revenue) if finance_revenue else 0
-            ),
-            "final_revenue": finance_revenue[-1] if finance_revenue else 0,
-            "avg_headcount": (
-                sum(people_headcount) / len(people_headcount) if people_headcount else 0
-            ),
-            "final_headcount": people_headcount[-1] if people_headcount else 0,
-            "trend": "growing" if scenario == "healthy" else "varying",
-        }
-
-    return summaries
+    return {
+        "total_records": len(data),
+        "avg_revenue": (
+            sum(finance_revenue) / len(finance_revenue) if finance_revenue else 0
+        ),
+        "final_revenue": finance_revenue[-1] if finance_revenue else 0,
+        "avg_headcount": (
+            sum(people_headcount) / len(people_headcount) if people_headcount else 0
+        ),
+        "final_headcount": people_headcount[-1] if people_headcount else 0,
+        "trend": "growing" if scenario == "healthy" else "varying",
+    }
 
 
 def main():
@@ -308,7 +405,7 @@ def main():
         print(f"Generating data for scenario: {scenario}")
         data = generate_time_series_data(scenario)
         all_data[scenario] = data
-        scenario_summaries[scenario] = generate_scenario_summary()
+        scenario_summaries[scenario] = generate_scenario_summary(scenario)
 
     # Print scenario summaries
     print("\n=== Scenario Summaries ===")
@@ -323,12 +420,12 @@ def main():
 
     # Seed with healthy scenario by default
     print("\n=== Seeding Database with 'healthy' scenario ===")
-    healthy_data = all_data["healthy"]
-    success = seed_database(healthy_data)
+    result = seed_database(scenario="healthy")
 
-    if success:
+    if result["kpi_rows"] > 0:
         print("✅ Database seeded successfully")
-        print(f"Generated {len(healthy_data)} KPI records over {MONTHS} months")
+        print(f"Seeded {result['kpi_rows']} KPI records and {result['docs']} knowledge docs")
+        print(f"Covering {MONTHS} months across {len(BUSINESS_KPIS)} domains")
         print("Other scenarios available for testing: " + ", ".join(SCENARIOS[1:]))
     else:
         print("⚠️  Database seeding failed (DB may not be available)")

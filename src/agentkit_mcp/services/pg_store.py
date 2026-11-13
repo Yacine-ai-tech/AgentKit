@@ -240,6 +240,7 @@ def init_pg_tables():
                 severity     TEXT        NOT NULL DEFAULT 'info',
                 author       TEXT        NOT NULL DEFAULT 'agentkit',
                 domain       TEXT,
+                owner_session_id TEXT,
                 created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 retracted_at TIMESTAMPTZ
             )
@@ -250,6 +251,218 @@ def init_pg_tables():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_metric ON kpi_annotations(metric, retracted_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_domain ON kpi_annotations(domain, retracted_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_annotations_created ON kpi_annotations(created_at DESC)")
+
+        # ── Users & auth ──────────────────────────────────────────────
+        # Column names match what the pg_store functions actually use
+        # (password_hash, not the legacy schema.sql hashed_password).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id                  TEXT PRIMARY KEY,
+                username            TEXT NOT NULL UNIQUE,
+                password_hash       TEXT,
+                role                TEXT NOT NULL DEFAULT 'viewer',
+                preferred_language  TEXT NOT NULL DEFAULT 'en',
+                full_name           TEXT NOT NULL DEFAULT '',
+                avatar_url          TEXT,
+                is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        # Heal databases created from the legacy db/schema.sql: it used
+        # hashed_password instead of password_hash. Rename when possible,
+        # otherwise copy the values across.
+        conn.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'users' AND column_name = 'hashed_password'
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'users' AND column_name = 'password_hash'
+                ) THEN
+                    ALTER TABLE users RENAME COLUMN hashed_password TO password_hash;
+                ELSIF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'users' AND column_name = 'hashed_password'
+                ) THEN
+                    UPDATE users SET password_hash = hashed_password
+                    WHERE password_hash IS NULL;
+                END IF;
+            END $$;
+        """)
+        for col, ddl in (
+            ("password_hash", "TEXT"),
+            ("preferred_language", "TEXT NOT NULL DEFAULT 'en'"),
+            ("full_name", "TEXT NOT NULL DEFAULT ''"),
+            ("avatar_url", "TEXT"),
+            ("is_active", "BOOLEAN NOT NULL DEFAULT TRUE"),
+            ("updated_at", "TIMESTAMPTZ NOT NULL DEFAULT NOW()"),
+        ):
+            conn.execute(
+                f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {ddl}"
+            )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+
+        # ── Chat sessions & messages ──────────────────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id          TEXT PRIMARY KEY,
+                user_id     TEXT NOT NULL,
+                title       TEXT NOT NULL DEFAULT 'New Chat',
+                persona     TEXT NOT NULL DEFAULT 'general',
+                is_pinned   BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id           SERIAL PRIMARY KEY,
+                session_id   TEXT NOT NULL,
+                role         TEXT NOT NULL,
+                content      TEXT,
+                mode         TEXT NOT NULL DEFAULT 'conversation',
+                sources      JSONB NOT NULL DEFAULT '[]'::jsonb,
+                tokens_used  INTEGER NOT NULL DEFAULT 0,
+                latency_ms   INTEGER NOT NULL DEFAULT 0,
+                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id, created_at)")
+
+        # ── Uploaded files ────────────────────────────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS uploaded_files (
+                id                 TEXT PRIMARY KEY,
+                username           TEXT NOT NULL,
+                file_name          TEXT,
+                file_path          TEXT,
+                file_type          TEXT,
+                extracted_content  TEXT,
+                created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_uploaded_files_user ON uploaded_files(username)")
+
+        # ── OAuth token refresh & events ───────────────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS token_refresh_metadata (
+                username                TEXT NOT NULL,
+                integration_type        TEXT NOT NULL,
+                refresh_token           TEXT,
+                token_expires_at        TEXT,
+                scope                   TEXT,
+                is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+                last_refresh_attempt    TIMESTAMPTZ,
+                last_refresh_success    TIMESTAMPTZ,
+                refresh_attempt_count   INTEGER NOT NULL DEFAULT 0,
+                consecutive_failures    INTEGER NOT NULL DEFAULT 0,
+                created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (username, integration_type)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS oauth_token_events (
+                id               SERIAL PRIMARY KEY,
+                username         TEXT,
+                integration_type TEXT,
+                event_type       TEXT,
+                error_message    TEXT,
+                created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_oauth_events_user ON oauth_token_events(username, created_at)")
+
+        # ── Data ingestion & export logs ───────────────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS data_ingestion_log (
+                id                  SERIAL PRIMARY KEY,
+                username            TEXT,
+                filename            TEXT,
+                file_type           TEXT,
+                source              TEXT,
+                status              TEXT NOT NULL DEFAULT 'pending',
+                row_count           INTEGER,
+                file_size_bytes     BIGINT,
+                import_destination  TEXT,
+                mapping_config      TEXT,
+                preview_data        TEXT,
+                error_message       TEXT,
+                ingested_at         TIMESTAMPTZ,
+                created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ingestion_user ON data_ingestion_log(username, created_at)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS data_export_log (
+                id               SERIAL PRIMARY KEY,
+                username         TEXT,
+                export_name      TEXT,
+                export_format    TEXT,
+                source_type      TEXT,
+                status           TEXT NOT NULL DEFAULT 'pending',
+                query            TEXT,
+                output_location  TEXT,
+                row_count        INTEGER,
+                file_size_bytes  BIGINT,
+                error_message    TEXT,
+                expiration_at    TEXT,
+                created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_export_user ON data_export_log(username, created_at)")
+
+        # ── Domain preference & personalization ───────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS domain_preference (
+                username          TEXT PRIMARY KEY,
+                default_domain    TEXT NOT NULL DEFAULT 'general',
+                last_used_domain  TEXT,
+                domain_history    JSONB NOT NULL DEFAULT '{}'::jsonb,
+                last_updated      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+
+        # ── Mini-spreadsheet ───────────────────────────────────────────
+        # data / schema_columns stay TEXT: callers json.dumps()/json.loads()
+        # them explicitly, so a JSONB column would break round-tripping.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS data_spreadsheet (
+                id               SERIAL PRIMARY KEY,
+                username         TEXT NOT NULL,
+                name             TEXT NOT NULL,
+                domain           TEXT NOT NULL DEFAULT 'general',
+                description      TEXT,
+                is_public        BOOLEAN NOT NULL DEFAULT FALSE,
+                data             TEXT NOT NULL DEFAULT '[]',
+                schema_columns   TEXT NOT NULL DEFAULT '[]',
+                row_count        INTEGER NOT NULL DEFAULT 0,
+                created_by       TEXT,
+                created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_spreadsheet_user ON data_spreadsheet(username, name)")
+
+        # ── Integration credentials ───────────────────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS integration_credentials (
+                id                      SERIAL PRIMARY KEY,
+                username                TEXT NOT NULL,
+                integration_type        TEXT NOT NULL,
+                credentials_encrypted   TEXT,
+                created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (username, integration_type)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_integration_creds_user ON integration_credentials(username)")
 
         conn.commit()
         log.info("✅ PostgreSQL tables initialized")
